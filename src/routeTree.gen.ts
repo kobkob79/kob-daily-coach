@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedWorkoutsRouteImport } from './routes/_authenticated/workouts'
+import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
 import { Route as AuthenticatedNutritionRouteImport } from './routes/_authenticated/nutrition'
 import { Route as AuthenticatedHealthRouteImport } from './routes/_authenticated/health'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -34,6 +35,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthenticatedWorkoutsRoute = AuthenticatedWorkoutsRouteImport.update({
   id: '/workouts',
   path: '/workouts',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedShiftRoute = AuthenticatedShiftRouteImport.update({
+  id: '/shift',
+  path: '/shift',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedNutritionRoute = AuthenticatedNutritionRouteImport.update({
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/health': typeof AuthenticatedHealthRoute
   '/nutrition': typeof AuthenticatedNutritionRoute
+  '/shift': typeof AuthenticatedShiftRoute
   '/workouts': typeof AuthenticatedWorkoutsRoute
 }
 export interface FileRoutesByTo {
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/health': typeof AuthenticatedHealthRoute
   '/nutrition': typeof AuthenticatedNutritionRoute
+  '/shift': typeof AuthenticatedShiftRoute
   '/workouts': typeof AuthenticatedWorkoutsRoute
 }
 export interface FileRoutesById {
@@ -76,6 +84,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/health': typeof AuthenticatedHealthRoute
   '/_authenticated/nutrition': typeof AuthenticatedNutritionRoute
+  '/_authenticated/shift': typeof AuthenticatedShiftRoute
   '/_authenticated/workouts': typeof AuthenticatedWorkoutsRoute
 }
 export interface FileRouteTypes {
@@ -86,9 +95,17 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/health'
     | '/nutrition'
+    | '/shift'
     | '/workouts'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/health' | '/nutrition' | '/workouts'
+  to:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/health'
+    | '/nutrition'
+    | '/shift'
+    | '/workouts'
   id:
     | '__root__'
     | '/'
@@ -97,6 +114,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/health'
     | '/_authenticated/nutrition'
+    | '/_authenticated/shift'
     | '/_authenticated/workouts'
   fileRoutesById: FileRoutesById
 }
@@ -136,6 +154,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWorkoutsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/shift': {
+      id: '/_authenticated/shift'
+      path: '/shift'
+      fullPath: '/shift'
+      preLoaderRoute: typeof AuthenticatedShiftRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/nutrition': {
       id: '/_authenticated/nutrition'
       path: '/nutrition'
@@ -164,6 +189,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHealthRoute: typeof AuthenticatedHealthRoute
   AuthenticatedNutritionRoute: typeof AuthenticatedNutritionRoute
+  AuthenticatedShiftRoute: typeof AuthenticatedShiftRoute
   AuthenticatedWorkoutsRoute: typeof AuthenticatedWorkoutsRoute
 }
 
@@ -171,6 +197,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHealthRoute: AuthenticatedHealthRoute,
   AuthenticatedNutritionRoute: AuthenticatedNutritionRoute,
+  AuthenticatedShiftRoute: AuthenticatedShiftRoute,
   AuthenticatedWorkoutsRoute: AuthenticatedWorkoutsRoute,
 }
 

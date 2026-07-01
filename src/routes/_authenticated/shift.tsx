@@ -34,9 +34,11 @@ function ShiftPage() {
     mutationFn: async () => {
       const { data: userRes } = await supabase.auth.getUser();
       if (!userRes.user) throw new Error("Not signed in");
+      const finalAnchor = anchorDate || cfgQ.data?.anchor_date;
+      if (!finalAnchor) throw new Error("Pick a first on-day");
       const { error } = await supabase.from("shift_config").upsert({
         user_id: userRes.user.id,
-        anchor_date: anchorDate || cfgQ.data?.anchor_date,
+        anchor_date: finalAnchor,
         anchor_shift: anchorShift,
         pattern: "4on4off",
       });
