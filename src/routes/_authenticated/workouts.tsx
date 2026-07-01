@@ -138,7 +138,7 @@ function WorkoutDetailDialog({ workoutId, onClose }: { workoutId: string; onClos
   const [notes, setNotes] = useState<string | null>(null);
 
   const updateWorkout = useMutation({
-    mutationFn: async (patch: Record<string, unknown>) => {
+    mutationFn: async (patch: { name?: string | null; date?: string; duration_min?: number | null; notes?: string | null }) => {
       const { error } = await supabase.from("workouts").update(patch).eq("id", workoutId);
       if (error) throw error;
     },
