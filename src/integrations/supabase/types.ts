@@ -14,7 +14,288 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      daily_notes: {
+        Row: {
+          created_at: string
+          date: string
+          energy: number | null
+          id: string
+          mood: number | null
+          notes: string | null
+          sleep_hours: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          energy?: number | null
+          id?: string
+          mood?: number | null
+          notes?: string | null
+          sleep_hours?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          energy?: number | null
+          id?: string
+          mood?: number | null
+          notes?: string | null
+          sleep_hours?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      exercises: {
+        Row: {
+          category: Database["public"]["Enums"]["exercise_category"]
+          created_at: string
+          default_reps: number | null
+          default_sets: number | null
+          description: string | null
+          equipment: string | null
+          id: string
+          muscle_group: string | null
+          name: string
+          owner_id: string | null
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["exercise_category"]
+          created_at?: string
+          default_reps?: number | null
+          default_sets?: number | null
+          description?: string | null
+          equipment?: string | null
+          id?: string
+          muscle_group?: string | null
+          name: string
+          owner_id?: string | null
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["exercise_category"]
+          created_at?: string
+          default_reps?: number | null
+          default_sets?: number | null
+          description?: string | null
+          equipment?: string | null
+          id?: string
+          muscle_group?: string | null
+          name?: string
+          owner_id?: string | null
+        }
+        Relationships: []
+      }
+      health_logs: {
+        Row: {
+          area: Database["public"]["Enums"]["body_area"]
+          created_at: string
+          date: string
+          exercises_done: string | null
+          id: string
+          mobility_score: number | null
+          notes: string | null
+          pain_level: number | null
+          user_id: string
+        }
+        Insert: {
+          area: Database["public"]["Enums"]["body_area"]
+          created_at?: string
+          date?: string
+          exercises_done?: string | null
+          id?: string
+          mobility_score?: number | null
+          notes?: string | null
+          pain_level?: number | null
+          user_id: string
+        }
+        Update: {
+          area?: Database["public"]["Enums"]["body_area"]
+          created_at?: string
+          date?: string
+          exercises_done?: string | null
+          id?: string
+          mobility_score?: number | null
+          notes?: string | null
+          pain_level?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      nutrition_entries: {
+        Row: {
+          calories: number | null
+          carbs_g: number | null
+          created_at: string
+          date: string
+          fat_g: number | null
+          food_name: string
+          id: string
+          meal: Database["public"]["Enums"]["meal_type"]
+          notes: string | null
+          protein_g: number | null
+          user_id: string
+        }
+        Insert: {
+          calories?: number | null
+          carbs_g?: number | null
+          created_at?: string
+          date?: string
+          fat_g?: number | null
+          food_name: string
+          id?: string
+          meal: Database["public"]["Enums"]["meal_type"]
+          notes?: string | null
+          protein_g?: number | null
+          user_id: string
+        }
+        Update: {
+          calories?: number | null
+          carbs_g?: number | null
+          created_at?: string
+          date?: string
+          fat_g?: number | null
+          food_name?: string
+          id?: string
+          meal?: Database["public"]["Enums"]["meal_type"]
+          notes?: string | null
+          protein_g?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      shift_config: {
+        Row: {
+          anchor_date: string
+          anchor_shift: Database["public"]["Enums"]["shift_type"]
+          pattern: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          anchor_date: string
+          anchor_shift?: Database["public"]["Enums"]["shift_type"]
+          pattern?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          anchor_date?: string
+          anchor_shift?: Database["public"]["Enums"]["shift_type"]
+          pattern?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      workout_sets: {
+        Row: {
+          created_at: string
+          exercise_id: string
+          id: string
+          notes: string | null
+          reps: number | null
+          rpe: number | null
+          set_number: number
+          user_id: string
+          weight_kg: number | null
+          workout_id: string
+        }
+        Insert: {
+          created_at?: string
+          exercise_id: string
+          id?: string
+          notes?: string | null
+          reps?: number | null
+          rpe?: number | null
+          set_number?: number
+          user_id: string
+          weight_kg?: number | null
+          workout_id: string
+        }
+        Update: {
+          created_at?: string
+          exercise_id?: string
+          id?: string
+          notes?: string | null
+          reps?: number | null
+          rpe?: number | null
+          set_number?: number
+          user_id?: string
+          weight_kg?: number | null
+          workout_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_sets_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_sets_workout_id_fkey"
+            columns: ["workout_id"]
+            isOneToOne: false
+            referencedRelation: "workouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workouts: {
+        Row: {
+          created_at: string
+          date: string
+          duration_min: number | null
+          id: string
+          name: string | null
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          duration_min?: number | null
+          id?: string
+          name?: string | null
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          duration_min?: number | null
+          id?: string
+          name?: string | null
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +304,16 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      body_area: "neck" | "sciatica" | "ac_joint" | "general"
+      exercise_category:
+        | "push"
+        | "pull"
+        | "legs"
+        | "core"
+        | "mobility"
+        | "conditioning"
+      meal_type: "breakfast" | "lunch" | "dinner" | "snack"
+      shift_type: "day" | "night" | "off"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +440,18 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      body_area: ["neck", "sciatica", "ac_joint", "general"],
+      exercise_category: [
+        "push",
+        "pull",
+        "legs",
+        "core",
+        "mobility",
+        "conditioning",
+      ],
+      meal_type: ["breakfast", "lunch", "dinner", "snack"],
+      shift_type: ["day", "night", "off"],
+    },
   },
 } as const
