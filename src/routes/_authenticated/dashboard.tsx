@@ -1,15 +1,28 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getShiftForDate, SHIFT_STYLES, type ShiftConfig } from "@/lib/shift";
 import { format } from "date-fns";
-import { Dumbbell, Apple, HeartPulse, CalendarClock, Flame, TrendingUp } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { Dumbbell, HeartPulse, CalendarClock, Sparkles, ChevronLeft } from "lucide-react";
 import { today } from "@/lib/date";
+import { t } from "@/lib/i18n";
+import { PremiumCard, SectionHeader, EmptyState } from "@/components/ui-kit/Section";
+import { ProgressRing } from "@/components/ui-kit/ProgressRing";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
+
+// Personal defaults — will move to a user_settings table when profile UI lands.
+const PROTEIN_TARGET_G = 180;
+
+function greetingKey() {
+  const h = new Date().getHours();
+  if (h < 5) return "home.greeting.night";
+  if (h < 12) return "home.greeting.morning";
+  if (h < 18) return "home.greeting.afternoon";
+  return "home.greeting.evening";
+}
 
 function Dashboard() {
   const todayIso = today();
@@ -22,15 +35,16 @@ function Dashboard() {
     },
   });
 
-  const workoutsQ = useQuery({
-    queryKey: ["workouts", "recent"],
+  const workoutTodayQ = useQuery({
+    queryKey: ["workouts", "today", todayIso],
     queryFn: async () => {
       const { data } = await supabase
         .from("workouts")
         .select("id,name,date,duration_min")
-        .order("date", { ascending: false })
-        .limit(3);
-      return data ?? [];
+        .eq("date", todayIso)
+        .limit(1)
+        .maybeSingle();
+      return data;
     },
   });
 
@@ -57,102 +71,169 @@ function Dashboard() {
     },
   });
 
-  const cal = nutritionTodayQ.data?.reduce((s, r) => s + (r.calories ?? 0), 0) ?? 0;
   const protein = nutritionTodayQ.data?.reduce((s, r) => s + Number(r.protein_g ?? 0), 0) ?? 0;
+  const proteinPct = protein / PROTEIN_TARGET_G;
   const shift = shiftQ.data ? getShiftForDate(shiftQ.data, new Date()) : null;
   const shiftStyle = shift ? SHIFT_STYLES[shift] : null;
 
-  const hour = new Date().getHours();
-  const greeting = hour < 5 ? "Late night" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-
   return (
-    <div className="space-y-5">
-      <section>
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">{format(new Date(), "EEEE, d MMMM")}</p>
-        <h1 className="mt-1 text-2xl font-bold">{greeting}.</h1>
+    <div className="space-y-6 pb-2">
+      {/* Header */}
+      <section className="pt-2">
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          {format(new Date(), "EEEE · d MMMM")}
+        </p>
+        <h1 className="mt-1.5 text-3xl font-bold tracking-tight">
+          {t(greetingKey())}, <span className="gradient-text">קובי</span>
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("home.title")}</p>
       </section>
 
+      {/* Shift banner */}
       {shiftStyle && (
-        <Link to="/shift" className={`surface-card flex items-center justify-between p-4 border ${shiftStyle.className}`}>
-          <div className="flex items-center gap-3">
-            <CalendarClock className="h-5 w-5" />
-            <div>
-              <p className="text-xs uppercase tracking-wider opacity-80">Today's shift</p>
-              <p className="text-lg font-semibold">{shiftStyle.label}</p>
+        <Link to="/shift">
+          <PremiumCard interactive className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`grid h-11 w-11 place-items-center rounded-2xl border ${shiftStyle.className}`}>
+                <CalendarClock className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                  {t("shift.today")}
+                </p>
+                <p className="text-base font-semibold">{shiftStyle.label}</p>
+              </div>
             </div>
-          </div>
-          <span className={`h-3 w-3 rounded-full ${shiftStyle.dot}`} />
+            <ChevronLeft className="h-5 w-5 text-muted-foreground rtl:rotate-180" />
+          </PremiumCard>
         </Link>
       )}
 
-      <section className="grid grid-cols-2 gap-3">
-        <StatCard icon={<Flame className="h-4 w-4" />} label="Calories today" value={cal.toString()} accent />
-        <StatCard icon={<TrendingUp className="h-4 w-4" />} label="Protein (g)" value={Math.round(protein).toString()} />
+      {/* Protein progress */}
+      <section>
+        <SectionHeader title={t("home.section.protein")} />
+        <PremiumCard>
+          <div className="flex items-center gap-5">
+            <ProgressRing
+              value={proteinPct}
+              label={`${Math.round(protein)}`}
+              sub={t("common.grams")}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm text-muted-foreground">
+                {Math.round(protein)} {t("common.grams")} {t("home.protein.of")}{" "}
+                <span className="font-semibold text-foreground">{PROTEIN_TARGET_G}</span>{" "}
+                {t("common.grams")}
+              </p>
+              <p className="mt-1 text-2xl font-bold tracking-tight">
+                {Math.round(Math.min(1, proteinPct) * 100)}%
+              </p>
+              <Link
+                to="/nutrition"
+                className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary"
+              >
+                {t("action.logMeal")} <ChevronLeft className="h-3.5 w-3.5 rtl:rotate-180" />
+              </Link>
+            </div>
+          </div>
+        </PremiumCard>
       </section>
 
-      <QuickGrid />
-
+      {/* Today's workout */}
       <section>
-        <h2 className="mb-2 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Recent workouts</h2>
-        <div className="surface-card divide-y divide-border">
-          {workoutsQ.data?.length ? workoutsQ.data.map((w) => (
-            <div key={w.id} className="flex items-center justify-between px-4 py-3">
-              <div>
-                <p className="font-medium">{w.name ?? "Workout"}</p>
-                <p className="text-xs text-muted-foreground">{format(new Date(w.date), "EEE d MMM")}</p>
+        <SectionHeader title={t("home.section.workout")} />
+        <Link to="/workouts">
+          <PremiumCard interactive>
+            {workoutTodayQ.data ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="grid h-11 w-11 place-items-center rounded-2xl"
+                    style={{ background: "var(--gradient-primary)" }}
+                  >
+                    <Dumbbell className="h-5 w-5 text-primary-foreground" />
+                  </div>
+                  <div>
+                    <p className="font-semibold">{workoutTodayQ.data.name ?? "Workout"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {workoutTodayQ.data.duration_min ?? "—"} {t("common.minutes")}
+                    </p>
+                  </div>
+                </div>
+                <ChevronLeft className="h-5 w-5 text-muted-foreground rtl:rotate-180" />
               </div>
-              <span className="text-xs text-muted-foreground">{w.duration_min ?? "—"} min</span>
-            </div>
-          )) : <p className="px-4 py-6 text-sm text-muted-foreground">No workouts logged yet.</p>}
-        </div>
+            ) : (
+              <EmptyState
+                icon={<Dumbbell className="h-5 w-5" />}
+                title={t("home.workout.none")}
+              />
+            )}
+          </PremiumCard>
+        </Link>
       </section>
 
+      {/* Health summary */}
       <section>
-        <h2 className="mb-2 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Recent health checks</h2>
-        <div className="surface-card divide-y divide-border">
-          {healthQ.data?.length ? healthQ.data.map((h, i) => (
-            <div key={i} className="flex items-center justify-between px-4 py-3">
-              <div>
-                <p className="font-medium capitalize">{h.area.replace("_", " ")}</p>
-                <p className="text-xs text-muted-foreground">{format(new Date(h.date), "EEE d MMM")}</p>
-              </div>
-              <span className="text-xs">Pain <b className="text-primary">{h.pain_level ?? "—"}</b>/10</span>
+        <SectionHeader title={t("home.section.health")} />
+        <PremiumCard className="p-0">
+          {healthQ.data?.length ? (
+            <ul className="divide-y divide-border/60">
+              {healthQ.data.map((h, i) => (
+                <li key={i} className="flex items-center justify-between px-5 py-3.5">
+                  <div className="flex items-center gap-3">
+                    <div className="grid h-9 w-9 place-items-center rounded-xl bg-muted/50 text-primary">
+                      <HeartPulse className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium capitalize">{h.area.replace("_", " ")}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {format(new Date(h.date), "EEE d MMM")}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    <b className="text-base text-foreground">{h.pain_level ?? "—"}</b>{" "}
+                    {t("common.of10")}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="p-5">
+              <EmptyState
+                icon={<HeartPulse className="h-5 w-5" />}
+                title={t("home.health.none")}
+              />
             </div>
-          )) : <p className="px-4 py-6 text-sm text-muted-foreground">Log neck / sciatica / AC joint to build a baseline.</p>}
-        </div>
+          )}
+        </PremiumCard>
+      </section>
+
+      {/* AI insight placeholder */}
+      <section>
+        <SectionHeader title={t("home.section.ai")} />
+        <PremiumCard className="relative overflow-hidden">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-40"
+            style={{ background: "var(--gradient-hero)" }}
+            aria-hidden
+          />
+          <div className="relative flex items-start gap-3">
+            <div
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl"
+              style={{ background: "var(--gradient-primary)" }}
+            >
+              <Sparkles className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">KobiOS Coach</p>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                {t("home.ai.placeholder")}
+              </p>
+            </div>
+          </div>
+        </PremiumCard>
       </section>
     </div>
-  );
-}
-
-function StatCard({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: string; accent?: boolean }) {
-  return (
-    <div className="surface-card p-4">
-      <div className={`flex items-center gap-1.5 text-xs ${accent ? "text-primary" : "text-muted-foreground"}`}>
-        {icon}<span className="uppercase tracking-wider">{label}</span>
-      </div>
-      <p className="mt-2 text-2xl font-bold">{value}</p>
-    </div>
-  );
-}
-
-function QuickGrid() {
-  const items = [
-    { to: "/workouts", label: "Log workout", icon: Dumbbell },
-    { to: "/nutrition", label: "Log meal", icon: Apple },
-    { to: "/health", label: "Log health", icon: HeartPulse },
-  ] as const;
-  return (
-    <section className="grid grid-cols-3 gap-3">
-      {items.map((i) => {
-        const Icon = i.icon;
-        return (
-          <Link key={i.to} to={i.to} className="surface-card flex flex-col items-center gap-2 p-4 text-center hover:border-primary/50 transition">
-            <Icon className="h-5 w-5 text-primary" />
-            <span className="text-xs font-medium">{i.label}</span>
-          </Link>
-        );
-      })}
-    </section>
   );
 }
