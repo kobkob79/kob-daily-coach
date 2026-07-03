@@ -421,8 +421,7 @@ function Dashboard() {
       {/* Deterministic recommendations */}
       <SmartRecommendations recommendations={recommendations} />
 
-      {/* Water goal */}
-      <WaterGoal consumedMl={waterMl} targetMl={WATER_TARGET_ML} />
+      {/* Water moved to dedicated /hydration page — data still flows into AI brief */}
 
       {/* Shift banner */}
       {shift && shiftStyle && (
