@@ -66,9 +66,20 @@ function Dashboard() {
     queryFn: async () => {
       const { data } = await supabase
         .from("nutrition_entries")
-        .select("id,meal_time,created_at,meal_type,food_name,calories,protein_g,carbs_g,fat_g,fiber_g")
+        .select("id,meal_time,created_at,meal_type,food_name,calories,protein_g,carbs_g,fat_g")
         .eq("biological_day", bioDay);
-      return data ?? [];
+      // fiber_g exists in the DB (see migration) but may not appear in the
+      // generated Supabase types until they refresh. Fetch it via a loose
+      // secondary query so the UI can display it without a type error.
+      const { data: fibers } = await supabase
+        .from("nutrition_entries")
+        .select("id, fiber_g" as unknown as "id")
+        .eq("biological_day", bioDay);
+      const fiberMap = new Map<string, number>();
+      for (const row of (fibers ?? []) as Array<{ id: string; fiber_g?: number | null }>) {
+        fiberMap.set(row.id, Number(row.fiber_g ?? 0));
+      }
+      return (data ?? []).map((r) => ({ ...r, fiber_g: fiberMap.get(r.id) ?? 0 }));
     },
   });
 
