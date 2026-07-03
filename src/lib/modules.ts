@@ -34,7 +34,7 @@ export interface AppModule {
 export const MODULES: AppModule[] = [
   { id: "home", labelKey: "nav.home", route: "/dashboard", icon: LayoutDashboard, status: "live" },
   { id: "workouts", labelKey: "nav.train", route: "/workouts", icon: Dumbbell, status: "live" },
-  { id: "nutrition", labelKey: "nav.fuel", route: "/nutrition", icon: Apple, status: "live" },
+  { id: "meals", labelKey: "nav.meals", route: "/meals", icon: Apple, status: "live" },
   { id: "health", labelKey: "nav.health", route: "/health", icon: HeartPulse, status: "live" },
   { id: "shift", labelKey: "nav.shift", route: "/shift", icon: CalendarClock, status: "live" },
   { id: "progress", labelKey: "nav.trend", route: "/progress", icon: LineChart, status: "live" },
