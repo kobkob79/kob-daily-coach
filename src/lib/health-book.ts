@@ -236,10 +236,18 @@ export async function collectHealthBookData(input: HealthBookInput): Promise<Hea
   });
 
   // Shifts
-  const shifts = days.map((d) => {
-    const { kind } = shiftForDate(parseISO(d));
-    return { date: d, kind };
-  });
+  const { data: shiftCfg } = await supabase.from("shift_config").select("*").maybeSingle();
+  const cfg: ShiftConfig | null = shiftCfg
+    ? {
+        anchor_date: shiftCfg.anchor_date as string,
+        anchor_shift: shiftCfg.anchor_shift as "day" | "night",
+        pattern: (shiftCfg.pattern as string) ?? "intel_9d",
+      }
+    : null;
+  const shifts = days.map((d) => ({
+    date: d,
+    kind: cfg ? getShiftForDate(cfg, parseISO(d)) : "off",
+  }));
 
   // Body photos (resolve signed URLs)
   const photos = await Promise.all(
