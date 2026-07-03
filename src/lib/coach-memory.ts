@@ -25,19 +25,25 @@ export function useCoachMemory(bioDay: string) {
     queryFn: async (): Promise<CoachMemory> => {
       const from = format(subDays(new Date(), LOOKBACK_DAYS), "yyyy-MM-dd");
 
-      const [events, meals] = await Promise.all([
+      const [events, meals, health] = await Promise.all([
         supabase
           .from("daily_events")
           .select("kind,label,amount,unit,event_time,biological_day")
           .gte("biological_day", from),
         supabase
           .from("nutrition_entries")
-          .select("food_name,meal_type,meal_time,biological_day")
+          .select("food_name,meal_type,meal_time,biological_day,protein_g")
           .gte("biological_day", from),
+        supabase
+          .from("health_logs")
+          .select("area,pain_level,date")
+          .gte("date", from)
+          .order("date", { ascending: true }),
       ]);
 
       const evRows = events.data ?? [];
       const mealRows = meals.data ?? [];
+      const healthRows = health.data ?? [];
 
       // --- Supplements: which do you normally take, and which are missing today?
       const supplementCounts = new Map<string, number>();
