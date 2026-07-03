@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { today } from "@/lib/date";
-import { analyzeMealImage } from "@/lib/meal-vision";
+import { analyzeMealImage, type MealIngredient } from "@/lib/meal-vision";
 import {
   CAPTURE_TYPES, CAPTURE_TYPE_BY_KEY, CAPTURE_BUCKET,
   type CaptureType, type CaptureTypeDef, type CaptureStatus,
