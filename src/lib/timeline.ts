@@ -247,10 +247,10 @@ export function buildCoachHints(i: CoachInput): CoachHint[] {
     hints.push({ id: "water", tone: "warn", text: t("coach.water.none") });
   }
 
-  // Workout nudge — only afternoon+ and not on night/half-rest days.
+  // Workout nudge — only afternoon+ and only on day/off phases.
   if (!i.workoutLoggedToday && i.now.getHours() >= 16 && i.shiftConfig) {
-    const s = getShiftForDate(i.shiftConfig, i.now);
-    if (s === "day" || s === "off") {
+    const { shift } = getShiftPositionForDate(i.shiftConfig, i.now);
+    if (shift === "day" || shift === "off") {
       hints.push({ id: "workout", tone: "info", text: t("coach.workout.none") });
     }
   }
