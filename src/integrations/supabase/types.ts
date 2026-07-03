@@ -173,9 +173,11 @@ export type Database = {
           description: string | null
           equipment: string | null
           id: string
+          image_path: string | null
           muscle_group: string | null
           name: string
           owner_id: string | null
+          updated_at: string
         }
         Insert: {
           category: Database["public"]["Enums"]["exercise_category"]
@@ -185,9 +187,11 @@ export type Database = {
           description?: string | null
           equipment?: string | null
           id?: string
+          image_path?: string | null
           muscle_group?: string | null
           name: string
           owner_id?: string | null
+          updated_at?: string
         }
         Update: {
           category?: Database["public"]["Enums"]["exercise_category"]
@@ -197,9 +201,11 @@ export type Database = {
           description?: string | null
           equipment?: string | null
           id?: string
+          image_path?: string | null
           muscle_group?: string | null
           name?: string
           owner_id?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
