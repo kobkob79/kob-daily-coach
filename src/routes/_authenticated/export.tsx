@@ -193,7 +193,7 @@ function HealthBookPage() {
           <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
           <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@500;600;700;800&display=swap" rel="stylesheet">
           <style>body{margin:0;background:#f5f7fb;}${HEALTH_BOOK_CSS}</style>
-          </head><body>${node.innerHTML}<script>window.onload=()=>setTimeout(()=>window.print(),500);</script></body></html>`);
+          </head><body>${node?.innerHTML ?? buildHealthBookHtml(built.data, built.analytics)}<script>window.onload=()=>setTimeout(()=>window.print(),500);</script></body></html>`);
         win.document.close();
         toast.success(t("hb.printOpened"));
       } else if (mode === "email") {
