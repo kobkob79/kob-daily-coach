@@ -15,6 +15,7 @@ import { OneTapBar } from "@/components/dashboard/OneTapBar";
 import { useCoachMemory } from "@/lib/coach-memory";
 import { buildRecommendations } from "@/lib/intelligence";
 import { SmartRecommendations } from "@/components/dashboard/SmartRecommendations";
+import { WaterGoal } from "@/components/dashboard/WaterGoal";
 import { getShiftPositionForDate } from "@/lib/shift";
 import { subDays } from "date-fns";
 
