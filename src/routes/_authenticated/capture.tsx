@@ -162,6 +162,11 @@ function CaptureComposer({
   const [analyzing, setAnalyzing] = useState(false);
   const [confidence, setConfidence] = useState<number | null>(null);
   const [ingredients, setIngredients] = useState<MealIngredient[]>([]);
+  const [originalIngredients, setOriginalIngredients] = useState<MealIngredient[]>([]);
+  const [quality, setQuality] = useState<MealQuality | null>(null);
+  const [diagnostics, setDiagnostics] = useState<MealDiagnostics | null>(null);
+  const [visionError, setVisionError] = useState<string | null>(null);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
   const Icon = def.icon;
 
   const pickFile = (f: File | null) => {
@@ -169,6 +174,9 @@ function CaptureComposer({
     setFile(f);
     setConfidence(null);
     setIngredients([]);
+    setOriginalIngredients([]);
+    setQuality(null);
+    setVisionError(null);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(URL.createObjectURL(f));
   };
@@ -183,8 +191,27 @@ function CaptureComposer({
       return;
     }
     setAnalyzing(true);
+    setVisionError(null);
     try {
       const res = await analyzeMealImage(file);
+      setDiagnostics(res.diagnostics);
+      if (!res.visionConnected) {
+        setVisionError(res.error ?? "AI Vision עדיין אינו מחובר.");
+        setIngredients([]);
+        setOriginalIngredients([]);
+        setQuality(null);
+        setConfidence(null);
+        toast.error("AI Vision עדיין אינו מחובר.");
+        return;
+      }
+      if (res.ingredients.length === 0) {
+        setVisionError("Vision לא זיהה מזון בתמונה. נסה תמונה ברורה יותר.");
+        setIngredients([]);
+        setOriginalIngredients([]);
+        setQuality(null);
+        setConfidence(res.confidence);
+        return;
+      }
       setValues((s) => ({
         ...s,
         dish: res.dish,
@@ -196,14 +223,29 @@ function CaptureComposer({
         fiber_g: String(res.fiber_g),
       }));
       setIngredients(res.ingredients);
+      setOriginalIngredients(res.ingredients.map((i) => ({ ...i })));
+      setQuality(res.quality);
       setConfidence(res.confidence);
       toast.success(t("capture.analysisDone"));
     } catch (e) {
+      setVisionError((e as Error).message);
       toast.error((e as Error).message);
     } finally {
       setAnalyzing(false);
     }
   };
+
+  const addIngredient = () => {
+    setIngredients((arr) => [
+      ...arr,
+      {
+        name: "", quantity: "מנה",
+        calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0,
+        confidence: 1, nutrients: [], education: [],
+      },
+    ]);
+  };
+
 
 
   const save = useMutation({
