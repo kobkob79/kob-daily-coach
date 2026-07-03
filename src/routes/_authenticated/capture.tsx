@@ -154,6 +154,8 @@ function CaptureComposer({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [values, setValues] = useState<Record<string, string>>({});
+  const [analyzing, setAnalyzing] = useState(false);
+  const [confidence, setConfidence] = useState<number | null>(null);
   const Icon = def.icon;
 
   const pickFile = (f: File | null) => {
