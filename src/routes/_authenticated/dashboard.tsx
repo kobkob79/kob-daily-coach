@@ -13,6 +13,11 @@ import { Timeline } from "@/components/dashboard/Timeline";
 import { SmartCoach } from "@/components/dashboard/SmartCoach";
 import { OneTapBar } from "@/components/dashboard/OneTapBar";
 import { useCoachMemory } from "@/lib/coach-memory";
+import { buildRecommendations } from "@/lib/intelligence";
+import { SmartRecommendations } from "@/components/dashboard/SmartRecommendations";
+import { getShiftPositionForDate } from "@/lib/shift";
+import { subDays } from "date-fns";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -142,9 +147,84 @@ function Dashboard() {
     memory: coachMemory ?? undefined,
   });
 
+  // Yesterday's workout minutes — used by the intelligence engine to detect
+  // heavy prior day and recommend recovery instead of another session.
+  const yesterdayIso = format(subDays(now, 1), "yyyy-MM-dd");
+  const workoutYesterdayQ = useQuery({
+    queryKey: ["workouts", "yesterday", yesterdayIso],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("workouts")
+        .select("duration_min")
+        .eq("date", yesterdayIso);
+      return data ?? [];
+    },
+  });
+
+  // Last night's sleep + 7-day average, sourced from daily_events.
+  const sleepRecentQ = useQuery({
+    queryKey: ["sleep", "recent"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("daily_events")
+        .select("amount,event_time")
+        .eq("kind", "sleep")
+        .order("event_time", { ascending: false })
+        .limit(7);
+      return data ?? [];
+    },
+  });
+
+  const sleepRows = (sleepRecentQ.data ?? []).filter((r) => r.amount != null);
+  const lastSleepHours = sleepRows[0] ? Number(sleepRows[0].amount) : null;
+  const avgSleepHours =
+    sleepRows.length > 0
+      ? sleepRows.reduce((s, r) => s + Number(r.amount ?? 0), 0) / sleepRows.length
+      : null;
+
+  const workoutYesterdayMinutes = (workoutYesterdayQ.data ?? []).reduce(
+    (s, w) => s + Number(w.duration_min ?? 0),
+    0,
+  );
+
+  const currentPain = (() => {
+    const rows = healthTodayQ.data ?? [];
+    if (rows.length === 0) return null;
+    const top = [...rows].sort(
+      (a, b) => Number(b.pain_level ?? 0) - Number(a.pain_level ?? 0),
+    )[0];
+    return top?.pain_level != null
+      ? { area: top.area, level: Number(top.pain_level) }
+      : null;
+  })();
+
+  const shiftPos = shiftQ.data ? getShiftPositionForDate(shiftQ.data, now) : null;
+
+  const recommendations = buildRecommendations({
+    now,
+    shift: shiftPos?.shift ?? null,
+    indexInPhase: shiftPos?.indexInPhase ?? null,
+    proteinToday: protein,
+    proteinTarget: PROTEIN_TARGET_G,
+    waterMlToday: waterMl,
+    waterTargetMl: WATER_TARGET_ML,
+    lastMealAt,
+    lastMealName:
+      (mealsTodayQ.data ?? []).find((m) => m.food_name)?.food_name ?? null,
+    lastWaterAt,
+    workoutLoggedToday: (workoutTodayQ.data ?? []).length > 0,
+    workoutYesterdayMinutes,
+    currentPain,
+    lastSleepHours,
+    avgSleepHours,
+    weightDelta30dKg: coachMemory?.weightTrend30d?.deltaKg ?? null,
+    memory: coachMemory ?? null,
+  });
+
   const shift = shiftQ.data ? getShiftForDate(shiftQ.data, now) : null;
   const shiftStyle = shift ? SHIFT_STYLES[shift] : null;
   const displayName = profileQ.data?.display_name || "קובי";
+
 
   const primaryWorkout = workoutTodayQ.data?.[0];
 
@@ -160,6 +240,10 @@ function Dashboard() {
 
       {/* Smart Coach (replaces greeting) */}
       <SmartCoach hints={hints} name={displayName} />
+
+      {/* Central intelligence — cross-module recommendations with explainability */}
+      <SmartRecommendations recommendations={recommendations} />
+
 
       {/* Shift banner */}
       {shift && shiftStyle && (

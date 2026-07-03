@@ -386,7 +386,14 @@ const HE: Dict = {
   "profile.know.usualMeal": "ארוחה מזוהה",
 
   "nav.profile": "פרופיל",
+
+  // Intelligence engine
+  "intel.section.title": "המלצות חכמות",
+  "intel.section.subtitle": "מבוסס על כל מה שהמערכת יודעת עליך",
+  "intel.why": "למה ההמלצה הזו?",
+  "intel.empty": "אין המלצות כרגע — הכל נראה מסודר.",
 };
+
 
 const EN: Dict = {
   "app.name": "KobiOS",
