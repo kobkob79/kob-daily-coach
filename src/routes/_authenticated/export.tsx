@@ -137,27 +137,41 @@ function HealthBookPage() {
       }
 
       if (mode === "pdf") {
-        // Render into a fully isolated off-screen host in the SAME document
-        // (html2pdf's html2canvas clones back into the calling document, so
-        // we must sanitize there — an iframe doesn't help). We then use the
-        // html2canvas `onclone` hook to strip every parent stylesheet from
-        // the clone, guaranteeing no oklch/lab/lch/color-mix leak into the
-        // PDF renderer.
+        // True isolation: render the report inside an iframe whose document
+        // contains ONLY the PDF-safe stylesheet (hex/rgb only, Assistant
+        // font). html2canvas reads computed styles from the element's
+        // ownerDocument, so this guarantees it never sees the app's
+        // oklch/lab/lch/color-mix tokens.
         const reportHtml = buildHealthBookHtml(built.data, built.analytics);
-        const host = document.createElement("div");
-        host.setAttribute("dir", "rtl");
-        host.setAttribute("lang", "he");
-        host.style.cssText =
-          "position:fixed;left:-99999px;top:0;width:794px;background:#ffffff;color:#0f172a;z-index:-1;";
-        host.innerHTML = reportHtml;
-        document.body.appendChild(host);
+        const iframe = document.createElement("iframe");
+        iframe.setAttribute("aria-hidden", "true");
+        iframe.style.cssText =
+          "position:fixed;left:-99999px;top:0;width:820px;height:1200px;border:0;background:#ffffff;";
+        document.body.appendChild(iframe);
         try {
-          const fontsReady = (document as unknown as { fonts?: { ready?: Promise<unknown> } })
+          const doc = iframe.contentDocument;
+          const win = iframe.contentWindow;
+          if (!doc || !win) throw new Error("iframe unavailable");
+          doc.open();
+          doc.write(`<!doctype html><html lang="he" dir="rtl"><head>
+            <meta charset="utf-8"/>
+            <base href="${window.location.origin}/"/>
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@500;600;700;800&display=swap" rel="stylesheet">
+            <style>
+              html,body{margin:0;padding:0;background:#ffffff;color:#0f172a;font-family:"Assistant","Rubik","Heebo",system-ui,sans-serif;}
+              ${HEALTH_BOOK_CSS}
+            </style>
+          </head><body>${reportHtml}</body></html>`);
+          doc.close();
+          const fontsReady = (doc as unknown as { fonts?: { ready?: Promise<unknown> } })
             .fonts?.ready;
           if (fontsReady) await fontsReady.catch(() => undefined);
-          await new Promise((r) => setTimeout(r, 250));
+          await new Promise((r) => setTimeout(r, 400));
+
+          const target = doc.body.querySelector(".hb-book") ?? doc.body;
           await html2pdf()
-            .from(host)
+            .from(target as HTMLElement)
             .set({
               margin: 0,
               filename: `${base}.pdf`,
@@ -167,34 +181,17 @@ function HealthBookPage() {
                 useCORS: true,
                 backgroundColor: "#ffffff",
                 logging: false,
-                onclone: (clonedDoc: Document) => {
-                  // Remove every stylesheet that could carry oklch tokens.
-                  clonedDoc
-                    .querySelectorAll('link[rel="stylesheet"], style')
-                    .forEach((el) => el.remove());
-                  // Re-inject ONLY the PDF-safe stylesheet + Assistant font.
-                  const fontLink = clonedDoc.createElement("link");
-                  fontLink.rel = "stylesheet";
-                  fontLink.href =
-                    "https://fonts.googleapis.com/css2?family=Assistant:wght@500;600;700;800&display=swap";
-                  clonedDoc.head.appendChild(fontLink);
-                  const style = clonedDoc.createElement("style");
-                  style.textContent = `html,body{background:#ffffff!important;color:#0f172a!important;margin:0!important;padding:0!important;}${HEALTH_BOOK_CSS}`;
-                  clonedDoc.head.appendChild(style);
-                  clonedDoc.documentElement.removeAttribute("class");
-                  clonedDoc.documentElement.removeAttribute("style");
-                  clonedDoc.body.removeAttribute("class");
-                  clonedDoc.body.removeAttribute("style");
-                },
+                windowWidth: 820,
               },
               jsPDF: { unit: "pt", format: "a4", orientation: "portrait" },
               ...({ pagebreak: { mode: ["css", "legacy"] } } as Record<string, unknown>),
             })
             .save();
         } finally {
-          host.remove();
+          iframe.remove();
         }
         toast.success(t("hb.pdfReady"));
+
 
       } else if (mode === "print") {
         const win = window.open("", "_blank", "noopener,noreferrer");
