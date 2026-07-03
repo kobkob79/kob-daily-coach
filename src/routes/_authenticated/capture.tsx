@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
-  Camera, Upload, Sparkles, Trash2, ChevronLeft, ImagePlus,
+  Camera, Upload, Sparkles, Trash2, ChevronLeft, ImagePlus, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { today } from "@/lib/date";
+import { analyzeMealImage } from "@/lib/meal-vision";
 import {
   CAPTURE_TYPES, CAPTURE_TYPE_BY_KEY, CAPTURE_BUCKET,
   type CaptureType, type CaptureTypeDef, type CaptureStatus,
@@ -152,14 +154,49 @@ function CaptureComposer({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [values, setValues] = useState<Record<string, string>>({});
+  const [analyzing, setAnalyzing] = useState(false);
+  const [confidence, setConfidence] = useState<number | null>(null);
   const Icon = def.icon;
 
   const pickFile = (f: File | null) => {
     if (!f) return;
     setFile(f);
+    setConfidence(null);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(URL.createObjectURL(f));
   };
+
+  const runAnalyze = async () => {
+    if (!file) {
+      toast.error(t("capture.needImage"));
+      return;
+    }
+    if (def.key !== "meal") {
+      toast.info(t("capture.aiSoon"));
+      return;
+    }
+    setAnalyzing(true);
+    try {
+      const res = await analyzeMealImage(file);
+      setValues((s) => ({
+        ...s,
+        dish: res.dish,
+        ingredients: res.ingredients,
+        calories: String(res.calories),
+        protein_g: String(res.protein_g),
+        carbs_g: String(res.carbs_g),
+        fat_g: String(res.fat_g),
+        fiber_g: String(res.fiber_g),
+      }));
+      setConfidence(res.confidence);
+      toast.success(t("capture.analysisDone"));
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
 
   const save = useMutation({
     mutationFn: async () => {
@@ -187,11 +224,30 @@ function CaptureComposer({
           user_id: userRes.user.id,
           capture_type: def.key,
           image_path: imagePath,
-          ai_status: "pending",
+          ai_status: confidence != null ? "done" : "pending",
           extracted,
           notes: notes || null,
         } as never);
       if (error) throw error;
+
+      // For meal captures, mirror the analysis into nutrition_entries so it
+      // shows up in the daily protein total, meals list and timeline.
+      if (def.key === "meal") {
+        const dish = (extracted.dish as string) || "ארוחה";
+        await supabase.from("nutrition_entries").insert({
+          user_id: userRes.user.id,
+          date: today(),
+          meal_time: format(new Date(), "HH:mm:ss"),
+          meal: "snack",
+          food_name: dish,
+          meal_type: "snack",
+          calories: Number(extracted.calories ?? 0),
+          protein_g: Number(extracted.protein_g ?? 0),
+          carbs_g: Number(extracted.carbs_g ?? 0),
+          fat_g: Number(extracted.fat_g ?? 0),
+          notes: (extracted.ingredients as string) ?? null,
+        });
+      }
     },
     onSuccess: () => {
       toast.success(t("capture.saved"));
@@ -268,14 +324,39 @@ function CaptureComposer({
         />
       </div>
 
-      {/* AI placeholder */}
-      <div className="flex items-start gap-3 rounded-2xl border border-primary/25 bg-primary/8 p-3">
-        <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-        <div className="min-w-0">
-          <p className="text-xs font-semibold">{t("capture.aiTitle")} · {t("capture.aiSoon")}</p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">{t("capture.aiSoonHint")}</p>
+      {/* AI analysis */}
+      <div className="space-y-2 rounded-2xl border border-primary/25 bg-primary/8 p-3">
+        <div className="flex items-start gap-3">
+          <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold">{t("capture.aiTitle")}</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              {def.key === "meal" ? t("capture.analysisReview") : t("capture.aiSoonHint")}
+            </p>
+          </div>
+          {confidence != null && (
+            <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
+              {t("capture.confidence")}: {Math.round(confidence * 100)}%
+            </span>
+          )}
         </div>
+        {def.key === "meal" && (
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            disabled={!file || analyzing}
+            onClick={runAnalyze}
+          >
+            {analyzing ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("capture.analyzing")}</>
+            ) : (
+              <><Sparkles className="mr-2 h-4 w-4" />{t("capture.analyze")}</>
+            )}
+          </Button>
+        )}
       </div>
+
 
       {/* Structured fields */}
       <div className="space-y-3">
