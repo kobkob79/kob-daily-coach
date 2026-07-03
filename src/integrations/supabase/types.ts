@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      daily_events: {
+        Row: {
+          amount: number | null
+          biological_day: string | null
+          created_at: string
+          emoji: string | null
+          event_date: string
+          event_time: string
+          id: string
+          kind: string
+          label: string | null
+          meta: Json
+          notes: string | null
+          unit: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          biological_day?: string | null
+          created_at?: string
+          emoji?: string | null
+          event_date?: string
+          event_time?: string
+          id?: string
+          kind: string
+          label?: string | null
+          meta?: Json
+          notes?: string | null
+          unit?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number | null
+          biological_day?: string | null
+          created_at?: string
+          emoji?: string | null
+          event_date?: string
+          event_time?: string
+          id?: string
+          kind?: string
+          label?: string | null
+          meta?: Json
+          notes?: string | null
+          unit?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       daily_notes: {
         Row: {
           created_at: string
