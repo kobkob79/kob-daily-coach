@@ -206,8 +206,12 @@ export function buildCoachHints(i: CoachInput): CoachHint[] {
 
   // Shift context
   if (i.shiftConfig) {
-    const s = getShiftForDate(i.shiftConfig, i.now);
-    hints.push({ id: "shift", tone: "info", text: t(`coach.shift.${s}`) });
+    const { shift, indexInPhase } = getShiftPositionForDate(i.shiftConfig, i.now);
+    const key =
+      shift === "night" && indexInPhase === 1
+        ? "coach.shift.night1"
+        : `coach.shift.${shift}`;
+    hints.push({ id: "shift", tone: "info", text: t(key) });
   }
 
   // Protein
