@@ -7,7 +7,7 @@
  */
 import { differenceInMinutes, format, parseISO } from "date-fns";
 import type { ShiftConfig } from "@/lib/shift";
-import { getShiftForDate } from "@/lib/shift";
+import { getShiftPositionForDate } from "@/lib/shift";
 import { t } from "@/lib/i18n";
 
 export type TimelineKind =
