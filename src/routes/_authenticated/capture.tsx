@@ -161,9 +161,42 @@ function CaptureComposer({
   const pickFile = (f: File | null) => {
     if (!f) return;
     setFile(f);
+    setConfidence(null);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(URL.createObjectURL(f));
   };
+
+  const runAnalyze = async () => {
+    if (!file) {
+      toast.error(t("capture.needImage"));
+      return;
+    }
+    if (def.key !== "meal") {
+      toast.info(t("capture.aiSoon"));
+      return;
+    }
+    setAnalyzing(true);
+    try {
+      const res = await analyzeMealImage(file);
+      setValues((s) => ({
+        ...s,
+        dish: res.dish,
+        ingredients: res.ingredients,
+        calories: String(res.calories),
+        protein_g: String(res.protein_g),
+        carbs_g: String(res.carbs_g),
+        fat_g: String(res.fat_g),
+        fiber_g: String(res.fiber_g),
+      }));
+      setConfidence(res.confidence);
+      toast.success(t("capture.analysisDone"));
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
 
   const save = useMutation({
     mutationFn: async () => {
