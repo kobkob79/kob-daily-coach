@@ -244,7 +244,6 @@ function CaptureComposer({
           protein_g: Number(extracted.protein_g ?? 0),
           carbs_g: Number(extracted.carbs_g ?? 0),
           fat_g: Number(extracted.fat_g ?? 0),
-          fiber_g: Number(extracted.fiber_g ?? 0),
           notes: (extracted.ingredients as string) ?? null,
         });
       }
