@@ -47,6 +47,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Camera className="h-4 w-4" />
             </Link>
             <Link
+              to="/export"
+              className="rounded-full p-2.5 text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
+              aria-label={t("export.title")}
+            >
+              <Download className="h-4 w-4" />
+            </Link>
+            <Link
               to="/profile"
               className="rounded-full p-2.5 text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
               aria-label={t("profile.title")}
