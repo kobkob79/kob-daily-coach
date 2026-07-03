@@ -14,7 +14,7 @@ export function QuickAddButton() {
 
   const items = [
     { to: "/workouts", label: t("action.logWorkout"), icon: Dumbbell },
-    { to: "/nutrition", label: t("action.logMeal"), icon: Apple },
+    { to: "/meals", label: t("action.logMeal"), icon: Apple },
     { to: "/health", label: t("action.logHealth"), icon: HeartPulse },
   ] as const;
 
