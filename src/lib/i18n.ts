@@ -315,6 +315,19 @@ const HE: Dict = {
   "capture.field.summary": "סיכום חופשי",
   "nav.capture": "צילום",
 
+  // AI meal analysis (vision)
+  "capture.analyze": "נתח תמונה",
+  "capture.analyzing": "מתבצע ניתוח תמונה...",
+  "capture.analysisDone": "הניתוח הושלם — ניתן לערוך ולשמור",
+  "capture.analysisReview": "תוצאות הניתוח (ניתן לערוך)",
+  "capture.needImage": "יש להוסיף תמונה לפני ניתוח",
+  "capture.confidence": "רמת ביטחון",
+  "capture.field.ingredients": "רכיבים שזוהו",
+  "capture.field.carbs": "פחמימות (גרם)",
+  "capture.field.fat": "שומן (גרם)",
+  "capture.field.fiber": "סיבים (גרם)",
+
+
   // Profile — the personal digital twin
   "profile.title": "הפרופיל שלי",
   "profile.subtitle": "התאום הדיגיטלי האישי שלך ב־KobiOS",
