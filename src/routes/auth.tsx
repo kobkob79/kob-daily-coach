@@ -12,9 +12,11 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+import { t } from "@/lib/i18n";
+
 const schema = z.object({
-  email: z.string().trim().email("Enter a valid email").max(255),
-  password: z.string().min(8, "At least 8 characters").max(72),
+  email: z.string().trim().email(t("auth.emailInvalid")).max(255),
+  password: z.string().min(8, t("auth.passwordShort")).max(72),
 });
 
 function AuthPage() {
@@ -46,7 +48,7 @@ function AuthPage() {
           options: { emailRedirectTo: `${window.location.origin}/dashboard` },
         });
         if (error) throw error;
-        toast.success("Account created. You're in.");
+        toast.success(t("auth.created"));
         navigate({ to: "/dashboard", replace: true });
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -57,7 +59,7 @@ function AuthPage() {
         navigate({ to: "/dashboard", replace: true });
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Auth failed");
+      toast.error(err instanceof Error ? err.message : t("auth.failed"));
     } finally {
       setLoading(false);
     }
@@ -71,12 +73,12 @@ function AuthPage() {
           <h1 className="font-display text-3xl font-bold tracking-tight">
             Kobi<span className="gradient-text">OS</span>
           </h1>
-          <p className="text-sm text-muted-foreground">Your private command center.</p>
+          <p className="text-sm text-muted-foreground">{t("auth.tagline")}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="surface-card space-y-4 p-6">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("auth.email")}</Label>
             <Input
               id="email"
               type="email"
@@ -88,7 +90,7 @@ function AuthPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t("auth.password")}</Label>
             <Input
               id="password"
               type="password"
@@ -100,14 +102,14 @@ function AuthPage() {
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {mode === "signin" ? "Sign in" : "Create account"}
+            {mode === "signin" ? t("auth.signin") : t("auth.signup")}
           </Button>
           <button
             type="button"
             onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
             className="w-full text-center text-xs text-muted-foreground hover:text-foreground"
           >
-            {mode === "signin" ? "First time here? Create an account" : "Already have an account? Sign in"}
+            {mode === "signin" ? t("auth.toggleToSignup") : t("auth.toggleToSignin")}
           </button>
         </form>
       </div>

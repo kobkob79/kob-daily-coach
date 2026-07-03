@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Trash2, ChevronRight } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus, Trash2, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { today } from "@/lib/date";
+import { t } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/workouts")({
   component: WorkoutsPage,
@@ -38,7 +39,7 @@ function WorkoutsPage() {
       if (!userRes.user) throw new Error("Not signed in");
       const { data, error } = await supabase
         .from("workouts")
-        .insert({ user_id: userRes.user.id, date: today(), name: "New session" })
+        .insert({ user_id: userRes.user.id, date: today(), name: t("workouts.new") })
         .select()
         .single();
       if (error) throw error;
@@ -46,6 +47,7 @@ function WorkoutsPage() {
     },
     onSuccess: (w) => {
       qc.invalidateQueries({ queryKey: ["workouts"] });
+      qc.invalidateQueries({ queryKey: ["workouts", "today"] });
       setOpenWorkout(w.id);
     },
     onError: (e) => toast.error(e.message),
@@ -55,11 +57,11 @@ function WorkoutsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Training</h1>
-          <p className="text-sm text-muted-foreground">Log sessions & sets.</p>
+          <h1 className="text-2xl font-bold">{t("workouts.title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("workouts.subtitle")}</p>
         </div>
         <Button onClick={() => createWorkout.mutate()} disabled={createWorkout.isPending}>
-          <Plus className="mr-1 h-4 w-4" /> Session
+          <Plus className="mr-1 h-4 w-4" /> {t("workouts.session")}
         </Button>
       </div>
 
@@ -71,12 +73,12 @@ function WorkoutsPage() {
             className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-muted/30"
           >
             <div>
-              <p className="font-medium">{w.name ?? "Workout"}</p>
+              <p className="font-medium">{w.name ?? t("timeline.workout")}</p>
               <p className="text-xs text-muted-foreground">{format(new Date(w.date), "EEE d MMM")}</p>
             </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <ChevronLeft className="h-4 w-4 text-muted-foreground rtl:rotate-180" />
           </button>
-        )) : <p className="px-4 py-8 text-center text-sm text-muted-foreground">Tap "Session" to start.</p>}
+        )) : <p className="px-4 py-8 text-center text-sm text-muted-foreground">{t("workouts.empty")}</p>}
       </div>
 
       <ExerciseLibraryHint />
@@ -98,7 +100,7 @@ function ExerciseLibraryHint() {
   });
   return (
     <p className="text-center text-xs text-muted-foreground">
-      Library: {q.data ?? "…"} exercise templates available.
+      {t("workouts.library").replace("{n}", String(q.data ?? "…"))}
     </p>
   );
 }
@@ -166,7 +168,7 @@ function WorkoutDetailDialog({ workoutId, onClose }: { workoutId: string; onClos
 
   const addSet = useMutation({
     mutationFn: async () => {
-      if (!selectedExercise) throw new Error("Pick an exercise");
+      if (!selectedExercise) throw new Error(t("workouts.exercise"));
       const { data: userRes } = await supabase.auth.getUser();
       if (!userRes.user) throw new Error("Not signed in");
       const setNumber = (setsQ.data?.filter((s) => s.exercise_id === selectedExercise).length ?? 0) + 1;
@@ -202,12 +204,12 @@ function WorkoutDetailDialog({ workoutId, onClose }: { workoutId: string; onClos
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg max-h-[92dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Session</DialogTitle>
+          <DialogTitle>{t("workouts.session")}</DialogTitle>
         </DialogHeader>
         {w && (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Name</Label>
+              <Label>{t("workouts.name")}</Label>
               <Input
                 defaultValue={w.name ?? ""}
                 onBlur={(e) => name !== null && updateWorkout.mutate({ name: e.target.value })}
@@ -216,16 +218,16 @@ function WorkoutDetailDialog({ workoutId, onClose }: { workoutId: string; onClos
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label>Date</Label>
+                <Label>{t("workouts.date")}</Label>
                 <Input type="date" defaultValue={w.date} onBlur={(e) => updateWorkout.mutate({ date: e.target.value })} />
               </div>
               <div>
-                <Label>Duration (min)</Label>
+                <Label>{t("workouts.duration")}</Label>
                 <Input type="number" defaultValue={w.duration_min ?? ""} onBlur={(e) => updateWorkout.mutate({ duration_min: e.target.value ? Number(e.target.value) : null })} />
               </div>
             </div>
             <div>
-              <Label>Notes</Label>
+              <Label>{t("workouts.notes")}</Label>
               <Textarea
                 defaultValue={w.notes ?? ""}
                 onBlur={(e) => notes !== null && updateWorkout.mutate({ notes: e.target.value })}
@@ -235,41 +237,41 @@ function WorkoutDetailDialog({ workoutId, onClose }: { workoutId: string; onClos
             </div>
 
             <div className="border-t border-border pt-4 space-y-3">
-              <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Add set</h3>
+              <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">{t("workouts.addSet")}</h3>
               <div className="grid grid-cols-2 gap-2">
                 <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger><SelectValue placeholder="Category" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t("workouts.category")} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All categories</SelectItem>
-                    {CATEGORIES.map((c) => <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>)}
+                    <SelectItem value="all">{t("workouts.categoryAll")}</SelectItem>
+                    {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{t(`workouts.cat.${c}`)}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <Select value={selectedExercise} onValueChange={setSelectedExercise}>
-                  <SelectTrigger><SelectValue placeholder="Exercise" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t("workouts.exercise")} /></SelectTrigger>
                   <SelectContent>
                     {filteredExercises.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-3 gap-2">
-                <div><Label className="text-xs">Reps</Label><Input inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value)} /></div>
-                <div><Label className="text-xs">Weight kg</Label><Input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} /></div>
-                <div><Label className="text-xs">RPE</Label><Input inputMode="decimal" value={rpe} onChange={(e) => setRpe(e.target.value)} /></div>
+                <div><Label className="text-xs">{t("workouts.reps")}</Label><Input inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value)} /></div>
+                <div><Label className="text-xs">{t("workouts.weightKg")}</Label><Input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} /></div>
+                <div><Label className="text-xs">{t("workouts.rpe")}</Label><Input inputMode="decimal" value={rpe} onChange={(e) => setRpe(e.target.value)} /></div>
               </div>
               <Button onClick={() => addSet.mutate()} disabled={addSet.isPending} className="w-full">
-                <Plus className="mr-1 h-4 w-4" /> Add set
+                <Plus className="mr-1 h-4 w-4" /> {t("workouts.addSet")}
               </Button>
             </div>
 
             <div className="space-y-2">
-              <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Sets ({setsQ.data?.length ?? 0})</h3>
+              <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">{t("workouts.sets")} ({setsQ.data?.length ?? 0})</h3>
               <div className="space-y-1">
                 {setsQ.data?.map((s) => (
                   <div key={s.id} className="flex items-center justify-between rounded-md border border-border/60 bg-secondary/40 px-3 py-2 text-sm">
                     <div>
                       <p className="font-medium">{s.exercises?.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        Set {s.set_number} · {s.reps ?? "—"} reps · {s.weight_kg ?? "—"} kg{s.rpe ? ` · RPE ${s.rpe}` : ""}
+                        {t("workouts.set")} {s.set_number} · {s.reps ?? "—"} {t("workouts.reps")} · {s.weight_kg ?? "—"} ק״ג{s.rpe ? ` · RPE ${s.rpe}` : ""}
                       </p>
                     </div>
                     <button onClick={() => removeSet.mutate(s.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
@@ -279,7 +281,7 @@ function WorkoutDetailDialog({ workoutId, onClose }: { workoutId: string; onClos
             </div>
 
             <Button variant="destructive" onClick={() => deleteWorkout.mutate()} className="w-full">
-              Delete session
+              {t("workouts.delete")}
             </Button>
           </div>
         )}

@@ -3,11 +3,15 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getShiftForDate, SHIFT_STYLES, type ShiftConfig } from "@/lib/shift";
 import { format } from "date-fns";
-import { Dumbbell, HeartPulse, CalendarClock, Sparkles, ChevronLeft } from "lucide-react";
-import { today } from "@/lib/date";
+import { Dumbbell, HeartPulse, CalendarClock, ChevronLeft } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { PremiumCard, SectionHeader, EmptyState } from "@/components/ui-kit/Section";
 import { ProgressRing } from "@/components/ui-kit/ProgressRing";
+import { biologicalDay } from "@/lib/meals";
+import { buildTimeline, buildCoachHints } from "@/lib/timeline";
+import { Timeline } from "@/components/dashboard/Timeline";
+import { SmartCoach } from "@/components/dashboard/SmartCoach";
+import { OneTapBar } from "@/components/dashboard/OneTapBar";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -15,17 +19,12 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 // Personal defaults — will move to a user_settings table when profile UI lands.
 const PROTEIN_TARGET_G = 180;
-
-function greetingKey() {
-  const h = new Date().getHours();
-  if (h < 5) return "home.greeting.night";
-  if (h < 12) return "home.greeting.morning";
-  if (h < 18) return "home.greeting.afternoon";
-  return "home.greeting.evening";
-}
+const WATER_TARGET_ML = 2500;
 
 function Dashboard() {
-  const todayIso = today();
+  const now = new Date();
+  const bioDay = biologicalDay(now);
+  const todayIso = format(now, "yyyy-MM-dd");
 
   const shiftQ = useQuery({
     queryKey: ["shift-config"],
@@ -40,26 +39,46 @@ function Dashboard() {
     queryFn: async () => {
       const { data } = await supabase
         .from("workouts")
-        .select("id,name,date,duration_min")
-        .eq("date", todayIso)
-        .limit(1)
-        .maybeSingle();
-      return data;
-    },
-  });
-
-  const nutritionTodayQ = useQuery({
-    queryKey: ["nutrition", todayIso],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("nutrition_entries")
-        .select("calories,protein_g")
+        .select("id,name,date,duration_min,created_at")
         .eq("date", todayIso);
       return data ?? [];
     },
   });
 
-  const healthQ = useQuery({
+  const mealsTodayQ = useQuery({
+    queryKey: ["meals", bioDay],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("nutrition_entries")
+        .select("id,meal_time,created_at,meal_type,food_name,calories,protein_g")
+        .eq("biological_day", bioDay);
+      return data ?? [];
+    },
+  });
+
+  const eventsTodayQ = useQuery({
+    queryKey: ["daily-events", bioDay],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("daily_events")
+        .select("id,kind,event_time,amount,unit,label,emoji")
+        .eq("biological_day", bioDay);
+      return data ?? [];
+    },
+  });
+
+  const healthTodayQ = useQuery({
+    queryKey: ["health", "today", todayIso],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("health_logs")
+        .select("id,date,area,pain_level,created_at")
+        .eq("date", todayIso);
+      return data ?? [];
+    },
+  });
+
+  const healthRecentQ = useQuery({
     queryKey: ["health", "recent"],
     queryFn: async () => {
       const { data } = await supabase
@@ -71,23 +90,72 @@ function Dashboard() {
     },
   });
 
-  const protein = nutritionTodayQ.data?.reduce((s, r) => s + Number(r.protein_g ?? 0), 0) ?? 0;
+  const profileQ = useQuery({
+    queryKey: ["profile"],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("display_name").maybeSingle();
+      return data;
+    },
+  });
+
+  const protein =
+    mealsTodayQ.data?.reduce((s, r) => s + Number(r.protein_g ?? 0), 0) ?? 0;
   const proteinPct = protein / PROTEIN_TARGET_G;
-  const shift = shiftQ.data ? getShiftForDate(shiftQ.data, new Date()) : null;
+
+  const waterEvents = (eventsTodayQ.data ?? []).filter((e) => e.kind === "water");
+  const waterMl = waterEvents.reduce((s, e) => s + Number(e.amount ?? 0), 0);
+  const lastWaterAt =
+    waterEvents.length > 0
+      ? new Date(
+          Math.max(...waterEvents.map((e) => new Date(e.event_time).getTime())),
+        )
+      : null;
+
+  const lastMealAt = (() => {
+    const times = (mealsTodayQ.data ?? [])
+      .map((m) => (m.meal_time ? new Date(`${bioDay}T${m.meal_time}`) : new Date(m.created_at)))
+      .map((d) => d.getTime());
+    return times.length ? new Date(Math.max(...times)) : null;
+  })();
+
+  const timelineItems = buildTimeline({
+    bioDay,
+    meals: mealsTodayQ.data ?? [],
+    workouts: workoutTodayQ.data ?? [],
+    health: healthTodayQ.data ?? [],
+    events: eventsTodayQ.data ?? [],
+  });
+
+  const hints = buildCoachHints({
+    now,
+    proteinToday: protein,
+    proteinTarget: PROTEIN_TARGET_G,
+    waterMlToday: waterMl,
+    waterTargetMl: WATER_TARGET_ML,
+    lastWaterAt,
+    lastMealAt,
+    workoutLoggedToday: (workoutTodayQ.data ?? []).length > 0,
+    shiftConfig: shiftQ.data ?? null,
+  });
+
+  const shift = shiftQ.data ? getShiftForDate(shiftQ.data, now) : null;
   const shiftStyle = shift ? SHIFT_STYLES[shift] : null;
+  const displayName = profileQ.data?.display_name || "קובי";
+
+  const primaryWorkout = workoutTodayQ.data?.[0];
 
   return (
     <div className="space-y-6 pb-2">
       {/* Header */}
       <section className="pt-2">
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {format(new Date(), "EEEE · d MMMM")}
+          {format(now, "EEEE · d MMMM")}
         </p>
-        <h1 className="mt-1.5 text-3xl font-bold tracking-tight">
-          {t(greetingKey())}, <span className="gradient-text">קובי</span>
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("home.title")}</p>
+        <h1 className="mt-1.5 text-2xl font-bold tracking-tight">{t("home.title")}</h1>
       </section>
+
+      {/* Smart Coach (replaces greeting) */}
+      <SmartCoach hints={hints} name={displayName} />
 
       {/* Shift banner */}
       {shiftStyle && (
@@ -101,7 +169,13 @@ function Dashboard() {
                 <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
                   {t("shift.today")}
                 </p>
-                <p className="text-base font-semibold">{shiftStyle.label}</p>
+                <p className="text-base font-semibold">
+                  {shift === "day"
+                    ? t("shift.day12")
+                    : shift === "night"
+                      ? t("shift.night12")
+                      : t("shift.legend.off")}
+                </p>
               </div>
             </div>
             <ChevronLeft className="h-5 w-5 text-muted-foreground rtl:rotate-180" />
@@ -129,7 +203,7 @@ function Dashboard() {
                 {Math.round(Math.min(1, proteinPct) * 100)}%
               </p>
               <Link
-                to="/nutrition"
+                to="/meals"
                 className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary"
               >
                 {t("action.logMeal")} <ChevronLeft className="h-3.5 w-3.5 rtl:rotate-180" />
@@ -139,12 +213,18 @@ function Dashboard() {
         </PremiumCard>
       </section>
 
+      {/* One-tap quick add (favorites + water + supplement/weight/sleep) */}
+      <OneTapBar />
+
+      {/* Chronological timeline */}
+      <Timeline items={timelineItems} />
+
       {/* Today's workout */}
       <section>
         <SectionHeader title={t("home.section.workout")} />
         <Link to="/workouts">
           <PremiumCard interactive>
-            {workoutTodayQ.data ? (
+            {primaryWorkout ? (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div
@@ -154,9 +234,9 @@ function Dashboard() {
                     <Dumbbell className="h-5 w-5 text-primary-foreground" />
                   </div>
                   <div>
-                    <p className="font-semibold">{workoutTodayQ.data.name ?? "Workout"}</p>
+                    <p className="font-semibold">{primaryWorkout.name ?? t("timeline.workout")}</p>
                     <p className="text-xs text-muted-foreground">
-                      {workoutTodayQ.data.duration_min ?? "—"} {t("common.minutes")}
+                      {primaryWorkout.duration_min ?? "—"} {t("common.minutes")}
                     </p>
                   </div>
                 </div>
@@ -176,16 +256,18 @@ function Dashboard() {
       <section>
         <SectionHeader title={t("home.section.health")} />
         <PremiumCard className="p-0">
-          {healthQ.data?.length ? (
+          {healthRecentQ.data?.length ? (
             <ul className="divide-y divide-border/60">
-              {healthQ.data.map((h, i) => (
+              {healthRecentQ.data.map((h, i) => (
                 <li key={i} className="flex items-center justify-between px-5 py-3.5">
                   <div className="flex items-center gap-3">
                     <div className="grid h-9 w-9 place-items-center rounded-xl bg-muted/50 text-primary">
                       <HeartPulse className="h-4 w-4" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium capitalize">{h.area.replace("_", " ")}</p>
+                      <p className="text-sm font-medium">
+                        {t(`health.area.${h.area}`)}
+                      </p>
                       <p className="text-[11px] text-muted-foreground">
                         {format(new Date(h.date), "EEE d MMM")}
                       </p>
@@ -206,32 +288,6 @@ function Dashboard() {
               />
             </div>
           )}
-        </PremiumCard>
-      </section>
-
-      {/* AI insight placeholder */}
-      <section>
-        <SectionHeader title={t("home.section.ai")} />
-        <PremiumCard className="relative overflow-hidden">
-          <div
-            className="pointer-events-none absolute inset-0 opacity-40"
-            style={{ background: "var(--gradient-hero)" }}
-            aria-hidden
-          />
-          <div className="relative flex items-start gap-3">
-            <div
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl"
-              style={{ background: "var(--gradient-primary)" }}
-            >
-              <Sparkles className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold">KobiOS Coach</p>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                {t("home.ai.placeholder")}
-              </p>
-            </div>
-          </div>
         </PremiumCard>
       </section>
     </div>

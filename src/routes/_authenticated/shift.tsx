@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getShiftRange, SHIFT_STYLES, type ShiftConfig } from "@/lib/shift";
 import { addDays, startOfWeek, format } from "date-fns";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronRight, ChevronLeft } from "lucide-react";
+import { t } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/shift")({
   component: ShiftPage,
@@ -35,7 +36,7 @@ function ShiftPage() {
       const { data: userRes } = await supabase.auth.getUser();
       if (!userRes.user) throw new Error("Not signed in");
       const finalAnchor = anchorDate || cfgQ.data?.anchor_date;
-      if (!finalAnchor) throw new Error("Pick a first on-day");
+      if (!finalAnchor) throw new Error(t("shift.firstDay"));
       const { error } = await supabase.from("shift_config").upsert({
         user_id: userRes.user.id,
         anchor_date: finalAnchor,
@@ -46,7 +47,7 @@ function ShiftPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["shift-config"] });
-      toast.success("Schedule saved");
+      toast.success(t("shift.saved"));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -57,54 +58,52 @@ function ShiftPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">Shift schedule</h1>
-        <p className="text-sm text-muted-foreground">Intel 4-on / 4-off · 12h rotation</p>
+        <h1 className="text-2xl font-bold">{t("shift.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("shift.subtitle")}</p>
       </div>
 
       <div className="surface-card space-y-3 p-4">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          {cfg ? "Update anchor" : "Set up rotation"}
+          {cfg ? t("shift.update") : t("shift.set")}
         </h3>
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <Label>First on-day</Label>
+            <Label>{t("shift.firstDay")}</Label>
             <Input type="date" value={anchorDate || cfg?.anchor_date || ""} onChange={(e) => setAnchorDate(e.target.value)} />
           </div>
           <div>
-            <Label>Starting shift</Label>
+            <Label>{t("shift.starting")}</Label>
             <Select value={anchorShift} onValueChange={(v) => setAnchorShift(v as "day" | "night")}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="day">Day (12h)</SelectItem>
-                <SelectItem value="night">Night (12h)</SelectItem>
+                <SelectItem value="day">{t("shift.day12")}</SelectItem>
+                <SelectItem value="night">{t("shift.night12")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
         <Button onClick={() => save.mutate()} disabled={save.isPending || (!anchorDate && !cfg?.anchor_date)} className="w-full">
-          Save schedule
+          {t("shift.save")}
         </Button>
-        <p className="text-[11px] text-muted-foreground">
-          Pattern: 4 days on your starting shift → 4 off → 4 flipped → 4 off, repeat.
-        </p>
+        <p className="text-[11px] text-muted-foreground">{t("shift.pattern")}</p>
       </div>
 
       {cfg && (
         <>
           <div className="flex items-center justify-between">
             <Button variant="outline" size="icon" onClick={() => setWeekStart(addDays(weekStart, -7))}>
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronRight className="h-4 w-4 rtl:rotate-180" />
             </Button>
             <span className="text-sm font-medium">
               {format(weekStart, "d MMM")} – {format(addDays(weekStart, 27), "d MMM")}
             </span>
             <Button variant="outline" size="icon" onClick={() => setWeekStart(addDays(weekStart, 7))}>
-              <ChevronRight className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
             </Button>
           </div>
 
           <div className="grid grid-cols-7 gap-1.5">
-            {["M","T","W","T","F","S","S"].map((d, i) => (
+            {["ב","ג","ד","ה","ו","ש","א"].map((d, i) => (
               <div key={i} className="text-center text-[10px] uppercase tracking-wider text-muted-foreground pb-1">{d}</div>
             ))}
             {days.map((d) => {
@@ -116,7 +115,7 @@ function ShiftPage() {
                   className={`aspect-square rounded-lg border p-1.5 flex flex-col justify-between text-[10px] ${style.className} ${isToday ? "ring-2 ring-primary" : ""}`}
                 >
                   <span className="font-bold text-sm">{format(d.date, "d")}</span>
-                  <span className="uppercase tracking-wider opacity-80 truncate">{d.shift === "off" ? "off" : d.shift === "day" ? "day" : "nite"}</span>
+                  <span className="uppercase tracking-wider opacity-80 truncate">{t(`shift.short.${d.shift}`)}</span>
                 </div>
               );
             })}
@@ -126,7 +125,7 @@ function ShiftPage() {
             {(["day","night","off"] as const).map((k) => (
               <div key={k} className="flex items-center gap-1.5">
                 <span className={`h-2 w-2 rounded-full ${SHIFT_STYLES[k].dot}`} />
-                <span className="capitalize">{k}</span>
+                <span>{t(`shift.legend.${k}`)}</span>
               </div>
             ))}
           </div>

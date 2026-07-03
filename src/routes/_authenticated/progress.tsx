@@ -3,10 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, BarChart, Bar } from "recharts";
 import { subDays, format, eachDayOfInterval } from "date-fns";
+import { t } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/progress")({
   component: ProgressPage,
 });
+
+const AREA_HE: Record<string, string> = { neck: "צוואר", sciatica: "גב תחתון", ac_joint: "כתף" };
 
 function ProgressPage() {
   const start = subDays(new Date(), 29);
@@ -66,11 +69,11 @@ function ProgressPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Progress</h1>
-        <p className="text-sm text-muted-foreground">Last 30 days.</p>
+        <h1 className="text-2xl font-bold">{t("progress.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("progress.subtitle")}</p>
       </div>
 
-      <ChartCard title="Training volume (min/day)">
+      <ChartCard title={t("progress.chart.volume")}>
         <ResponsiveContainer width="100%" height={180}>
           <BarChart data={workoutData}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
@@ -82,7 +85,7 @@ function ProgressPage() {
         </ResponsiveContainer>
       </ChartCard>
 
-      <ChartCard title="Calories & protein">
+      <ChartCard title={t("progress.chart.nutrition")}>
         <ResponsiveContainer width="100%" height={180}>
           <LineChart data={nutritionData}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
@@ -96,7 +99,7 @@ function ProgressPage() {
       </ChartCard>
 
       {painByArea.map((series) => (
-        <ChartCard key={series.area} title={`Pain — ${series.area.replace("_"," ")}`}>
+        <ChartCard key={series.area} title={t("progress.chart.pain").replace("{area}", AREA_HE[series.area] ?? series.area)}>
           <ResponsiveContainer width="100%" height={140}>
             <LineChart data={series.data}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
