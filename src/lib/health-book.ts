@@ -9,7 +9,7 @@
 import { format, eachDayOfInterval, parseISO } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import type { Profile } from "@/lib/profile";
-import { shiftForDate } from "@/lib/shift";
+import { getShiftForDate, type ShiftConfig } from "@/lib/shift";
 
 /* -------------------- Types -------------------- */
 
