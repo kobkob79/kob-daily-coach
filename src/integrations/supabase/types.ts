@@ -301,6 +301,7 @@ export type Database = {
           created_at: string
           date: string
           fat_g: number | null
+          fiber_g: number | null
           food_name: string
           foods: Json
           id: string
@@ -321,6 +322,7 @@ export type Database = {
           created_at?: string
           date?: string
           fat_g?: number | null
+          fiber_g?: number | null
           food_name: string
           foods?: Json
           id?: string
@@ -341,6 +343,7 @@ export type Database = {
           created_at?: string
           date?: string
           fat_g?: number | null
+          fiber_g?: number | null
           food_name?: string
           foods?: Json
           id?: string
