@@ -7,7 +7,7 @@
  */
 import { differenceInMinutes, format, parseISO } from "date-fns";
 import type { ShiftConfig } from "@/lib/shift";
-import { getShiftForDate } from "@/lib/shift";
+import { getShiftPositionForDate } from "@/lib/shift";
 import { t } from "@/lib/i18n";
 
 export type TimelineKind =
@@ -182,6 +182,10 @@ export interface CoachMemory {
   supplementsMissingToday?: { name: string }[];
   mealHabitHint?: { time: string; food: string } | null;
   weightTrend30d?: { deltaKg: number } | null;
+  proteinStreak?: number;
+  daysSinceFish?: number | null;
+  sleepLow?: { lastH: number; avgH: number } | null;
+  painTrendUp?: { area: string } | null;
 }
 
 export interface CoachInput {
@@ -202,8 +206,12 @@ export function buildCoachHints(i: CoachInput): CoachHint[] {
 
   // Shift context
   if (i.shiftConfig) {
-    const s = getShiftForDate(i.shiftConfig, i.now);
-    hints.push({ id: "shift", tone: "info", text: t(`coach.shift.${s}`) });
+    const { shift, indexInPhase } = getShiftPositionForDate(i.shiftConfig, i.now);
+    const key =
+      shift === "night" && indexInPhase === 1
+        ? "coach.shift.night1"
+        : `coach.shift.${shift}`;
+    hints.push({ id: "shift", tone: "info", text: t(key) });
   }
 
   // Protein
@@ -239,10 +247,10 @@ export function buildCoachHints(i: CoachInput): CoachHint[] {
     hints.push({ id: "water", tone: "warn", text: t("coach.water.none") });
   }
 
-  // Workout nudge — only afternoon+ and not on night/half-rest days.
+  // Workout nudge — only afternoon+ and only on day/off phases.
   if (!i.workoutLoggedToday && i.now.getHours() >= 16 && i.shiftConfig) {
-    const s = getShiftForDate(i.shiftConfig, i.now);
-    if (s === "day" || s === "off") {
+    const { shift } = getShiftPositionForDate(i.shiftConfig, i.now);
+    if (shift === "day" || shift === "off") {
       hints.push({ id: "workout", tone: "info", text: t("coach.workout.none") });
     }
   }
@@ -288,6 +296,48 @@ export function buildCoachHints(i: CoachInput): CoachHint[] {
     });
   }
 
-  return hints;
+  if (i.memory?.proteinStreak && i.memory.proteinStreak >= 3) {
+    hints.push({
+      id: "protein-streak",
+      tone: "good",
+      text: t("coach.protein.streak").replace("{n}", String(i.memory.proteinStreak)),
+    });
+  }
+
+  if (i.memory?.daysSinceFish != null && i.memory.daysSinceFish >= 5) {
+    hints.push({
+      id: "fish-gap",
+      tone: "info",
+      text: t("coach.fish.gap").replace("{d}", String(i.memory.daysSinceFish)),
+    });
+  }
+
+  if (i.memory?.sleepLow) {
+    hints.push({
+      id: "sleep-low",
+      tone: "warn",
+      text: t("coach.sleep.low")
+        .replace("{h}", i.memory.sleepLow.lastH.toFixed(1))
+        .replace("{avg}", i.memory.sleepLow.avgH.toFixed(1)),
+    });
+  }
+
+  if (i.memory?.painTrendUp) {
+    const AREA_HE_MAP: Record<string, string> = {
+      neck: "צוואר",
+      sciatica: "גב תחתון",
+      ac_joint: "כתף",
+    };
+    hints.push({
+      id: `pain-${i.memory.painTrendUp.area}`,
+      tone: "warn",
+      text: t("coach.pain.trend").replace(
+        "{area}",
+        AREA_HE_MAP[i.memory.painTrendUp.area] ?? i.memory.painTrendUp.area,
+      ),
+    });
+  }
+
+  return hints.slice(0, 6);
 }
 

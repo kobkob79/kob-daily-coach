@@ -25,19 +25,25 @@ export function useCoachMemory(bioDay: string) {
     queryFn: async (): Promise<CoachMemory> => {
       const from = format(subDays(new Date(), LOOKBACK_DAYS), "yyyy-MM-dd");
 
-      const [events, meals] = await Promise.all([
+      const [events, meals, health] = await Promise.all([
         supabase
           .from("daily_events")
           .select("kind,label,amount,unit,event_time,biological_day")
           .gte("biological_day", from),
         supabase
           .from("nutrition_entries")
-          .select("food_name,meal_type,meal_time,biological_day")
+          .select("food_name,meal_type,meal_time,biological_day,protein_g")
           .gte("biological_day", from),
+        supabase
+          .from("health_logs")
+          .select("area,pain_level,date")
+          .gte("date", from)
+          .order("date", { ascending: true }),
       ]);
 
       const evRows = events.data ?? [];
       const mealRows = meals.data ?? [];
+      const healthRows = health.data ?? [];
 
       // --- Supplements: which do you normally take, and which are missing today?
       const supplementCounts = new Map<string, number>();
@@ -88,7 +94,80 @@ export function useCoachMemory(bioDay: string) {
         weightTrend30d = { deltaKg: Math.round(delta * 10) / 10 };
       }
 
-      return { supplementsMissingToday, mealHabitHint, weightTrend30d };
+      // --- Protein streak: count consecutive biological days meeting 180g,
+      // walking back from yesterday (today may still be in progress).
+      const PROTEIN_TARGET = 180;
+      const proteinByDay = new Map<string, number>();
+      for (const m of mealRows) {
+        if (!m.biological_day) continue;
+        proteinByDay.set(
+          m.biological_day,
+          (proteinByDay.get(m.biological_day) ?? 0) + Number(m.protein_g ?? 0),
+        );
+      }
+      let proteinStreak = 0;
+      for (let d = 1; d <= LOOKBACK_DAYS; d++) {
+        const key = format(subDays(new Date(), d), "yyyy-MM-dd");
+        if ((proteinByDay.get(key) ?? 0) >= PROTEIN_TARGET) proteinStreak += 1;
+        else break;
+      }
+
+      // --- Days since last fish meal.
+      const FISH_TOKENS = ["דג", "טונה", "סלמון", "אמנון"];
+      const fishDays = mealRows
+        .filter((m) => m.food_name && FISH_TOKENS.some((tok) => m.food_name!.includes(tok)))
+        .map((m) => m.biological_day)
+        .filter(Boolean)
+        .sort()
+        .reverse();
+      let daysSinceFish: number | null = null;
+      if (fishDays.length > 0 && fishDays[0]) {
+        const last = new Date(fishDays[0]);
+        daysSinceFish = Math.floor((Date.now() - last.getTime()) / 86400000);
+      }
+
+      // --- Sleep: last logged night vs 7-day average.
+      const sleepRows = evRows
+        .filter((e) => e.kind === "sleep" && e.amount != null)
+        .map((e) => ({ t: new Date(e.event_time).getTime(), h: Number(e.amount) }))
+        .sort((a, b) => a.t - b.t);
+      let sleepLow: CoachMemory["sleepLow"] = null;
+      if (sleepRows.length >= 4) {
+        const recent = sleepRows.slice(-7);
+        const avgH = recent.reduce((s, r) => s + r.h, 0) / recent.length;
+        const lastH = sleepRows[sleepRows.length - 1].h;
+        if (lastH < avgH - 1) {
+          sleepLow = { lastH: Math.round(lastH * 10) / 10, avgH: Math.round(avgH * 10) / 10 };
+        }
+      }
+
+      // --- Pain trend: last 3 entries per area strictly increasing.
+      const painByArea = new Map<string, number[]>();
+      for (const h of healthRows) {
+        if (h.pain_level == null) continue;
+        const arr = painByArea.get(h.area) ?? [];
+        arr.push(Number(h.pain_level));
+        painByArea.set(h.area, arr);
+      }
+      let painTrendUp: CoachMemory["painTrendUp"] = null;
+      for (const [area, arr] of painByArea) {
+        if (arr.length < 3) continue;
+        const [a, b, c] = arr.slice(-3);
+        if (a < b && b < c && c >= 4) {
+          painTrendUp = { area };
+          break;
+        }
+      }
+
+      return {
+        supplementsMissingToday,
+        mealHabitHint,
+        weightTrend30d,
+        proteinStreak,
+        daysSinceFish,
+        sleepLow,
+        painTrendUp,
+      };
     },
   });
 

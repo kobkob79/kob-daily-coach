@@ -96,20 +96,23 @@ function ShiftPage() {
             {days.map((d) => {
               const style = SHIFT_STYLES[d.shift];
               const isToday = format(new Date(), "yyyy-MM-dd") === d.iso;
+              const shortLabel = `${t(`shift.short.${d.shift}`)} ${d.indexInPhase}`;
+              const isNight1 = d.shift === "night" && d.indexInPhase === 1;
               return (
                 <div
                   key={d.iso}
+                  title={isNight1 ? t("shift.night1.subtitle") : undefined}
                   className={`aspect-square rounded-lg border p-1.5 flex flex-col justify-between text-[10px] ${style.className} ${isToday ? "ring-2 ring-primary" : ""}`}
                 >
                   <span className="font-bold text-sm">{format(d.date, "d")}</span>
-                  <span className="uppercase tracking-wider opacity-80 truncate">{t(`shift.short.${d.shift}`)}</span>
+                  <span className="tracking-wider opacity-80 truncate">{shortLabel}</span>
                 </div>
               );
             })}
           </div>
 
           <div className="flex flex-wrap justify-center gap-3 text-xs">
-            {(["day","night","half_rest","off"] as const).map((k) => (
+            {(["day","night","off"] as const).map((k) => (
               <div key={k} className="flex items-center gap-1.5">
                 <span className={`h-2 w-2 rounded-full ${SHIFT_STYLES[k].dot}`} />
                 <span>{t(`shift.legend.${k}`)}</span>
