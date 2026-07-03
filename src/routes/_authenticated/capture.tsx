@@ -425,12 +425,71 @@ function CaptureComposer({
         )}
       </div>
 
+      {/* Vision not connected alert */}
+      {visionError && def.key === "meal" && (
+        <div className="flex items-start gap-2 rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-destructive">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="min-w-0 flex-1 text-[12px] leading-relaxed">
+            <p className="font-semibold">AI Vision עדיין אינו מחובר.</p>
+            <p className="mt-0.5 opacity-90">{visionError}</p>
+            <p className="mt-1 text-[10px] opacity-75">
+              נא לוודא שספק ה-Vision מוגדר בשרת. ניתן להזין את המרכיבים ידנית בינתיים.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Meal quality score */}
+      {quality && quality.score > 0 && (
+        <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 to-primary/5 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                הערכת הארוחה
+              </p>
+              <p className="mt-0.5 text-2xl font-bold text-primary">
+                {quality.score}<span className="text-sm text-muted-foreground">/100</span>
+              </p>
+            </div>
+            <div className="h-14 w-14 rounded-full border-4 border-primary/30 grid place-items-center">
+              <span className="text-sm font-bold text-primary">{quality.score}</span>
+            </div>
+          </div>
+          {quality.reasons.length > 0 && (
+            <ul className="mt-2 space-y-1">
+              {quality.reasons.map((r, i) => (
+                <li key={i} className="text-[12px] leading-relaxed">{r}</li>
+              ))}
+            </ul>
+          )}
+          {quality.suggestions.length > 0 && (
+            <div className="mt-2 rounded-xl bg-background/50 p-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">המלצות</p>
+              <ul className="mt-1 space-y-0.5">
+                {quality.suggestions.map((s, i) => (
+                  <li key={i} className="text-[12px] leading-relaxed">💡 {s}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Detailed ingredient breakdown with nutrition education */}
       {ingredients.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            רכיבים שזוהו
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              רכיבים שזוהו
+            </p>
+            <button
+              type="button"
+              onClick={addIngredient}
+              className="flex items-center gap-1 rounded-full bg-primary/12 px-2.5 py-1 text-[11px] font-medium text-primary hover:bg-primary/20"
+            >
+              <Plus className="h-3 w-3" /> הוסף רכיב
+            </button>
+          </div>
           <div className="space-y-2">
             {ingredients.map((ing, idx) => (
               <IngredientCard
@@ -448,10 +507,47 @@ function CaptureComposer({
             ))}
           </div>
           <p className="text-[10px] text-muted-foreground">
-            ההסברים לצורכי מידע כללי בלבד ואינם מהווים ייעוץ רפואי.
+            ההסברים לצורכי מידע כללי בלבד ואינם מהווים ייעוץ רפואי. תיקונים שלך יילמדו לזיהוי הבא.
           </p>
         </div>
       )}
+
+      {/* Manual add ingredient when nothing detected yet */}
+      {def.key === "meal" && ingredients.length === 0 && (
+        <button
+          type="button"
+          onClick={addIngredient}
+          className="w-full flex items-center justify-center gap-1 rounded-2xl border border-dashed border-border/70 py-3 text-xs font-medium text-muted-foreground hover:border-primary/50 hover:text-foreground"
+        >
+          <Plus className="h-4 w-4" /> הוסף רכיב ידנית
+        </button>
+      )}
+
+      {/* Developer diagnostics panel */}
+      {def.key === "meal" && (
+        <div className="rounded-2xl border border-border/50 bg-muted/20">
+          <button
+            type="button"
+            onClick={() => setShowDiagnostics((s) => !s)}
+            className="flex w-full items-center justify-between px-3 py-2 text-[11px] text-muted-foreground"
+          >
+            <span className="flex items-center gap-1.5"><Bug className="h-3 w-3" /> אבחון Vision</span>
+            <span>{showDiagnostics ? "הסתר" : "הצג"}</span>
+          </button>
+          {showDiagnostics && (
+            <div className="border-t border-border/50 px-3 py-2 text-[11px] leading-relaxed space-y-0.5">
+              <DiagRow label="Vision מחובר" value={diagnostics?.visionConnected ? "YES ✓" : "NO ✗"} />
+              <DiagRow label="ספק" value={diagnostics?.provider ?? "—"} />
+              <DiagRow label="מודל" value={diagnostics?.model ?? "—"} />
+              <DiagRow label="זמן תגובה" value={diagnostics ? `${diagnostics.duration_ms}ms` : "—"} />
+              <DiagRow label="בטחון" value={confidence != null ? `${Math.round(confidence * 100)}%` : "—"} />
+              <DiagRow label="שגיאה אחרונה" value={diagnostics?.lastError ?? "—"} />
+            </div>
+          )}
+        </div>
+      )}
+
+
 
 
 
