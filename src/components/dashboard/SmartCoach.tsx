@@ -41,7 +41,8 @@ export function SmartCoach({ hints, name }: { hints: CoachHint[]; name: string }
               {t("coach.title")}
             </p>
             <p className="truncate text-base font-semibold">
-              {t("coach.hello")}, <span className="gradient-text">{name}</span>
+              {t("coach.hello")}
+              {name ? <>, <span className="gradient-text">{name}</span></> : null}
             </p>
           </div>
         </div>
