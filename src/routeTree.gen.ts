@@ -16,6 +16,7 @@ import { Route as AuthenticatedWorkoutsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
 import { Route as AuthenticatedProgressRouteImport } from './routes/_authenticated/progress'
 import { Route as AuthenticatedNutritionRouteImport } from './routes/_authenticated/nutrition'
+import { Route as AuthenticatedMealsRouteImport } from './routes/_authenticated/meals'
 import { Route as AuthenticatedHealthRouteImport } from './routes/_authenticated/health'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 
@@ -53,6 +54,11 @@ const AuthenticatedNutritionRoute = AuthenticatedNutritionRouteImport.update({
   path: '/nutrition',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedMealsRoute = AuthenticatedMealsRouteImport.update({
+  id: '/meals',
+  path: '/meals',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedHealthRoute = AuthenticatedHealthRouteImport.update({
   id: '/health',
   path: '/health',
@@ -69,6 +75,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/health': typeof AuthenticatedHealthRoute
+  '/meals': typeof AuthenticatedMealsRoute
   '/nutrition': typeof AuthenticatedNutritionRoute
   '/progress': typeof AuthenticatedProgressRoute
   '/shift': typeof AuthenticatedShiftRoute
@@ -79,6 +86,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/health': typeof AuthenticatedHealthRoute
+  '/meals': typeof AuthenticatedMealsRoute
   '/nutrition': typeof AuthenticatedNutritionRoute
   '/progress': typeof AuthenticatedProgressRoute
   '/shift': typeof AuthenticatedShiftRoute
@@ -91,6 +99,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/health': typeof AuthenticatedHealthRoute
+  '/_authenticated/meals': typeof AuthenticatedMealsRoute
   '/_authenticated/nutrition': typeof AuthenticatedNutritionRoute
   '/_authenticated/progress': typeof AuthenticatedProgressRoute
   '/_authenticated/shift': typeof AuthenticatedShiftRoute
@@ -103,6 +112,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/health'
+    | '/meals'
     | '/nutrition'
     | '/progress'
     | '/shift'
@@ -113,6 +123,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/health'
+    | '/meals'
     | '/nutrition'
     | '/progress'
     | '/shift'
@@ -124,6 +135,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/dashboard'
     | '/_authenticated/health'
+    | '/_authenticated/meals'
     | '/_authenticated/nutrition'
     | '/_authenticated/progress'
     | '/_authenticated/shift'
@@ -187,6 +199,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedNutritionRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/meals': {
+      id: '/_authenticated/meals'
+      path: '/meals'
+      fullPath: '/meals'
+      preLoaderRoute: typeof AuthenticatedMealsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/health': {
       id: '/_authenticated/health'
       path: '/health'
@@ -207,6 +226,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHealthRoute: typeof AuthenticatedHealthRoute
+  AuthenticatedMealsRoute: typeof AuthenticatedMealsRoute
   AuthenticatedNutritionRoute: typeof AuthenticatedNutritionRoute
   AuthenticatedProgressRoute: typeof AuthenticatedProgressRoute
   AuthenticatedShiftRoute: typeof AuthenticatedShiftRoute
@@ -216,6 +236,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHealthRoute: AuthenticatedHealthRoute,
+  AuthenticatedMealsRoute: AuthenticatedMealsRoute,
   AuthenticatedNutritionRoute: AuthenticatedNutritionRoute,
   AuthenticatedProgressRoute: AuthenticatedProgressRoute,
   AuthenticatedShiftRoute: AuthenticatedShiftRoute,
