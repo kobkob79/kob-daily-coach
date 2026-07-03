@@ -18,6 +18,7 @@ import { Route as AuthenticatedProgressRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedNutritionRouteImport } from './routes/_authenticated/nutrition'
 import { Route as AuthenticatedMealsRouteImport } from './routes/_authenticated/meals'
+import { Route as AuthenticatedHydrationRouteImport } from './routes/_authenticated/hydration'
 import { Route as AuthenticatedHealthRouteImport } from './routes/_authenticated/health'
 import { Route as AuthenticatedExportRouteImport } from './routes/_authenticated/export'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -67,6 +68,11 @@ const AuthenticatedMealsRoute = AuthenticatedMealsRouteImport.update({
   path: '/meals',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedHydrationRoute = AuthenticatedHydrationRouteImport.update({
+  id: '/hydration',
+  path: '/hydration',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedHealthRoute = AuthenticatedHealthRouteImport.update({
   id: '/health',
   path: '/health',
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/export': typeof AuthenticatedExportRoute
   '/health': typeof AuthenticatedHealthRoute
+  '/hydration': typeof AuthenticatedHydrationRoute
   '/meals': typeof AuthenticatedMealsRoute
   '/nutrition': typeof AuthenticatedNutritionRoute
   '/profile': typeof AuthenticatedProfileRoute
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/export': typeof AuthenticatedExportRoute
   '/health': typeof AuthenticatedHealthRoute
+  '/hydration': typeof AuthenticatedHydrationRoute
   '/meals': typeof AuthenticatedMealsRoute
   '/nutrition': typeof AuthenticatedNutritionRoute
   '/profile': typeof AuthenticatedProfileRoute
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/export': typeof AuthenticatedExportRoute
   '/_authenticated/health': typeof AuthenticatedHealthRoute
+  '/_authenticated/hydration': typeof AuthenticatedHydrationRoute
   '/_authenticated/meals': typeof AuthenticatedMealsRoute
   '/_authenticated/nutrition': typeof AuthenticatedNutritionRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
@@ -141,6 +150,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/export'
     | '/health'
+    | '/hydration'
     | '/meals'
     | '/nutrition'
     | '/profile'
@@ -155,6 +165,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/export'
     | '/health'
+    | '/hydration'
     | '/meals'
     | '/nutrition'
     | '/profile'
@@ -170,6 +181,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/export'
     | '/_authenticated/health'
+    | '/_authenticated/hydration'
     | '/_authenticated/meals'
     | '/_authenticated/nutrition'
     | '/_authenticated/profile'
@@ -249,6 +261,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMealsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/hydration': {
+      id: '/_authenticated/hydration'
+      path: '/hydration'
+      fullPath: '/hydration'
+      preLoaderRoute: typeof AuthenticatedHydrationRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/health': {
       id: '/_authenticated/health'
       path: '/health'
@@ -285,6 +304,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedExportRoute: typeof AuthenticatedExportRoute
   AuthenticatedHealthRoute: typeof AuthenticatedHealthRoute
+  AuthenticatedHydrationRoute: typeof AuthenticatedHydrationRoute
   AuthenticatedMealsRoute: typeof AuthenticatedMealsRoute
   AuthenticatedNutritionRoute: typeof AuthenticatedNutritionRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
@@ -298,6 +318,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedExportRoute: AuthenticatedExportRoute,
   AuthenticatedHealthRoute: AuthenticatedHealthRoute,
+  AuthenticatedHydrationRoute: AuthenticatedHydrationRoute,
   AuthenticatedMealsRoute: AuthenticatedMealsRoute,
   AuthenticatedNutritionRoute: AuthenticatedNutritionRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,

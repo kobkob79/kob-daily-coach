@@ -16,7 +16,7 @@ import { OneTapBar } from "@/components/dashboard/OneTapBar";
 import { useCoachMemory } from "@/lib/coach-memory";
 import { buildRecommendations } from "@/lib/intelligence";
 import { SmartRecommendations } from "@/components/dashboard/SmartRecommendations";
-import { WaterGoal } from "@/components/dashboard/WaterGoal";
+
 import { getShiftPositionForDate } from "@/lib/shift";
 import { AIHeroCard } from "@/components/dashboard/AIHeroCard";
 import { LiveStatusBar } from "@/components/dashboard/LiveStatusBar";
@@ -421,8 +421,7 @@ function Dashboard() {
       {/* Deterministic recommendations */}
       <SmartRecommendations recommendations={recommendations} />
 
-      {/* Water goal */}
-      <WaterGoal consumedMl={waterMl} targetMl={WATER_TARGET_ML} />
+      {/* Water moved to dedicated /hydration page — data still flows into AI brief */}
 
       {/* Shift banner */}
       {shift && shiftStyle && (

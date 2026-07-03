@@ -19,6 +19,7 @@ const HE: Dict = {
   "nav.health": "בריאות",
   "nav.shift": "משמרת",
   "nav.trend": "מגמות",
+  "nav.hydration": "שתייה",
 
   // Home / dashboard
   "home.title": "היום שלי",
