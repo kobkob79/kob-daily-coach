@@ -182,6 +182,10 @@ export interface CoachMemory {
   supplementsMissingToday?: { name: string }[];
   mealHabitHint?: { time: string; food: string } | null;
   weightTrend30d?: { deltaKg: number } | null;
+  proteinStreak?: number;
+  daysSinceFish?: number | null;
+  sleepLow?: { lastH: number; avgH: number } | null;
+  painTrendUp?: { area: string } | null;
 }
 
 export interface CoachInput {
