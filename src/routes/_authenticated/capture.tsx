@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
-  Camera, Upload, Sparkles, Trash2, ChevronLeft, ImagePlus,
+  Camera, Upload, Sparkles, Trash2, ChevronLeft, ImagePlus, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { today } from "@/lib/date";
+import { analyzeMealImage } from "@/lib/meal-vision";
 import {
   CAPTURE_TYPES, CAPTURE_TYPE_BY_KEY, CAPTURE_BUCKET,
   type CaptureType, type CaptureTypeDef, type CaptureStatus,
