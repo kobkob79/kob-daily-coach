@@ -1,5 +1,5 @@
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
-import { LogOut } from "lucide-react";
+import { LogOut, Camera } from "lucide-react";
 import type { ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -38,13 +38,22 @@ export function AppShell({ children }: { children: ReactNode }) {
               Kobi<span className="gradient-text">OS</span>
             </span>
           </Link>
-          <button
-            onClick={handleSignOut}
-            className="rounded-full p-2.5 text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
-            aria-label={t("action.signOut")}
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <Link
+              to="/capture"
+              className="rounded-full p-2.5 text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
+              aria-label={t("capture.title")}
+            >
+              <Camera className="h-4 w-4" />
+            </Link>
+            <button
+              onClick={handleSignOut}
+              className="rounded-full p-2.5 text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
+              aria-label={t("action.signOut")}
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </header>
 
