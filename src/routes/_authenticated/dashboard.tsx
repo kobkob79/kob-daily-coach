@@ -99,7 +99,10 @@ function Dashboard() {
   const profileQ = useQuery({
     queryKey: ["profile"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("display_name").maybeSingle();
+      const { data } = await supabase
+        .from("profiles")
+        .select("display_name,full_name")
+        .maybeSingle();
       return data;
     },
   });
