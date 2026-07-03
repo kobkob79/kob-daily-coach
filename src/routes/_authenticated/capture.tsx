@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { today } from "@/lib/date";
-import { analyzeMealImage } from "@/lib/meal-vision";
+import { analyzeMealImage, type MealIngredient } from "@/lib/meal-vision";
 import {
   CAPTURE_TYPES, CAPTURE_TYPE_BY_KEY, CAPTURE_BUCKET,
   type CaptureType, type CaptureTypeDef, type CaptureStatus,
@@ -156,12 +156,14 @@ function CaptureComposer({
   const [values, setValues] = useState<Record<string, string>>({});
   const [analyzing, setAnalyzing] = useState(false);
   const [confidence, setConfidence] = useState<number | null>(null);
+  const [ingredients, setIngredients] = useState<MealIngredient[]>([]);
   const Icon = def.icon;
 
   const pickFile = (f: File | null) => {
     if (!f) return;
     setFile(f);
     setConfidence(null);
+    setIngredients([]);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(URL.createObjectURL(f));
   };
@@ -181,13 +183,14 @@ function CaptureComposer({
       setValues((s) => ({
         ...s,
         dish: res.dish,
-        ingredients: res.ingredients,
+        ingredients: res.ingredients_text,
         calories: String(res.calories),
         protein_g: String(res.protein_g),
         carbs_g: String(res.carbs_g),
         fat_g: String(res.fat_g),
         fiber_g: String(res.fiber_g),
       }));
+      setIngredients(res.ingredients);
       setConfidence(res.confidence);
       toast.success(t("capture.analysisDone"));
     } catch (e) {
@@ -357,6 +360,35 @@ function CaptureComposer({
         )}
       </div>
 
+      {/* Detailed ingredient breakdown with nutrition education */}
+      {ingredients.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            רכיבים שזוהו
+          </p>
+          <div className="space-y-2">
+            {ingredients.map((ing, idx) => (
+              <IngredientCard
+                key={idx}
+                ingredient={ing}
+                onChange={(patch) =>
+                  setIngredients((arr) =>
+                    arr.map((x, i) => (i === idx ? { ...x, ...patch } : x)),
+                  )
+                }
+                onRemove={() =>
+                  setIngredients((arr) => arr.filter((_, i) => i !== idx))
+                }
+              />
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            ההסברים לצורכי מידע כללי בלבד ואינם מהווים ייעוץ רפואי.
+          </p>
+        </div>
+      )}
+
+
 
       {/* Structured fields */}
       <div className="space-y-3">
@@ -474,3 +506,99 @@ function useSignedUrl(path: string | null) {
   });
   return q.data ?? null;
 }
+
+/* -------------------- Ingredient card -------------------- */
+
+function IngredientCard({
+  ingredient, onChange, onRemove,
+}: {
+  ingredient: MealIngredient;
+  onChange: (patch: Partial<MealIngredient>) => void;
+  onRemove: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-2xl border border-border/60 bg-muted/25 p-3">
+      <div className="flex items-center gap-2">
+        <Input
+          value={ingredient.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          className="h-8 flex-1 text-sm font-semibold"
+        />
+        <Input
+          value={ingredient.quantity}
+          onChange={(e) => onChange({ quantity: e.target.value })}
+          className="h-8 w-24 text-xs"
+          placeholder="כמות"
+        />
+        <button
+          type="button"
+          onClick={onRemove}
+          className="shrink-0 text-muted-foreground hover:text-destructive"
+          aria-label="הסר"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="mt-2 grid grid-cols-5 gap-1.5">
+        {([
+          ["calories", "קק״ל"],
+          ["protein_g", "חלבון"],
+          ["carbs_g", "פחמ׳"],
+          ["fat_g", "שומן"],
+          ["fiber_g", "סיבים"],
+        ] as const).map(([k, lbl]) => (
+          <label key={k} className="block">
+            <span className="text-[10px] text-muted-foreground">{lbl}</span>
+            <Input
+              type="number"
+              inputMode="numeric"
+              value={String(ingredient[k])}
+              onChange={(e) => onChange({ [k]: Number(e.target.value) || 0 } as Partial<MealIngredient>)}
+              className="h-8 px-2 text-xs"
+            />
+          </label>
+        ))}
+      </div>
+
+      {ingredient.nutrients.length > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            className="mt-2 flex w-full items-center justify-between rounded-xl bg-primary/8 px-2.5 py-1.5 text-[11px] font-medium text-primary"
+          >
+            <span>מה יש בפנים ולמה זה תורם?</span>
+            <ChevronLeft className={cn("h-3.5 w-3.5 transition rtl:rotate-180", open && "-rotate-90 rtl:rotate-90")} />
+          </button>
+          {open && (
+            <div className="mt-2 space-y-1.5 rounded-xl bg-background/40 p-2.5">
+              <div className="flex flex-wrap gap-1">
+                {ingredient.nutrients.map((n, i) => (
+                  <span
+                    key={i}
+                    className="rounded-full bg-primary/12 px-2 py-0.5 text-[10px] font-medium text-primary"
+                  >
+                    {n}
+                  </span>
+                ))}
+              </div>
+              <ul className="space-y-1">
+                {ingredient.education.map((line, i) => (
+                  <li key={i} className="text-[11px] leading-relaxed text-foreground/85">
+                    • {line}
+                  </li>
+                ))}
+              </ul>
+              <p className="pt-1 text-[10px] text-muted-foreground">
+                בטחון זיהוי: {Math.round(ingredient.confidence * 100)}%
+              </p>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
