@@ -356,6 +356,45 @@ export type Database = {
         }
         Relationships: []
       }
+      vision_captures: {
+        Row: {
+          ai_status: string
+          capture_type: string
+          captured_at: string
+          created_at: string
+          extracted: Json
+          id: string
+          image_path: string | null
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_status?: string
+          capture_type: string
+          captured_at?: string
+          created_at?: string
+          extracted?: Json
+          id?: string
+          image_path?: string | null
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_status?: string
+          capture_type?: string
+          captured_at?: string
+          created_at?: string
+          extracted?: Json
+          id?: string
+          image_path?: string | null
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       workout_sets: {
         Row: {
           created_at: string
