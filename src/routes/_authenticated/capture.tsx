@@ -224,11 +224,30 @@ function CaptureComposer({
           user_id: userRes.user.id,
           capture_type: def.key,
           image_path: imagePath,
-          ai_status: "pending",
+          ai_status: confidence != null ? "done" : "pending",
           extracted,
           notes: notes || null,
         } as never);
       if (error) throw error;
+
+      // For meal captures, mirror the analysis into nutrition_entries so it
+      // shows up in the daily protein total, meals list and timeline.
+      if (def.key === "meal") {
+        const dish = (extracted.dish as string) || "ארוחה";
+        await supabase.from("nutrition_entries").insert({
+          user_id: userRes.user.id,
+          date: today(),
+          meal_time: format(new Date(), "HH:mm:ss"),
+          food_name: dish,
+          meal_type: "snack",
+          calories: Number(extracted.calories ?? 0),
+          protein_g: Number(extracted.protein_g ?? 0),
+          carbs_g: Number(extracted.carbs_g ?? 0),
+          fat_g: Number(extracted.fat_g ?? 0),
+          fiber_g: Number(extracted.fiber_g ?? 0),
+          notes: (extracted.ingredients as string) ?? null,
+        });
+      }
     },
     onSuccess: () => {
       toast.success(t("capture.saved"));
