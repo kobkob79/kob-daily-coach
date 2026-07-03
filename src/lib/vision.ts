@@ -57,8 +57,12 @@ export const CAPTURE_TYPES: CaptureTypeDef[] = [
     cameraFacing: "environment",
     fields: [
       { key: "dish", labelKey: "capture.field.dish", type: "text" },
+      { key: "ingredients", labelKey: "capture.field.ingredients", type: "textarea" },
       { key: "calories", labelKey: "capture.field.calories", type: "number" },
       { key: "protein_g", labelKey: "capture.field.protein", type: "number" },
+      { key: "carbs_g", labelKey: "capture.field.carbs", type: "number" },
+      { key: "fat_g", labelKey: "capture.field.fat", type: "number" },
+      { key: "fiber_g", labelKey: "capture.field.fiber", type: "number" },
     ],
   },
   {
