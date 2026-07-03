@@ -156,12 +156,14 @@ function CaptureComposer({
   const [values, setValues] = useState<Record<string, string>>({});
   const [analyzing, setAnalyzing] = useState(false);
   const [confidence, setConfidence] = useState<number | null>(null);
+  const [ingredients, setIngredients] = useState<MealIngredient[]>([]);
   const Icon = def.icon;
 
   const pickFile = (f: File | null) => {
     if (!f) return;
     setFile(f);
     setConfidence(null);
+    setIngredients([]);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(URL.createObjectURL(f));
   };
@@ -181,13 +183,14 @@ function CaptureComposer({
       setValues((s) => ({
         ...s,
         dish: res.dish,
-        ingredients: res.ingredients,
+        ingredients: res.ingredients_text,
         calories: String(res.calories),
         protein_g: String(res.protein_g),
         carbs_g: String(res.carbs_g),
         fat_g: String(res.fat_g),
         fiber_g: String(res.fiber_g),
       }));
+      setIngredients(res.ingredients);
       setConfidence(res.confidence);
       toast.success(t("capture.analysisDone"));
     } catch (e) {
