@@ -238,6 +238,7 @@ function CaptureComposer({
           user_id: userRes.user.id,
           date: today(),
           meal_time: format(new Date(), "HH:mm:ss"),
+          meal: "snack",
           food_name: dish,
           meal_type: "snack",
           calories: Number(extracted.calories ?? 0),
