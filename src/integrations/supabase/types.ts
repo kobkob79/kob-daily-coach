@@ -41,6 +41,48 @@ export type Database = {
         }
         Relationships: []
       }
+      body_photos: {
+        Row: {
+          created_at: string
+          distance_notes: string | null
+          general_notes: string | null
+          id: string
+          image_path: string
+          lighting_notes: string | null
+          taken_at: string
+          updated_at: string
+          user_id: string
+          view_angle: string
+          weight_kg: number | null
+        }
+        Insert: {
+          created_at?: string
+          distance_notes?: string | null
+          general_notes?: string | null
+          id?: string
+          image_path: string
+          lighting_notes?: string | null
+          taken_at?: string
+          updated_at?: string
+          user_id: string
+          view_angle: string
+          weight_kg?: number | null
+        }
+        Update: {
+          created_at?: string
+          distance_notes?: string | null
+          general_notes?: string | null
+          id?: string
+          image_path?: string
+          lighting_notes?: string | null
+          taken_at?: string
+          updated_at?: string
+          user_id?: string
+          view_angle?: string
+          weight_kg?: number | null
+        }
+        Relationships: []
+      }
       daily_events: {
         Row: {
           amount: number | null
@@ -310,25 +352,61 @@ export type Database = {
       }
       profiles: {
         Row: {
+          activity_level: string | null
           avatar_url: string | null
+          birth_date: string | null
+          calorie_target: number | null
           created_at: string
+          current_weight_kg: number | null
           display_name: string | null
+          full_name: string | null
+          gender: string | null
+          height_cm: number | null
           id: string
+          personal_notes: string | null
+          protein_target_g: number | null
+          target_weight_kg: number | null
           updated_at: string
+          water_target_ml: number | null
+          work_type: string | null
         }
         Insert: {
+          activity_level?: string | null
           avatar_url?: string | null
+          birth_date?: string | null
+          calorie_target?: number | null
           created_at?: string
+          current_weight_kg?: number | null
           display_name?: string | null
+          full_name?: string | null
+          gender?: string | null
+          height_cm?: number | null
           id: string
+          personal_notes?: string | null
+          protein_target_g?: number | null
+          target_weight_kg?: number | null
           updated_at?: string
+          water_target_ml?: number | null
+          work_type?: string | null
         }
         Update: {
+          activity_level?: string | null
           avatar_url?: string | null
+          birth_date?: string | null
+          calorie_target?: number | null
           created_at?: string
+          current_weight_kg?: number | null
           display_name?: string | null
+          full_name?: string | null
+          gender?: string | null
+          height_cm?: number | null
           id?: string
+          personal_notes?: string | null
+          protein_target_g?: number | null
+          target_weight_kg?: number | null
           updated_at?: string
+          water_target_ml?: number | null
+          work_type?: string | null
         }
         Relationships: []
       }
