@@ -54,7 +54,7 @@ interface HealthRow {
 }
 interface DailyEventRow {
   id: string;
-  kind: "water" | "supplement" | "weight" | "sleep";
+  kind: string;
   event_time: string;
   amount: number | null;
   unit: string | null;
