@@ -15,6 +15,7 @@ import { OneTapBar } from "@/components/dashboard/OneTapBar";
 import { useCoachMemory } from "@/lib/coach-memory";
 import { buildRecommendations } from "@/lib/intelligence";
 import { SmartRecommendations } from "@/components/dashboard/SmartRecommendations";
+import { WaterGoal } from "@/components/dashboard/WaterGoal";
 import { getShiftPositionForDate } from "@/lib/shift";
 import { subDays } from "date-fns";
 
@@ -99,7 +100,10 @@ function Dashboard() {
   const profileQ = useQuery({
     queryKey: ["profile"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("display_name").maybeSingle();
+      const { data } = await supabase
+        .from("profiles")
+        .select("display_name,full_name")
+        .maybeSingle();
       return data;
     },
   });
@@ -223,7 +227,14 @@ function Dashboard() {
 
   const shift = shiftQ.data ? getShiftForDate(shiftQ.data, now) : null;
   const shiftStyle = shift ? SHIFT_STYLES[shift] : null;
-  const displayName = profileQ.data?.display_name || "קובי";
+  // Prefer full_name → display_name, but skip email/handle-looking values
+  // (e.g. "kobi.its") so the greeting reads as a person, not a login.
+  const rawDisplay = profileQ.data?.display_name?.trim() ?? "";
+  const looksLikeHandle = /[@._]/.test(rawDisplay);
+  const displayName =
+    (profileQ.data?.full_name?.trim() ||
+      (looksLikeHandle ? "" : rawDisplay) ||
+      "");
 
 
   const primaryWorkout = workoutTodayQ.data?.[0];
@@ -243,6 +254,10 @@ function Dashboard() {
 
       {/* Central intelligence — cross-module recommendations with explainability */}
       <SmartRecommendations recommendations={recommendations} />
+
+      {/* Colorful water goal card with wave meter + quick-add buttons */}
+      <WaterGoal consumedMl={waterMl} targetMl={WATER_TARGET_ML} />
+
 
 
       {/* Shift banner */}

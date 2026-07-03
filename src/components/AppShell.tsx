@@ -1,5 +1,5 @@
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
-import { LogOut, Camera, User } from "lucide-react";
+import { LogOut, Camera, User, Download } from "lucide-react";
 import type { ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -45,6 +45,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               aria-label={t("capture.title")}
             >
               <Camera className="h-4 w-4" />
+            </Link>
+            <Link
+              to="/export"
+              className="rounded-full p-2.5 text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
+              aria-label={t("export.title")}
+            >
+              <Download className="h-4 w-4" />
             </Link>
             <Link
               to="/profile"
