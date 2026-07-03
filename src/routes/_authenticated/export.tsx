@@ -149,7 +149,7 @@ function HealthBookPage() {
               logging: false,
             },
             jsPDF: { unit: "pt", format: "a4", orientation: "portrait" },
-            pagebreak: { mode: ["css", "legacy"] },
+            ...({ pagebreak: { mode: ["css", "legacy"] } } as Record<string, unknown>),
           })
           .save();
         toast.success(t("hb.pdfReady"));
