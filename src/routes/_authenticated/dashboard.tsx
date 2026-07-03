@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getShiftForDate, SHIFT_STYLES, SHIFT_HOURS, type ShiftConfig } from "@/lib/shift";
-import { format } from "date-fns";
+import { format, subDays, differenceInYears } from "date-fns";
 import { Dumbbell, HeartPulse, CalendarClock, ChevronLeft } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { PremiumCard, SectionHeader, EmptyState } from "@/components/ui-kit/Section";
@@ -17,21 +18,29 @@ import { buildRecommendations } from "@/lib/intelligence";
 import { SmartRecommendations } from "@/components/dashboard/SmartRecommendations";
 import { WaterGoal } from "@/components/dashboard/WaterGoal";
 import { getShiftPositionForDate } from "@/lib/shift";
-import { subDays } from "date-fns";
-
+import { AIHeroCard } from "@/components/dashboard/AIHeroCard";
+import { LiveStatusBar } from "@/components/dashboard/LiveStatusBar";
+import { BodyStatusGrid } from "@/components/dashboard/BodyStatusGrid";
+import { DailyAnalysisCard } from "@/components/dashboard/DailyAnalysisCard";
+import {
+  buildBodyStatus,
+  estimateCaloriesBurned,
+  useDailyBrief,
+  type DailyBriefContext,
+} from "@/lib/daily-brief";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
-// Personal defaults — will move to a user_settings table when profile UI lands.
-const PROTEIN_TARGET_G = 180;
-const WATER_TARGET_ML = 2500;
+const PROTEIN_TARGET_G_DEFAULT = 180;
+const WATER_TARGET_ML_DEFAULT = 2500;
 
 function Dashboard() {
   const now = new Date();
   const bioDay = biologicalDay(now);
   const todayIso = format(now, "yyyy-MM-dd");
+  const yesterdayIso = format(subDays(now, 1), "yyyy-MM-dd");
 
   const shiftQ = useQuery({
     queryKey: ["shift-config"],
@@ -57,9 +66,20 @@ function Dashboard() {
     queryFn: async () => {
       const { data } = await supabase
         .from("nutrition_entries")
-        .select("id,meal_time,created_at,meal_type,food_name,calories,protein_g")
+        .select("id,meal_time,created_at,meal_type,food_name,calories,protein_g,carbs_g,fat_g")
         .eq("biological_day", bioDay);
-      return data ?? [];
+      // fiber_g exists in the DB (see migration) but may not appear in the
+      // generated Supabase types until they refresh. Fetch it via a loose
+      // secondary query so the UI can display it without a type error.
+      const { data: fibers } = await supabase
+        .from("nutrition_entries")
+        .select("id, fiber_g" as unknown as "id")
+        .eq("biological_day", bioDay);
+      const fiberMap = new Map<string, number>();
+      for (const row of (fibers ?? []) as Array<{ id: string; fiber_g?: number | null }>) {
+        fiberMap.set(row.id, Number(row.fiber_g ?? 0));
+      }
+      return (data ?? []).map((r) => ({ ...r, fiber_g: fiberMap.get(r.id) ?? 0 }));
     },
   });
 
@@ -102,27 +122,62 @@ function Dashboard() {
     queryFn: async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("display_name,full_name")
+        .select(
+          "display_name,full_name,birth_date,gender,height_cm,current_weight_kg,target_weight_kg,protein_target_g,water_target_ml,calorie_target,activity_level",
+        )
         .maybeSingle();
       return data;
     },
   });
 
-  const protein =
-    mealsTodayQ.data?.reduce((s, r) => s + Number(r.protein_g ?? 0), 0) ?? 0;
-  const proteinPct = protein / PROTEIN_TARGET_G;
+  const workoutYesterdayQ = useQuery({
+    queryKey: ["workouts", "yesterday", yesterdayIso],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("workouts")
+        .select("duration_min")
+        .eq("date", yesterdayIso);
+      return data ?? [];
+    },
+  });
 
-  const waterEvents = (eventsTodayQ.data ?? []).filter((e) => e.kind === "water");
+  const sleepRecentQ = useQuery({
+    queryKey: ["sleep", "recent"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("daily_events")
+        .select("amount,event_time")
+        .eq("kind", "sleep")
+        .order("event_time", { ascending: false })
+        .limit(7);
+      return data ?? [];
+    },
+  });
+
+  const PROTEIN_TARGET_G = profileQ.data?.protein_target_g ?? PROTEIN_TARGET_G_DEFAULT;
+  const WATER_TARGET_ML = profileQ.data?.water_target_ml ?? WATER_TARGET_ML_DEFAULT;
+
+  const meals = mealsTodayQ.data ?? [];
+  const protein = meals.reduce((s, r) => s + Number(r.protein_g ?? 0), 0);
+  const proteinPct = protein / PROTEIN_TARGET_G;
+  const caloriesEaten = meals.reduce((s, r) => s + Number(r.calories ?? 0), 0);
+  const carbs_g = meals.reduce((s, r) => s + Number(r.carbs_g ?? 0), 0);
+  const fat_g = meals.reduce((s, r) => s + Number(r.fat_g ?? 0), 0);
+  const fiber_g = meals.reduce((s, r) => s + Number(r.fiber_g ?? 0), 0);
+
+  const events = eventsTodayQ.data ?? [];
+  const waterEvents = events.filter((e) => e.kind === "water");
   const waterMl = waterEvents.reduce((s, e) => s + Number(e.amount ?? 0), 0);
   const lastWaterAt =
     waterEvents.length > 0
-      ? new Date(
-          Math.max(...waterEvents.map((e) => new Date(e.event_time).getTime())),
-        )
+      ? new Date(Math.max(...waterEvents.map((e) => new Date(e.event_time).getTime())))
       : null;
+  const supplementsToday = events
+    .filter((e) => e.kind === "supplement" && e.label)
+    .map((e) => String(e.label));
 
   const lastMealAt = (() => {
-    const times = (mealsTodayQ.data ?? [])
+    const times = meals
       .map((m) => (m.meal_time ? new Date(`${bioDay}T${m.meal_time}`) : new Date(m.created_at)))
       .map((d) => d.getTime());
     return times.length ? new Date(Math.max(...times)) : null;
@@ -130,10 +185,10 @@ function Dashboard() {
 
   const timelineItems = buildTimeline({
     bioDay,
-    meals: mealsTodayQ.data ?? [],
+    meals,
     workouts: workoutTodayQ.data ?? [],
     health: healthTodayQ.data ?? [],
-    events: eventsTodayQ.data ?? [],
+    events,
   });
 
   const coachMemory = useCoachMemory(bioDay);
@@ -151,34 +206,6 @@ function Dashboard() {
     memory: coachMemory ?? undefined,
   });
 
-  // Yesterday's workout minutes — used by the intelligence engine to detect
-  // heavy prior day and recommend recovery instead of another session.
-  const yesterdayIso = format(subDays(now, 1), "yyyy-MM-dd");
-  const workoutYesterdayQ = useQuery({
-    queryKey: ["workouts", "yesterday", yesterdayIso],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("workouts")
-        .select("duration_min")
-        .eq("date", yesterdayIso);
-      return data ?? [];
-    },
-  });
-
-  // Last night's sleep + 7-day average, sourced from daily_events.
-  const sleepRecentQ = useQuery({
-    queryKey: ["sleep", "recent"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("daily_events")
-        .select("amount,event_time")
-        .eq("kind", "sleep")
-        .order("event_time", { ascending: false })
-        .limit(7);
-      return data ?? [];
-    },
-  });
-
   const sleepRows = (sleepRecentQ.data ?? []).filter((r) => r.amount != null);
   const lastSleepHours = sleepRows[0] ? Number(sleepRows[0].amount) : null;
   const avgSleepHours =
@@ -187,6 +214,10 @@ function Dashboard() {
       : null;
 
   const workoutYesterdayMinutes = (workoutYesterdayQ.data ?? []).reduce(
+    (s, w) => s + Number(w.duration_min ?? 0),
+    0,
+  );
+  const workoutTodayMinutes = (workoutTodayQ.data ?? []).reduce(
     (s, w) => s + Number(w.duration_min ?? 0),
     0,
   );
@@ -213,8 +244,7 @@ function Dashboard() {
     waterMlToday: waterMl,
     waterTargetMl: WATER_TARGET_ML,
     lastMealAt,
-    lastMealName:
-      (mealsTodayQ.data ?? []).find((m) => m.food_name)?.food_name ?? null,
+    lastMealName: meals.find((m) => m.food_name)?.food_name ?? null,
     lastWaterAt,
     workoutLoggedToday: (workoutTodayQ.data ?? []).length > 0,
     workoutYesterdayMinutes,
@@ -227,17 +257,124 @@ function Dashboard() {
 
   const shift = shiftQ.data ? getShiftForDate(shiftQ.data, now) : null;
   const shiftStyle = shift ? SHIFT_STYLES[shift] : null;
-  // Prefer full_name → display_name, but skip email/handle-looking values
-  // (e.g. "kobi.its") so the greeting reads as a person, not a login.
   const rawDisplay = profileQ.data?.display_name?.trim() ?? "";
   const looksLikeHandle = /[@._]/.test(rawDisplay);
   const displayName =
-    (profileQ.data?.full_name?.trim() ||
-      (looksLikeHandle ? "" : rawDisplay) ||
-      "");
-
+    profileQ.data?.full_name?.trim() || (looksLikeHandle ? "" : rawDisplay) || "";
 
   const primaryWorkout = workoutTodayQ.data?.[0];
+
+  // ---- Daily Brief context ----
+  const age = profileQ.data?.birth_date
+    ? differenceInYears(now, new Date(profileQ.data.birth_date))
+    : null;
+  const caloriesBurned = estimateCaloriesBurned({
+    weightKg: profileQ.data?.current_weight_kg ?? null,
+    heightCm: profileQ.data?.height_cm ?? null,
+    age,
+    gender: (profileQ.data?.gender as "male" | "female" | "other" | null) ?? null,
+    activity:
+      (profileQ.data?.activity_level as
+        | "sedentary" | "light" | "moderate" | "active" | "very_active" | null) ?? null,
+    shift: shift ?? null,
+    workoutMinutes: workoutTodayMinutes,
+  });
+
+  const goal: "fat_loss" | "maintenance" | "muscle_gain" | null = (() => {
+    const cur = profileQ.data?.current_weight_kg;
+    const tgt = profileQ.data?.target_weight_kg;
+    if (cur == null || tgt == null) return null;
+    if (tgt < cur - 1) return "fat_loss";
+    if (tgt > cur + 1) return "muscle_gain";
+    return "maintenance";
+  })();
+
+  const dataReady =
+    !mealsTodayQ.isLoading &&
+    !eventsTodayQ.isLoading &&
+    !workoutTodayQ.isLoading &&
+    !profileQ.isLoading;
+
+  const briefCtx: DailyBriefContext | null = useMemo(() => {
+    if (!dataReady) return null;
+    const proteinTarget = PROTEIN_TARGET_G;
+    const waterTargetMl = WATER_TARGET_ML;
+    const recoveryPct = Math.min(
+      100,
+      Math.round(
+        ((lastSleepHours ?? 6) / 8) * 55 +
+          (proteinTarget > 0 ? Math.min(1, protein / proteinTarget) * 45 : 0),
+      ),
+    );
+    const hydrationPct = waterTargetMl > 0 ? Math.round((waterMl / waterTargetMl) * 100) : 0;
+    const energyPct = Math.round(
+      ((lastSleepHours ?? 6) / 8) * 50 + hydrationPct * 0.3 + Math.min(100, proteinPct * 100) * 0.2,
+    );
+    const healthScore = Math.round(
+      recoveryPct * 0.35 + hydrationPct * 0.25 + energyPct * 0.25 + Math.min(100, proteinPct * 100) * 0.15,
+    );
+    return {
+      now: now.toISOString(),
+      displayName,
+      shift: shift ?? null,
+      proteinToday: Math.round(protein),
+      proteinTarget,
+      caloriesEaten: Math.round(caloriesEaten),
+      caloriesBurned,
+      calorieTarget: profileQ.data?.calorie_target ?? null,
+      carbs_g: Math.round(carbs_g),
+      fat_g: Math.round(fat_g),
+      fiber_g: Math.round(fiber_g),
+      waterMlToday: waterMl,
+      waterTargetMl,
+      workoutTodayMinutes,
+      workoutYesterdayMinutes,
+      lastSleepHours,
+      avgSleepHours,
+      currentWeightKg: profileQ.data?.current_weight_kg ?? null,
+      weightDelta30dKg: coachMemory?.weightTrend30d?.deltaKg ?? null,
+      pain: currentPain,
+      supplementsToday,
+      supplementsHabitual: coachMemory?.supplementsMissingToday?.map((s) => s.name) ?? [],
+      meals: meals.map((m) => ({
+        name: m.food_name ?? "ארוחה",
+        protein_g: Math.round(Number(m.protein_g ?? 0)),
+        calories: Math.round(Number(m.calories ?? 0)),
+      })),
+      goal,
+      recoveryPct,
+      hydrationPct,
+      energyPct,
+      healthScore,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    dataReady,
+    protein,
+    caloriesEaten,
+    caloriesBurned,
+    carbs_g,
+    fat_g,
+    fiber_g,
+    waterMl,
+    workoutTodayMinutes,
+    workoutYesterdayMinutes,
+    lastSleepHours,
+    avgSleepHours,
+    supplementsToday.join(","),
+    meals.length,
+    shift,
+    displayName,
+    goal,
+  ]);
+
+  const briefQ = useDailyBrief(briefCtx);
+  const bodyCards = briefCtx ? buildBodyStatus(briefCtx) : [];
+  const proteinLeftG = Math.max(0, Math.round(PROTEIN_TARGET_G - protein));
+  const waterLeftMl = Math.max(0, WATER_TARGET_ML - waterMl);
+  const calorieNet = Math.round(caloriesEaten - caloriesBurned);
+  const briefErrorMessage =
+    briefQ.error && briefQ.error instanceof Error ? briefQ.error.message : undefined;
 
   return (
     <div className="space-y-6 pb-2">
@@ -249,16 +386,43 @@ function Dashboard() {
         <h1 className="mt-1.5 text-2xl font-bold tracking-tight">{t("home.title")}</h1>
       </section>
 
-      {/* Smart Coach (replaces greeting) */}
+      {/* AI Hero — "היום הגוף שלך אומר..." */}
+      <AIHeroCard
+        brief={briefQ.data}
+        isLoading={briefQ.isLoading || briefQ.isFetching}
+        isError={briefQ.isError}
+        errorMessage={briefErrorMessage}
+        onRetry={() => briefQ.refetch()}
+        displayName={displayName}
+      />
+
+      {/* Live Status Bar */}
+      {briefCtx && (
+        <LiveStatusBar
+          proteinLeftG={proteinLeftG}
+          waterLeftMl={waterLeftMl}
+          supplementsTodayCount={supplementsToday.length}
+          recoveryPct={briefCtx.recoveryPct}
+          calorieNet={calorieNet}
+          healthScore={briefCtx.healthScore}
+          statusLine={briefQ.data?.statusLine}
+        />
+      )}
+
+      {/* Body Status */}
+      {bodyCards.length > 0 && <BodyStatusGrid cards={bodyCards} />}
+
+      {/* AI Daily Analysis */}
+      {briefQ.data && <DailyAnalysisCard brief={briefQ.data} />}
+
+      {/* Smart Coach */}
       <SmartCoach hints={hints} name={displayName} />
 
-      {/* Central intelligence — cross-module recommendations with explainability */}
+      {/* Deterministic recommendations */}
       <SmartRecommendations recommendations={recommendations} />
 
-      {/* Colorful water goal card with wave meter + quick-add buttons */}
+      {/* Water goal */}
       <WaterGoal consumedMl={waterMl} targetMl={WATER_TARGET_ML} />
-
-
 
       {/* Shift banner */}
       {shift && shiftStyle && (
@@ -315,10 +479,10 @@ function Dashboard() {
         </PremiumCard>
       </section>
 
-      {/* One-tap quick add (favorites + water + supplement/weight/sleep) */}
+      {/* One-tap quick add */}
       <OneTapBar />
 
-      {/* Chronological timeline */}
+      {/* Timeline */}
       <Timeline items={timelineItems} />
 
       {/* Today's workout */}

@@ -1,0 +1,1 @@
+ALTER TABLE public.nutrition_entries ADD COLUMN IF NOT EXISTS fiber_g numeric;
