@@ -226,7 +226,14 @@ function Dashboard() {
 
   const shift = shiftQ.data ? getShiftForDate(shiftQ.data, now) : null;
   const shiftStyle = shift ? SHIFT_STYLES[shift] : null;
-  const displayName = profileQ.data?.display_name || "קובי";
+  // Prefer full_name → display_name, but skip email/handle-looking values
+  // (e.g. "kobi.its") so the greeting reads as a person, not a login.
+  const rawDisplay = profileQ.data?.display_name?.trim() ?? "";
+  const looksLikeHandle = /[@._]/.test(rawDisplay);
+  const displayName =
+    (profileQ.data?.full_name?.trim() ||
+      (looksLikeHandle ? "" : rawDisplay) ||
+      "");
 
 
   const primaryWorkout = workoutTodayQ.data?.[0];
