@@ -29,7 +29,6 @@ function ShiftPage() {
   });
 
   const [anchorDate, setAnchorDate] = useState("");
-  const [anchorShift, setAnchorShift] = useState<"day" | "night">("day");
 
   const save = useMutation({
     mutationFn: async () => {
@@ -40,8 +39,8 @@ function ShiftPage() {
       const { error } = await supabase.from("shift_config").upsert({
         user_id: userRes.user.id,
         anchor_date: finalAnchor,
-        anchor_shift: anchorShift,
-        pattern: "4on4off",
+        anchor_shift: "day", // ignored by intel_9d, kept for column compatibility
+        pattern: "intel_9d",
       });
       if (error) throw error;
     },
