@@ -255,6 +255,10 @@ function Dashboard() {
       {/* Central intelligence — cross-module recommendations with explainability */}
       <SmartRecommendations recommendations={recommendations} />
 
+      {/* Colorful water goal card with wave meter + quick-add buttons */}
+      <WaterGoal consumedMl={waterMl} targetMl={WATER_TARGET_ML} />
+
+
 
       {/* Shift banner */}
       {shift && shiftStyle && (
