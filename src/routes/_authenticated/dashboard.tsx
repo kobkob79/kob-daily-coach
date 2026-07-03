@@ -241,6 +241,10 @@ function Dashboard() {
       {/* Smart Coach (replaces greeting) */}
       <SmartCoach hints={hints} name={displayName} />
 
+      {/* Central intelligence — cross-module recommendations with explainability */}
+      <SmartRecommendations recommendations={recommendations} />
+
+
       {/* Shift banner */}
       {shift && shiftStyle && (
         <Link to="/shift">
