@@ -18,6 +18,7 @@ import {
   History,
   Sparkles,
   LayoutDashboard,
+  Droplet,
 } from "lucide-react";
 
 export type ModuleStatus = "live" | "beta" | "coming-soon";
@@ -35,6 +36,7 @@ export const MODULES: AppModule[] = [
   { id: "home", labelKey: "nav.home", route: "/dashboard", icon: LayoutDashboard, status: "live" },
   { id: "workouts", labelKey: "nav.train", route: "/workouts", icon: Dumbbell, status: "live" },
   { id: "meals", labelKey: "nav.meals", route: "/meals", icon: Apple, status: "live" },
+  { id: "hydration", labelKey: "nav.hydration", route: "/hydration", icon: Droplet, status: "live" },
   { id: "health", labelKey: "nav.health", route: "/health", icon: HeartPulse, status: "live" },
   { id: "shift", labelKey: "nav.shift", route: "/shift", icon: CalendarClock, status: "live" },
   { id: "progress", labelKey: "nav.trend", route: "/progress", icon: LineChart, status: "live" },
