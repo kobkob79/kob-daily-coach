@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
   Camera, Upload, Sparkles, Trash2, ChevronLeft, ImagePlus, Loader2,
+  Plus, AlertTriangle, Bug,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,11 +16,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { today } from "@/lib/date";
-import { analyzeMealImage, type MealIngredient } from "@/lib/meal-vision";
+import {
+  analyzeMealImage, appendCorrections,
+  type MealIngredient, type MealQuality, type MealDiagnostics,
+} from "@/lib/meal-vision";
 import {
   CAPTURE_TYPES, CAPTURE_TYPE_BY_KEY, CAPTURE_BUCKET,
   type CaptureType, type CaptureTypeDef, type CaptureStatus,
 } from "@/lib/vision";
+
 
 export const Route = createFileRoute("/_authenticated/capture")({
   component: CapturePage,
