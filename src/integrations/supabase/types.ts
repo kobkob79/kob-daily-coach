@@ -122,44 +122,113 @@ export type Database = {
         }
         Relationships: []
       }
-      nutrition_entries: {
+      meal_favorites: {
         Row: {
           calories: number | null
           carbs_g: number | null
           created_at: string
-          date: string
+          default_meal_type: string | null
+          emoji: string | null
           fat_g: number | null
-          food_name: string
           id: string
-          meal: Database["public"]["Enums"]["meal_type"]
-          notes: string | null
+          name: string
           protein_g: number | null
+          sort_order: number
+          updated_at: string
+          use_count: number
           user_id: string
         }
         Insert: {
           calories?: number | null
           carbs_g?: number | null
           created_at?: string
-          date?: string
+          default_meal_type?: string | null
+          emoji?: string | null
           fat_g?: number | null
-          food_name: string
           id?: string
-          meal: Database["public"]["Enums"]["meal_type"]
-          notes?: string | null
+          name: string
           protein_g?: number | null
+          sort_order?: number
+          updated_at?: string
+          use_count?: number
           user_id: string
         }
         Update: {
           calories?: number | null
           carbs_g?: number | null
           created_at?: string
+          default_meal_type?: string | null
+          emoji?: string | null
+          fat_g?: number | null
+          id?: string
+          name?: string
+          protein_g?: number | null
+          sort_order?: number
+          updated_at?: string
+          use_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      nutrition_entries: {
+        Row: {
+          biological_day: string | null
+          calories: number | null
+          carbs_g: number | null
+          created_at: string
+          date: string
+          fat_g: number | null
+          food_name: string
+          foods: Json
+          id: string
+          location: string | null
+          meal: Database["public"]["Enums"]["meal_type"]
+          meal_time: string | null
+          meal_type: string | null
+          notes: string | null
+          photo_url: string | null
+          protein_g: number | null
+          source: string
+          user_id: string
+        }
+        Insert: {
+          biological_day?: string | null
+          calories?: number | null
+          carbs_g?: number | null
+          created_at?: string
+          date?: string
+          fat_g?: number | null
+          food_name: string
+          foods?: Json
+          id?: string
+          location?: string | null
+          meal: Database["public"]["Enums"]["meal_type"]
+          meal_time?: string | null
+          meal_type?: string | null
+          notes?: string | null
+          photo_url?: string | null
+          protein_g?: number | null
+          source?: string
+          user_id: string
+        }
+        Update: {
+          biological_day?: string | null
+          calories?: number | null
+          carbs_g?: number | null
+          created_at?: string
           date?: string
           fat_g?: number | null
           food_name?: string
+          foods?: Json
           id?: string
+          location?: string | null
           meal?: Database["public"]["Enums"]["meal_type"]
+          meal_time?: string | null
+          meal_type?: string | null
           notes?: string | null
+          photo_url?: string | null
           protein_g?: number | null
+          source?: string
           user_id?: string
         }
         Relationships: []
