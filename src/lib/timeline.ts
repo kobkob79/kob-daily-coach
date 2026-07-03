@@ -296,6 +296,48 @@ export function buildCoachHints(i: CoachInput): CoachHint[] {
     });
   }
 
-  return hints;
+  if (i.memory?.proteinStreak && i.memory.proteinStreak >= 3) {
+    hints.push({
+      id: "protein-streak",
+      tone: "good",
+      text: t("coach.protein.streak").replace("{n}", String(i.memory.proteinStreak)),
+    });
+  }
+
+  if (i.memory?.daysSinceFish != null && i.memory.daysSinceFish >= 5) {
+    hints.push({
+      id: "fish-gap",
+      tone: "info",
+      text: t("coach.fish.gap").replace("{d}", String(i.memory.daysSinceFish)),
+    });
+  }
+
+  if (i.memory?.sleepLow) {
+    hints.push({
+      id: "sleep-low",
+      tone: "warn",
+      text: t("coach.sleep.low")
+        .replace("{h}", i.memory.sleepLow.lastH.toFixed(1))
+        .replace("{avg}", i.memory.sleepLow.avgH.toFixed(1)),
+    });
+  }
+
+  if (i.memory?.painTrendUp) {
+    const AREA_HE_MAP: Record<string, string> = {
+      neck: "צוואר",
+      sciatica: "גב תחתון",
+      ac_joint: "כתף",
+    };
+    hints.push({
+      id: `pain-${i.memory.painTrendUp.area}`,
+      tone: "warn",
+      text: t("coach.pain.trend").replace(
+        "{area}",
+        AREA_HE_MAP[i.memory.painTrendUp.area] ?? i.memory.painTrendUp.area,
+      ),
+    });
+  }
+
+  return hints.slice(0, 6);
 }
 
