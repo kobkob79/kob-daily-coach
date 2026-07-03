@@ -324,14 +324,39 @@ function CaptureComposer({
         />
       </div>
 
-      {/* AI placeholder */}
-      <div className="flex items-start gap-3 rounded-2xl border border-primary/25 bg-primary/8 p-3">
-        <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-        <div className="min-w-0">
-          <p className="text-xs font-semibold">{t("capture.aiTitle")} · {t("capture.aiSoon")}</p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">{t("capture.aiSoonHint")}</p>
+      {/* AI analysis */}
+      <div className="space-y-2 rounded-2xl border border-primary/25 bg-primary/8 p-3">
+        <div className="flex items-start gap-3">
+          <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold">{t("capture.aiTitle")}</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              {def.key === "meal" ? t("capture.analysisReview") : t("capture.aiSoonHint")}
+            </p>
+          </div>
+          {confidence != null && (
+            <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
+              {t("capture.confidence")}: {Math.round(confidence * 100)}%
+            </span>
+          )}
         </div>
+        {def.key === "meal" && (
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            disabled={!file || analyzing}
+            onClick={runAnalyze}
+          >
+            {analyzing ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("capture.analyzing")}</>
+            ) : (
+              <><Sparkles className="mr-2 h-4 w-4" />{t("capture.analyze")}</>
+            )}
+          </Button>
+        )}
       </div>
+
 
       {/* Structured fields */}
       <div className="space-y-3">
