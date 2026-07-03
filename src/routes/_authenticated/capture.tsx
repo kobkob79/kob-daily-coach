@@ -763,3 +763,12 @@ function IngredientCard({
   );
 }
 
+
+function DiagRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-mono text-foreground/90 truncate max-w-[60%] text-end">{value}</span>
+    </div>
+  );
+}
