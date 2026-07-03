@@ -360,6 +360,35 @@ function CaptureComposer({
         )}
       </div>
 
+      {/* Detailed ingredient breakdown with nutrition education */}
+      {ingredients.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            רכיבים שזוהו
+          </p>
+          <div className="space-y-2">
+            {ingredients.map((ing, idx) => (
+              <IngredientCard
+                key={idx}
+                ingredient={ing}
+                onChange={(patch) =>
+                  setIngredients((arr) =>
+                    arr.map((x, i) => (i === idx ? { ...x, ...patch } : x)),
+                  )
+                }
+                onRemove={() =>
+                  setIngredients((arr) => arr.filter((_, i) => i !== idx))
+                }
+              />
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            ההסברים לצורכי מידע כללי בלבד ואינם מהווים ייעוץ רפואי.
+          </p>
+        </div>
+      )}
+
+
 
       {/* Structured fields */}
       <div className="space-y-3">
