@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { today } from "@/lib/date";
+import { t } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/nutrition")({
   component: NutritionPage,
@@ -39,7 +40,7 @@ function NutritionPage() {
 
   const addEntry = useMutation({
     mutationFn: async () => {
-      if (!food.trim()) throw new Error("Food name required");
+      if (!food.trim()) throw new Error(t("meals.foodName"));
       const { data: userRes } = await supabase.auth.getUser();
       if (!userRes.user) throw new Error("Not signed in");
       const { error } = await supabase.from("nutrition_entries").insert({
@@ -82,36 +83,36 @@ function NutritionPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">Nutrition</h1>
-        <p className="text-sm text-muted-foreground">Log meals and macros.</p>
+        <h1 className="text-2xl font-bold">{t("nutrition.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("nutrition.subtitle")}</p>
       </div>
 
       <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full" />
 
       <section className="grid grid-cols-4 gap-2">
-        <Totals label="kcal" value={totals.cal} />
-        <Totals label="P" value={Math.round(totals.p)} accent />
-        <Totals label="C" value={Math.round(totals.c)} />
-        <Totals label="F" value={Math.round(totals.f)} />
+        <Totals label={t("common.kcal")} value={totals.cal} />
+        <Totals label={t("meals.protein")} value={Math.round(totals.p)} accent />
+        <Totals label={t("meals.carbs")} value={Math.round(totals.c)} />
+        <Totals label={t("meals.fat")} value={Math.round(totals.f)} />
       </section>
 
       <div className="surface-card space-y-3 p-4">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Add entry</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("nutrition.add")}</h3>
         <div className="grid grid-cols-2 gap-2">
           <Select value={meal} onValueChange={(v) => setMeal(v as Meal)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{MEALS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}</SelectContent>
+            <SelectContent>{MEALS.map((m) => <SelectItem key={m} value={m}>{t(`nutrition.meal.${m}`)}</SelectItem>)}</SelectContent>
           </Select>
-          <Input placeholder="Food" value={food} onChange={(e) => setFood(e.target.value)} />
+          <Input placeholder={t("nutrition.food")} value={food} onChange={(e) => setFood(e.target.value)} />
         </div>
         <div className="grid grid-cols-4 gap-2">
-          <div><Label className="text-xs">kcal</Label><Input inputMode="numeric" value={cal} onChange={(e) => setCal(e.target.value)} /></div>
-          <div><Label className="text-xs">P</Label><Input inputMode="decimal" value={p} onChange={(e) => setP(e.target.value)} /></div>
-          <div><Label className="text-xs">C</Label><Input inputMode="decimal" value={c} onChange={(e) => setC(e.target.value)} /></div>
-          <div><Label className="text-xs">F</Label><Input inputMode="decimal" value={f} onChange={(e) => setF(e.target.value)} /></div>
+          <div><Label className="text-xs">{t("common.kcal")}</Label><Input inputMode="numeric" value={cal} onChange={(e) => setCal(e.target.value)} /></div>
+          <div><Label className="text-xs">{t("meals.protein")}</Label><Input inputMode="decimal" value={p} onChange={(e) => setP(e.target.value)} /></div>
+          <div><Label className="text-xs">{t("meals.carbs")}</Label><Input inputMode="decimal" value={c} onChange={(e) => setC(e.target.value)} /></div>
+          <div><Label className="text-xs">{t("meals.fat")}</Label><Input inputMode="decimal" value={f} onChange={(e) => setF(e.target.value)} /></div>
         </div>
         <Button onClick={() => addEntry.mutate()} disabled={addEntry.isPending} className="w-full">
-          <Plus className="mr-1 h-4 w-4" /> Add
+          <Plus className="mr-1 h-4 w-4" /> {t("action.save")}
         </Button>
       </div>
 
@@ -121,17 +122,17 @@ function NutritionPage() {
           if (!items.length) return null;
           return (
             <div key={m} className="surface-card p-3">
-              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary">{m}</h4>
+              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary">{t(`nutrition.meal.${m}`)}</h4>
               <div className="space-y-1">
                 {items.map((e) => (
                   <div key={e.id} className="flex items-center justify-between py-1.5 text-sm">
                     <div className="min-w-0">
                       <p className="truncate font-medium">{e.food_name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {e.calories ?? 0} kcal · P{Math.round(Number(e.protein_g ?? 0))} C{Math.round(Number(e.carbs_g ?? 0))} F{Math.round(Number(e.fat_g ?? 0))}
+                        {e.calories ?? 0} {t("common.kcal")} · P{Math.round(Number(e.protein_g ?? 0))} C{Math.round(Number(e.carbs_g ?? 0))} F{Math.round(Number(e.fat_g ?? 0))}
                       </p>
                     </div>
-                    <button onClick={() => remove.mutate(e.id)} className="text-muted-foreground hover:text-destructive shrink-0 ml-2">
+                    <button onClick={() => remove.mutate(e.id)} className="text-muted-foreground hover:text-destructive shrink-0 ms-2">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
@@ -141,7 +142,7 @@ function NutritionPage() {
           );
         })}
         {!entriesQ.data?.length && (
-          <p className="text-center text-sm text-muted-foreground py-6">No entries for this day yet.</p>
+          <p className="text-center text-sm text-muted-foreground py-6">{t("nutrition.empty")}</p>
         )}
       </div>
     </div>
