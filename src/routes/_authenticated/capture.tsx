@@ -298,6 +298,24 @@ function CaptureComposer({
           notes: (extracted.ingredients as string) ?? null,
         });
       }
+
+      // Persist user corrections so future analyses learn per-user.
+      if (def.key === "meal" && originalIngredients.length > 0) {
+        const now = new Date().toISOString();
+        const diffs = ingredients
+          .map((cur, i) => {
+            const orig = originalIngredients[i];
+            if (!orig) return { correct: cur.name.trim(), at: now };
+            if (orig.name.trim() !== cur.name.trim() && cur.name.trim()) {
+              return { wrong: orig.name, correct: cur.name.trim(), at: now };
+            }
+            return null;
+          })
+          .filter((x): x is { wrong?: string; correct: string; at: string } => !!x && !!x.correct);
+        if (diffs.length > 0) {
+          await appendCorrections(diffs).catch(() => {});
+        }
+      }
     },
     onSuccess: () => {
       toast.success(t("capture.saved"));
