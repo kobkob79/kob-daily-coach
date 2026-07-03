@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { getShiftForDate, SHIFT_STYLES, type ShiftConfig } from "@/lib/shift";
+import { getShiftForDate, SHIFT_STYLES, SHIFT_HOURS, type ShiftConfig } from "@/lib/shift";
 import { format } from "date-fns";
 import { Dumbbell, HeartPulse, CalendarClock, ChevronLeft } from "lucide-react";
 import { t } from "@/lib/i18n";
@@ -12,6 +12,7 @@ import { buildTimeline, buildCoachHints } from "@/lib/timeline";
 import { Timeline } from "@/components/dashboard/Timeline";
 import { SmartCoach } from "@/components/dashboard/SmartCoach";
 import { OneTapBar } from "@/components/dashboard/OneTapBar";
+import { useCoachMemory } from "@/lib/coach-memory";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -126,6 +127,8 @@ function Dashboard() {
     events: eventsTodayQ.data ?? [],
   });
 
+  const coachMemory = useCoachMemory(bioDay);
+
   const hints = buildCoachHints({
     now,
     proteinToday: protein,
@@ -136,6 +139,7 @@ function Dashboard() {
     lastMealAt,
     workoutLoggedToday: (workoutTodayQ.data ?? []).length > 0,
     shiftConfig: shiftQ.data ?? null,
+    memory: coachMemory ?? undefined,
   });
 
   const shift = shiftQ.data ? getShiftForDate(shiftQ.data, now) : null;
@@ -158,7 +162,7 @@ function Dashboard() {
       <SmartCoach hints={hints} name={displayName} />
 
       {/* Shift banner */}
-      {shiftStyle && (
+      {shift && shiftStyle && (
         <Link to="/shift">
           <PremiumCard interactive className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -170,11 +174,10 @@ function Dashboard() {
                   {t("shift.today")}
                 </p>
                 <p className="text-base font-semibold">
-                  {shift === "day"
-                    ? t("shift.day12")
-                    : shift === "night"
-                      ? t("shift.night12")
-                      : t("shift.legend.off")}
+                  {shiftStyle.label}
+                  <span className="ms-2 text-xs font-normal text-muted-foreground">
+                    {SHIFT_HOURS[shift]}
+                  </span>
                 </p>
               </div>
             </div>

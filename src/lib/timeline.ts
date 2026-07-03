@@ -178,6 +178,12 @@ export interface CoachHint {
   text: string;
 }
 
+export interface CoachMemory {
+  supplementsMissingToday?: { name: string }[];
+  mealHabitHint?: { time: string; food: string } | null;
+  weightTrend30d?: { deltaKg: number } | null;
+}
+
 export interface CoachInput {
   now: Date;
   proteinToday: number;
@@ -188,6 +194,7 @@ export interface CoachInput {
   lastMealAt: Date | null;
   workoutLoggedToday: boolean;
   shiftConfig: ShiftConfig | null;
+  memory?: CoachMemory;
 }
 
 export function buildCoachHints(i: CoachInput): CoachHint[] {
@@ -196,9 +203,7 @@ export function buildCoachHints(i: CoachInput): CoachHint[] {
   // Shift context
   if (i.shiftConfig) {
     const s = getShiftForDate(i.shiftConfig, i.now);
-    if (s === "day") hints.push({ id: "shift", tone: "info", text: t("coach.shift.day") });
-    else if (s === "night") hints.push({ id: "shift", tone: "info", text: t("coach.shift.night") });
-    else hints.push({ id: "shift", tone: "info", text: t("coach.shift.off") });
+    hints.push({ id: "shift", tone: "info", text: t(`coach.shift.${s}`) });
   }
 
   // Protein
@@ -234,10 +239,10 @@ export function buildCoachHints(i: CoachInput): CoachHint[] {
     hints.push({ id: "water", tone: "warn", text: t("coach.water.none") });
   }
 
-  // Workout nudge — only afternoon+ and off/day shift
+  // Workout nudge — only afternoon+ and not on night/half-rest days.
   if (!i.workoutLoggedToday && i.now.getHours() >= 16 && i.shiftConfig) {
     const s = getShiftForDate(i.shiftConfig, i.now);
-    if (s !== "night") {
+    if (s === "day" || s === "off") {
       hints.push({ id: "workout", tone: "info", text: t("coach.workout.none") });
     }
   }
@@ -254,5 +259,35 @@ export function buildCoachHints(i: CoachInput): CoachHint[] {
     }
   }
 
+  // --- Personalised layer, driven by ai_memory ---
+  if (i.memory?.mealHabitHint) {
+    hints.push({
+      id: "habit-meal",
+      tone: "info",
+      text: t("coach.habit.meal")
+        .replace("{time}", i.memory.mealHabitHint.time)
+        .replace("{food}", i.memory.mealHabitHint.food),
+    });
+  }
+
+  for (const s of i.memory?.supplementsMissingToday ?? []) {
+    hints.push({
+      id: `supp-${s.name}`,
+      tone: "warn",
+      text: t("coach.habit.supplement").replace("{name}", s.name),
+    });
+  }
+
+  if (i.memory?.weightTrend30d && i.memory.weightTrend30d.deltaKg !== 0) {
+    const delta = i.memory.weightTrend30d.deltaKg;
+    const key = delta < 0 ? "coach.weight.trend.down" : "coach.weight.trend.up";
+    hints.push({
+      id: "weight-trend",
+      tone: delta < 0 ? "good" : "info",
+      text: t(key).replace("{kg}", Math.abs(delta).toFixed(1)),
+    });
+  }
+
   return hints;
 }
+

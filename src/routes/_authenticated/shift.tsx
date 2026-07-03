@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { getShiftRange, SHIFT_STYLES, type ShiftConfig } from "@/lib/shift";
 import { addDays, startOfWeek, format } from "date-fns";
 import { toast } from "sonner";
@@ -29,7 +29,6 @@ function ShiftPage() {
   });
 
   const [anchorDate, setAnchorDate] = useState("");
-  const [anchorShift, setAnchorShift] = useState<"day" | "night">("day");
 
   const save = useMutation({
     mutationFn: async () => {
@@ -40,8 +39,8 @@ function ShiftPage() {
       const { error } = await supabase.from("shift_config").upsert({
         user_id: userRes.user.id,
         anchor_date: finalAnchor,
-        anchor_shift: anchorShift,
-        pattern: "4on4off",
+        anchor_shift: "day", // ignored by intel_9d, kept for column compatibility
+        pattern: "intel_9d",
       });
       if (error) throw error;
     },
@@ -66,21 +65,9 @@ function ShiftPage() {
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           {cfg ? t("shift.update") : t("shift.set")}
         </h3>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <Label>{t("shift.firstDay")}</Label>
-            <Input type="date" value={anchorDate || cfg?.anchor_date || ""} onChange={(e) => setAnchorDate(e.target.value)} />
-          </div>
-          <div>
-            <Label>{t("shift.starting")}</Label>
-            <Select value={anchorShift} onValueChange={(v) => setAnchorShift(v as "day" | "night")}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="day">{t("shift.day12")}</SelectItem>
-                <SelectItem value="night">{t("shift.night12")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div>
+          <Label>{t("shift.firstDay")}</Label>
+          <Input type="date" value={anchorDate || cfg?.anchor_date || ""} onChange={(e) => setAnchorDate(e.target.value)} />
         </div>
         <Button onClick={() => save.mutate()} disabled={save.isPending || (!anchorDate && !cfg?.anchor_date)} className="w-full">
           {t("shift.save")}
@@ -121,8 +108,8 @@ function ShiftPage() {
             })}
           </div>
 
-          <div className="flex justify-center gap-4 text-xs">
-            {(["day","night","off"] as const).map((k) => (
+          <div className="flex flex-wrap justify-center gap-3 text-xs">
+            {(["day","night","half_rest","off"] as const).map((k) => (
               <div key={k} className="flex items-center gap-1.5">
                 <span className={`h-2 w-2 rounded-full ${SHIFT_STYLES[k].dot}`} />
                 <span>{t(`shift.legend.${k}`)}</span>
