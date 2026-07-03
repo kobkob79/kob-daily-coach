@@ -123,36 +123,63 @@ function HealthBookPage() {
         return;
       }
 
-      // Everything else needs the rendered DOM.
+      // Everything else needs a rendered DOM. For PDF we render into a
+      // sandboxed iframe with only HEALTH_BOOK_CSS so html2canvas never sees
+      // the app's oklch/lab/lch color tokens (jsPDF cannot parse them).
       setPreview(built);
-      // Wait one paint tick for the ref to mount.
       await new Promise((r) => requestAnimationFrame(() => r(null)));
       await new Promise((r) => setTimeout(r, 60));
       const node = reportRef.current;
-      if (!node) {
+      if (!node && mode !== "pdf") {
         toast.error(t("hb.previewFailed"));
         setBusy("");
         return;
       }
 
       if (mode === "pdf") {
-        await html2pdf()
-          .from(node)
-          .set({
-            margin: 0,
-            filename: `${base}.pdf`,
-            image: { type: "jpeg", quality: 0.96 },
-            html2canvas: {
-              scale: 2,
-              useCORS: true,
-              backgroundColor: "#ffffff",
-              logging: false,
-            },
-            jsPDF: { unit: "pt", format: "a4", orientation: "portrait" },
-            ...({ pagebreak: { mode: ["css", "legacy"] } } as Record<string, unknown>),
-          })
-          .save();
+        const reportHtml = buildHealthBookHtml(built.data, built.analytics);
+        const iframe = document.createElement("iframe");
+        iframe.setAttribute("aria-hidden", "true");
+        iframe.style.cssText =
+          "position:fixed;left:-99999px;top:0;width:794px;height:1200px;border:0;opacity:0;pointer-events:none;";
+        document.body.appendChild(iframe);
+        try {
+          const doc = iframe.contentDocument;
+          if (!doc) throw new Error("iframe unavailable");
+          doc.open();
+          doc.write(`<!doctype html><html lang="he" dir="rtl"><head>
+            <meta charset="utf-8"/>
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@500;600;700;800&display=swap" rel="stylesheet">
+            <style>html,body{margin:0;background:#ffffff;color:#0f172a;}${HEALTH_BOOK_CSS}</style>
+          </head><body>${reportHtml}</body></html>`);
+          doc.close();
+          const fontsReady = (doc as unknown as { fonts?: { ready?: Promise<unknown> } }).fonts
+            ?.ready;
+          if (fontsReady) await fontsReady.catch(() => undefined);
+          await new Promise((r) => setTimeout(r, 350));
+          const target = (doc.body.firstElementChild ?? doc.body) as HTMLElement;
+          await html2pdf()
+            .from(target)
+            .set({
+              margin: 0,
+              filename: `${base}.pdf`,
+              image: { type: "jpeg", quality: 0.96 },
+              html2canvas: {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: "#ffffff",
+                logging: false,
+              },
+              jsPDF: { unit: "pt", format: "a4", orientation: "portrait" },
+              ...({ pagebreak: { mode: ["css", "legacy"] } } as Record<string, unknown>),
+            })
+            .save();
+        } finally {
+          iframe.remove();
+        }
         toast.success(t("hb.pdfReady"));
+
       } else if (mode === "print") {
         const win = window.open("", "_blank", "noopener,noreferrer");
         if (!win) {
@@ -166,7 +193,7 @@ function HealthBookPage() {
           <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
           <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@500;600;700;800&display=swap" rel="stylesheet">
           <style>body{margin:0;background:#f5f7fb;}${HEALTH_BOOK_CSS}</style>
-          </head><body>${node.innerHTML}<script>window.onload=()=>setTimeout(()=>window.print(),500);</script></body></html>`);
+          </head><body>${node?.innerHTML ?? buildHealthBookHtml(built.data, built.analytics)}<script>window.onload=()=>setTimeout(()=>window.print(),500);</script></body></html>`);
         win.document.close();
         toast.success(t("hb.printOpened"));
       } else if (mode === "email") {
