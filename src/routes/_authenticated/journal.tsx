@@ -51,7 +51,8 @@ function Journal() {
   const isFuture = dateObj.getTime() > Date.now();
 
   const goto = (d: string) =>
-    navigate({ search: (prev) => ({ ...prev, date: d }), replace: true });
+    navigate({ search: (prev: JournalSearch) => ({ ...prev, date: d }), replace: true });
+
 
   const mealsQ = useQuery({
     queryKey: ["journal", "meals", dateIso],
