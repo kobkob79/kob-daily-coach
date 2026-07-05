@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getShiftForDate, SHIFT_STYLES, SHIFT_HOURS, type ShiftConfig } from "@/lib/shift";
 import { format, subDays, differenceInYears } from "date-fns";
-import { Dumbbell, HeartPulse, CalendarClock, ChevronLeft } from "lucide-react";
+import { Dumbbell, HeartPulse, CalendarClock, ChevronLeft, BookOpen } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { PremiumCard, SectionHeader, EmptyState } from "@/components/ui-kit/Section";
 import { ProgressRing } from "@/components/ui-kit/ProgressRing";
