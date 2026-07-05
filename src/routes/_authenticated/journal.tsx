@@ -22,9 +22,8 @@ import {
 } from "lucide-react";
 import { PremiumCard, SectionHeader, EmptyState } from "@/components/ui-kit/Section";
 
-const searchSchema = z.object({
-  date: z.string().optional(),
-});
+type JournalSearch = { date?: string };
+
 
 function todayIso() {
   return format(new Date(), "yyyy-MM-dd");
