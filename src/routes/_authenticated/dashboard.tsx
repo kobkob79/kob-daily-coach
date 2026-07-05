@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getShiftForDate, SHIFT_STYLES, SHIFT_HOURS, type ShiftConfig } from "@/lib/shift";
 import { format, subDays, differenceInYears } from "date-fns";
-import { Dumbbell, HeartPulse, CalendarClock, ChevronLeft } from "lucide-react";
+import { Dumbbell, HeartPulse, CalendarClock, ChevronLeft, BookOpen } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { PremiumCard, SectionHeader, EmptyState } from "@/components/ui-kit/Section";
 import { ProgressRing } from "@/components/ui-kit/ProgressRing";
@@ -422,6 +422,27 @@ function Dashboard() {
       <SmartRecommendations recommendations={recommendations} />
 
       {/* Water moved to dedicated /hydration page — data still flows into AI brief */}
+
+      {/* Daily Journal — history navigator */}
+      <Link to="/journal">
+        <PremiumCard interactive className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md">
+              <BookOpen className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                {t("home.journal.title")}
+              </p>
+              <p className="text-base font-semibold">היום · אתמול · ימים קודמים</p>
+              <p className="text-[11px] text-muted-foreground">{t("home.journal.hint")}</p>
+            </div>
+          </div>
+          <ChevronLeft className="h-5 w-5 text-muted-foreground rtl:rotate-180" />
+        </PremiumCard>
+      </Link>
+
+
 
       {/* Shift banner */}
       {shift && shiftStyle && (
