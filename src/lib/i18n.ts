@@ -20,6 +20,9 @@ const HE: Dict = {
   "nav.shift": "משמרת",
   "nav.trend": "מגמות",
   "nav.hydration": "שתייה",
+  "nav.journal": "יומן",
+  "home.journal.title": "היסטוריה יומית",
+  "home.journal.hint": "עברו בין ימים — כל יום הוא רישום עצמאי.",
 
   // Home / dashboard
   "home.title": "היום שלי",
