@@ -36,9 +36,12 @@ function isValidIso(s: string): boolean {
 }
 
 export const Route = createFileRoute("/_authenticated/journal")({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: (search: Record<string, unknown>): JournalSearch => ({
+    date: typeof search.date === "string" ? search.date : undefined,
+  }),
   component: Journal,
 });
+
 
 function Journal() {
   const { date: dateParam } = Route.useSearch();
