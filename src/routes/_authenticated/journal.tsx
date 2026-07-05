@@ -6,8 +6,6 @@
  */
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { z } from "zod";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { format, addDays, subDays, isValid, parseISO, isToday, isYesterday } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import {

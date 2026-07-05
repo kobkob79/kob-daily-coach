@@ -18,6 +18,7 @@ import { Route as AuthenticatedProgressRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedNutritionRouteImport } from './routes/_authenticated/nutrition'
 import { Route as AuthenticatedMealsRouteImport } from './routes/_authenticated/meals'
+import { Route as AuthenticatedJournalRouteImport } from './routes/_authenticated/journal'
 import { Route as AuthenticatedHydrationRouteImport } from './routes/_authenticated/hydration'
 import { Route as AuthenticatedHealthRouteImport } from './routes/_authenticated/health'
 import { Route as AuthenticatedExportRouteImport } from './routes/_authenticated/export'
@@ -68,6 +69,11 @@ const AuthenticatedMealsRoute = AuthenticatedMealsRouteImport.update({
   path: '/meals',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedJournalRoute = AuthenticatedJournalRouteImport.update({
+  id: '/journal',
+  path: '/journal',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedHydrationRoute = AuthenticatedHydrationRouteImport.update({
   id: '/hydration',
   path: '/hydration',
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/export': typeof AuthenticatedExportRoute
   '/health': typeof AuthenticatedHealthRoute
   '/hydration': typeof AuthenticatedHydrationRoute
+  '/journal': typeof AuthenticatedJournalRoute
   '/meals': typeof AuthenticatedMealsRoute
   '/nutrition': typeof AuthenticatedNutritionRoute
   '/profile': typeof AuthenticatedProfileRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/export': typeof AuthenticatedExportRoute
   '/health': typeof AuthenticatedHealthRoute
   '/hydration': typeof AuthenticatedHydrationRoute
+  '/journal': typeof AuthenticatedJournalRoute
   '/meals': typeof AuthenticatedMealsRoute
   '/nutrition': typeof AuthenticatedNutritionRoute
   '/profile': typeof AuthenticatedProfileRoute
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/_authenticated/export': typeof AuthenticatedExportRoute
   '/_authenticated/health': typeof AuthenticatedHealthRoute
   '/_authenticated/hydration': typeof AuthenticatedHydrationRoute
+  '/_authenticated/journal': typeof AuthenticatedJournalRoute
   '/_authenticated/meals': typeof AuthenticatedMealsRoute
   '/_authenticated/nutrition': typeof AuthenticatedNutritionRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/export'
     | '/health'
     | '/hydration'
+    | '/journal'
     | '/meals'
     | '/nutrition'
     | '/profile'
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/export'
     | '/health'
     | '/hydration'
+    | '/journal'
     | '/meals'
     | '/nutrition'
     | '/profile'
@@ -182,6 +193,7 @@ export interface FileRouteTypes {
     | '/_authenticated/export'
     | '/_authenticated/health'
     | '/_authenticated/hydration'
+    | '/_authenticated/journal'
     | '/_authenticated/meals'
     | '/_authenticated/nutrition'
     | '/_authenticated/profile'
@@ -261,6 +273,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMealsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/journal': {
+      id: '/_authenticated/journal'
+      path: '/journal'
+      fullPath: '/journal'
+      preLoaderRoute: typeof AuthenticatedJournalRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/hydration': {
       id: '/_authenticated/hydration'
       path: '/hydration'
@@ -305,6 +324,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedExportRoute: typeof AuthenticatedExportRoute
   AuthenticatedHealthRoute: typeof AuthenticatedHealthRoute
   AuthenticatedHydrationRoute: typeof AuthenticatedHydrationRoute
+  AuthenticatedJournalRoute: typeof AuthenticatedJournalRoute
   AuthenticatedMealsRoute: typeof AuthenticatedMealsRoute
   AuthenticatedNutritionRoute: typeof AuthenticatedNutritionRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
@@ -319,6 +339,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedExportRoute: AuthenticatedExportRoute,
   AuthenticatedHealthRoute: AuthenticatedHealthRoute,
   AuthenticatedHydrationRoute: AuthenticatedHydrationRoute,
+  AuthenticatedJournalRoute: AuthenticatedJournalRoute,
   AuthenticatedMealsRoute: AuthenticatedMealsRoute,
   AuthenticatedNutritionRoute: AuthenticatedNutritionRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
@@ -338,13 +359,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
