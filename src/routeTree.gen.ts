@@ -79,12 +79,6 @@ const AuthenticatedHydrationRoute = AuthenticatedHydrationRouteImport.update({
   path: '/hydration',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedJournalRoute = AuthenticatedJournalRouteImport.update({
-  id: '/journal',
-  path: '/journal',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-
 const AuthenticatedHealthRoute = AuthenticatedHealthRouteImport.update({
   id: '/health',
   path: '/health',
