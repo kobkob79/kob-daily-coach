@@ -1,0 +1,148 @@
+{
+  "version": 1,
+  "sdk_version": "0.20.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://dyzfauesfqzwgaunfagk.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "kobios-mcp",
+      "version": "0.1.0",
+      "title": "KobiOS"
+    },
+    "tools": [
+      {
+        "name": "get_daily_summary",
+        "title": "Get daily summary",
+        "description": "Returns the signed-in user's totals for a given day: calories, protein/carbs/fat/fiber grams, water intake (ml), meal count, and workout count. Defaults to today.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "date": {
+              "description": "YYYY-MM-DD. Defaults to today.",
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_meals",
+        "title": "List meals",
+        "description": "List the signed-in user's nutrition entries for a given day. Defaults to today.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "date": {
+              "description": "YYYY-MM-DD. Defaults to today.",
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "log_water",
+        "title": "Log water",
+        "description": "Log a water intake event in millilitres for the signed-in user.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "amount_ml": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5000,
+              "description": "Millilitres of water."
+            }
+          },
+          "required": [
+            "amount_ml"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "log_meal",
+        "title": "Log meal",
+        "description": "Log a nutrition entry for the signed-in user. Provide the food name plus optional macros. `meal` is one of breakfast|lunch|dinner|snack.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "food_name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "meal": {
+              "default": "snack",
+              "type": "string",
+              "enum": [
+                "breakfast",
+                "lunch",
+                "dinner",
+                "snack"
+              ]
+            },
+            "calories": {
+              "type": "number",
+              "minimum": 0
+            },
+            "protein_g": {
+              "type": "number",
+              "minimum": 0
+            },
+            "carbs_g": {
+              "type": "number",
+              "minimum": 0
+            },
+            "fat_g": {
+              "type": "number",
+              "minimum": 0
+            },
+            "fiber_g": {
+              "type": "number",
+              "minimum": 0
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "food_name"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}

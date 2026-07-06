@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,18 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
 
+// Only allow same-origin relative paths as post-login targets so a
+// crafted `?next=` cannot bounce users off-origin.
+function safeNext(raw: unknown): string {
+  if (typeof raw !== "string") return "/dashboard";
+  if (!raw.startsWith("/") || raw.startsWith("//")) return "/dashboard";
+  return raw;
+}
+
 export const Route = createFileRoute("/auth")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: safeNext(s.next),
+  }),
   component: AuthPage,
 });
 
@@ -20,17 +31,24 @@ const schema = z.object({
 });
 
 function AuthPage() {
-  const navigate = useNavigate();
+  const { next } = Route.useSearch();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const goNext = () => {
+    // `next` may be a nested app URL (e.g. the OAuth consent path); use a
+    // hard navigation so search params survive intact.
+    window.location.href = next;
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/dashboard", replace: true });
+      if (data.session) goNext();
     });
-  }, [navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,18 +63,18 @@ function AuthPage() {
         const { error } = await supabase.auth.signUp({
           email: parsed.data.email,
           password: parsed.data.password,
-          options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+          options: { emailRedirectTo: `${window.location.origin}${next}` },
         });
         if (error) throw error;
         toast.success(t("auth.created"));
-        navigate({ to: "/dashboard", replace: true });
+        goNext();
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: parsed.data.email,
           password: parsed.data.password,
         });
         if (error) throw error;
-        navigate({ to: "/dashboard", replace: true });
+        goNext();
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("auth.failed"));
