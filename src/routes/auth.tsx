@@ -134,5 +134,3 @@ function AuthPage() {
     </div>
   );
 }
-// suppress unused warning
-void navigate;
