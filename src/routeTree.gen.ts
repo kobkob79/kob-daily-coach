@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedWorkoutsRouteImport } from './routes/_authenticated/workouts'
+import { Route as AuthenticatedWorkoutTemplatesRouteImport } from './routes/_authenticated/workout-templates'
 import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
 import { Route as AuthenticatedProgressRouteImport } from './routes/_authenticated/progress'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
@@ -27,6 +28,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedCaptureRouteImport } from './routes/_authenticated/capture'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
+import { Route as AuthenticatedWorkoutSessionWorkoutIdRouteImport } from './routes/_authenticated/workout-session.$workoutId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 
@@ -54,6 +56,12 @@ const AuthenticatedWorkoutsRoute = AuthenticatedWorkoutsRouteImport.update({
   path: '/workouts',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedWorkoutTemplatesRoute =
+  AuthenticatedWorkoutTemplatesRouteImport.update({
+    id: '/workout-templates',
+    path: '/workout-templates',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedShiftRoute = AuthenticatedShiftRouteImport.update({
   id: '/shift',
   path: '/shift',
@@ -121,6 +129,12 @@ const Char91DotmcpChar93ListToolsRoute =
     path: '/.mcp/list-tools',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthenticatedWorkoutSessionWorkoutIdRoute =
+  AuthenticatedWorkoutSessionWorkoutIdRouteImport.update({
+    id: '/workout-session/$workoutId',
+    path: '/workout-session/$workoutId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -150,9 +164,11 @@ export interface FileRoutesByFullPath {
   '/profile': typeof AuthenticatedProfileRoute
   '/progress': typeof AuthenticatedProgressRoute
   '/shift': typeof AuthenticatedShiftRoute
+  '/workout-templates': typeof AuthenticatedWorkoutTemplatesRoute
   '/workouts': typeof AuthenticatedWorkoutsRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -171,9 +187,11 @@ export interface FileRoutesByTo {
   '/profile': typeof AuthenticatedProfileRoute
   '/progress': typeof AuthenticatedProgressRoute
   '/shift': typeof AuthenticatedShiftRoute
+  '/workout-templates': typeof AuthenticatedWorkoutTemplatesRoute
   '/workouts': typeof AuthenticatedWorkoutsRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -194,9 +212,11 @@ export interface FileRoutesById {
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/progress': typeof AuthenticatedProgressRoute
   '/_authenticated/shift': typeof AuthenticatedShiftRoute
+  '/_authenticated/workout-templates': typeof AuthenticatedWorkoutTemplatesRoute
   '/_authenticated/workouts': typeof AuthenticatedWorkoutsRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/_authenticated/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -217,9 +237,11 @@ export interface FileRouteTypes {
     | '/profile'
     | '/progress'
     | '/shift'
+    | '/workout-templates'
     | '/workouts'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/workout-session/$workoutId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -238,9 +260,11 @@ export interface FileRouteTypes {
     | '/profile'
     | '/progress'
     | '/shift'
+    | '/workout-templates'
     | '/workouts'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/workout-session/$workoutId'
   id:
     | '__root__'
     | '/'
@@ -260,9 +284,11 @@ export interface FileRouteTypes {
     | '/_authenticated/profile'
     | '/_authenticated/progress'
     | '/_authenticated/shift'
+    | '/_authenticated/workout-templates'
     | '/_authenticated/workouts'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/_authenticated/workout-session/$workoutId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -311,6 +337,13 @@ declare module '@tanstack/react-router' {
       path: '/workouts'
       fullPath: '/workouts'
       preLoaderRoute: typeof AuthenticatedWorkoutsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/workout-templates': {
+      id: '/_authenticated/workout-templates'
+      path: '/workout-templates'
+      fullPath: '/workout-templates'
+      preLoaderRoute: typeof AuthenticatedWorkoutTemplatesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/shift': {
@@ -404,6 +437,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/workout-session/$workoutId': {
+      id: '/_authenticated/workout-session/$workoutId'
+      path: '/workout-session/$workoutId'
+      fullPath: '/workout-session/$workoutId'
+      preLoaderRoute: typeof AuthenticatedWorkoutSessionWorkoutIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -433,7 +473,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedProgressRoute: typeof AuthenticatedProgressRoute
   AuthenticatedShiftRoute: typeof AuthenticatedShiftRoute
+  AuthenticatedWorkoutTemplatesRoute: typeof AuthenticatedWorkoutTemplatesRoute
   AuthenticatedWorkoutsRoute: typeof AuthenticatedWorkoutsRoute
+  AuthenticatedWorkoutSessionWorkoutIdRoute: typeof AuthenticatedWorkoutSessionWorkoutIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -448,7 +490,10 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedProgressRoute: AuthenticatedProgressRoute,
   AuthenticatedShiftRoute: AuthenticatedShiftRoute,
+  AuthenticatedWorkoutTemplatesRoute: AuthenticatedWorkoutTemplatesRoute,
   AuthenticatedWorkoutsRoute: AuthenticatedWorkoutsRoute,
+  AuthenticatedWorkoutSessionWorkoutIdRoute:
+    AuthenticatedWorkoutSessionWorkoutIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
