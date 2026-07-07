@@ -78,7 +78,19 @@ function WorkoutsPage() {
           <h1 className="text-2xl font-bold">{t("workouts.title")}</h1>
           <p className="text-sm text-muted-foreground">{t("workouts.subtitle")}</p>
         </div>
-        <Button onClick={() => createWorkout.mutate()} disabled={createWorkout.isPending}>
+        <div className="flex gap-2">
+          <Button asChild variant="outline" size="sm">
+            <a href="/workout-templates">{t("workouts.templates")}</a>
+          </Button>
+          <Button asChild size="sm">
+            <a href="/workout-templates?start=1">
+              <Plus className="mr-1 h-4 w-4" /> {t("workouts.start")}
+            </a>
+          </Button>
+        </div>
+      </div>
+      <div className="flex justify-end">
+        <Button variant="ghost" size="sm" onClick={() => createWorkout.mutate()} disabled={createWorkout.isPending}>
           <Plus className="mr-1 h-4 w-4" /> {t("workouts.session")}
         </Button>
       </div>
