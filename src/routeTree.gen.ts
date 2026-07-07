@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedWorkoutsRouteImport } from './routes/_authenticated/workouts'
+import { Route as AuthenticatedWorkoutTemplatesRouteImport } from './routes/_authenticated/workout-templates'
 import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
 import { Route as AuthenticatedProgressRouteImport } from './routes/_authenticated/progress'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
@@ -54,6 +55,12 @@ const AuthenticatedWorkoutsRoute = AuthenticatedWorkoutsRouteImport.update({
   path: '/workouts',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedWorkoutTemplatesRoute =
+  AuthenticatedWorkoutTemplatesRouteImport.update({
+    id: '/workout-templates',
+    path: '/workout-templates',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedShiftRoute = AuthenticatedShiftRouteImport.update({
   id: '/shift',
   path: '/shift',
@@ -150,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof AuthenticatedProfileRoute
   '/progress': typeof AuthenticatedProgressRoute
   '/shift': typeof AuthenticatedShiftRoute
+  '/workout-templates': typeof AuthenticatedWorkoutTemplatesRoute
   '/workouts': typeof AuthenticatedWorkoutsRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -171,6 +179,7 @@ export interface FileRoutesByTo {
   '/profile': typeof AuthenticatedProfileRoute
   '/progress': typeof AuthenticatedProgressRoute
   '/shift': typeof AuthenticatedShiftRoute
+  '/workout-templates': typeof AuthenticatedWorkoutTemplatesRoute
   '/workouts': typeof AuthenticatedWorkoutsRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -194,6 +203,7 @@ export interface FileRoutesById {
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/progress': typeof AuthenticatedProgressRoute
   '/_authenticated/shift': typeof AuthenticatedShiftRoute
+  '/_authenticated/workout-templates': typeof AuthenticatedWorkoutTemplatesRoute
   '/_authenticated/workouts': typeof AuthenticatedWorkoutsRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -217,6 +227,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/progress'
     | '/shift'
+    | '/workout-templates'
     | '/workouts'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -238,6 +249,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/progress'
     | '/shift'
+    | '/workout-templates'
     | '/workouts'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -260,6 +272,7 @@ export interface FileRouteTypes {
     | '/_authenticated/profile'
     | '/_authenticated/progress'
     | '/_authenticated/shift'
+    | '/_authenticated/workout-templates'
     | '/_authenticated/workouts'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -311,6 +324,13 @@ declare module '@tanstack/react-router' {
       path: '/workouts'
       fullPath: '/workouts'
       preLoaderRoute: typeof AuthenticatedWorkoutsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/workout-templates': {
+      id: '/_authenticated/workout-templates'
+      path: '/workout-templates'
+      fullPath: '/workout-templates'
+      preLoaderRoute: typeof AuthenticatedWorkoutTemplatesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/shift': {
@@ -433,6 +453,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedProgressRoute: typeof AuthenticatedProgressRoute
   AuthenticatedShiftRoute: typeof AuthenticatedShiftRoute
+  AuthenticatedWorkoutTemplatesRoute: typeof AuthenticatedWorkoutTemplatesRoute
   AuthenticatedWorkoutsRoute: typeof AuthenticatedWorkoutsRoute
 }
 
@@ -448,6 +469,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedProgressRoute: AuthenticatedProgressRoute,
   AuthenticatedShiftRoute: AuthenticatedShiftRoute,
+  AuthenticatedWorkoutTemplatesRoute: AuthenticatedWorkoutTemplatesRoute,
   AuthenticatedWorkoutsRoute: AuthenticatedWorkoutsRoute,
 }
 
