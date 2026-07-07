@@ -330,8 +330,9 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
   });
 
   const patchRow = useMutation({
-    mutationFn: async (patch: Partial<TExercise> & { id: string }) => {
-      const { id, ...rest } = patch;
+    mutationFn: async (patch: { id: string } & Record<string, unknown>) => {
+      const { id, exercises: _e, ...rest } = patch as { id: string; exercises?: unknown } & Record<string, unknown>;
+      void _e;
       const { error } = await supabase.from("workout_template_exercises").update(rest).eq("id", id);
       if (error) throw error;
     },
