@@ -80,12 +80,12 @@ function WorkoutsPage() {
         </div>
         <div className="flex gap-2">
           <Button asChild variant="outline" size="sm">
-            <a href="/workout-templates">{t("workouts.templates")}</a>
+            <Link to="/workout-templates">{t("workouts.templates")}</Link>
           </Button>
           <Button asChild size="sm">
-            <a href="/workout-templates?start=1">
+            <Link to="/workout-templates" search={{ start: 1 } as never}>
               <Plus className="mr-1 h-4 w-4" /> {t("workouts.start")}
-            </a>
+            </Link>
           </Button>
         </div>
       </div>
