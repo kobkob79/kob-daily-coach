@@ -391,6 +391,15 @@ function Dashboard() {
         <h1 className="mt-1.5 text-2xl font-bold tracking-tight">{t("home.title")}</h1>
       </section>
 
+      {/* Today's Story */}
+      <TodaysStoryCard bioDay={bioDay} />
+
+      {/* AI Coach placeholder */}
+      <AICoachPlaceholderCard />
+
+      {/* Body Score placeholder */}
+      <BodyScorePlaceholderCard />
+
       {/* AI Hero — "היום הגוף שלך אומר..." */}
       <AIHeroCard
         brief={briefQ.data}
