@@ -22,6 +22,11 @@ import { AIHeroCard } from "@/components/dashboard/AIHeroCard";
 import { LiveStatusBar } from "@/components/dashboard/LiveStatusBar";
 import { BodyStatusGrid } from "@/components/dashboard/BodyStatusGrid";
 import { DailyAnalysisCard } from "@/components/dashboard/DailyAnalysisCard";
+import { TodaysStoryCard } from "@/components/dashboard/TodaysStoryCard";
+import {
+  AICoachPlaceholderCard,
+  BodyScorePlaceholderCard,
+} from "@/components/dashboard/HomePlaceholders";
 import {
   buildBodyStatus,
   estimateCaloriesBurned,
