@@ -22,6 +22,11 @@ import { AIHeroCard } from "@/components/dashboard/AIHeroCard";
 import { LiveStatusBar } from "@/components/dashboard/LiveStatusBar";
 import { BodyStatusGrid } from "@/components/dashboard/BodyStatusGrid";
 import { DailyAnalysisCard } from "@/components/dashboard/DailyAnalysisCard";
+import { TodaysStoryCard } from "@/components/dashboard/TodaysStoryCard";
+import {
+  AICoachPlaceholderCard,
+  BodyScorePlaceholderCard,
+} from "@/components/dashboard/HomePlaceholders";
 import {
   buildBodyStatus,
   estimateCaloriesBurned,
@@ -385,6 +390,15 @@ function Dashboard() {
         </p>
         <h1 className="mt-1.5 text-2xl font-bold tracking-tight">{t("home.title")}</h1>
       </section>
+
+      {/* Today's Story */}
+      <TodaysStoryCard bioDay={bioDay} />
+
+      {/* AI Coach placeholder */}
+      <AICoachPlaceholderCard />
+
+      {/* Body Score placeholder */}
+      <BodyScorePlaceholderCard />
 
       {/* AI Hero — "היום הגוף שלך אומר..." */}
       <AIHeroCard
