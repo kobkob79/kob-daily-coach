@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { MorningIntake, type DayIntake, type DayTargets } from "@/components/dashboard/MorningIntake";
+import { getMemory } from "@/lib/ai-memory";
 import { supabase } from "@/integrations/supabase/client";
 import { getShiftForDate, SHIFT_STYLES, SHIFT_HOURS, type ShiftConfig } from "@/lib/shift";
 import { format, subDays, differenceInYears } from "date-fns";
@@ -46,6 +48,17 @@ function Dashboard() {
   const bioDay = biologicalDay(now);
   const todayIso = format(now, "yyyy-MM-dd");
   const yesterdayIso = format(subDays(now, 1), "yyyy-MM-dd");
+  const queryClient = useQueryClient();
+
+  const intakeQ = useQuery({
+    queryKey: ["day-intake", bioDay],
+    queryFn: async () => {
+      const intake = await getMemory<DayIntake>(`day_intake:${bioDay}`);
+      const targets = await getMemory<DayTargets>(`day_targets:${bioDay}`);
+      return { intake, targets };
+    },
+    staleTime: 60_000,
+  });
 
   const shiftQ = useQuery({
     queryKey: ["shift-config"],
@@ -381,8 +394,17 @@ function Dashboard() {
   const briefErrorMessage =
     briefQ.error && briefQ.error instanceof Error ? briefQ.error.message : undefined;
 
+  const targets = intakeQ.data?.targets;
+  const showIntake = intakeQ.isSuccess && !intakeQ.data?.intake;
+
   return (
     <div className="space-y-6 pb-2">
+      {showIntake && (
+        <MorningIntake
+          bioDay={bioDay}
+          onComplete={() => queryClient.invalidateQueries({ queryKey: ["day-intake", bioDay] })}
+        />
+      )}
       {/* Header */}
       <section className="pt-2">
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
@@ -390,6 +412,26 @@ function Dashboard() {
         </p>
         <h1 className="mt-1.5 text-2xl font-bold tracking-tight">{t("home.title")}</h1>
       </section>
+
+      {targets && (targets.recommendations.length > 0 || targets.warnings.length > 0) && (
+        <div className="rounded-2xl border border-border/50 bg-muted/20 p-4 space-y-2 animate-fade-in">
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            היעדים של Viora להיום
+          </p>
+          <div className="grid grid-cols-4 gap-2 text-center">
+            <TargetTile label="מים" value={`${Math.round(targets.water_ml / 100) / 10}L`} />
+            <TargetTile label="חלבון" value={`${targets.protein_g}g`} />
+            <TargetTile label="צעדים" value={`${(targets.steps / 1000).toFixed(1)}K`} />
+            <TargetTile label="פעילות" value={`${targets.activity_min}′`} />
+          </div>
+          {targets.recommendations.map((r, i) => (
+            <p key={`r-${i}`} className="text-sm text-foreground/80">✨ {r}</p>
+          ))}
+          {targets.warnings.map((w, i) => (
+            <p key={`w-${i}`} className="text-sm text-warning">⚠️ {w}</p>
+          ))}
+        </div>
+      )}
 
       {/* Today's Story */}
       <TodaysStoryCard bioDay={bioDay} />
@@ -590,6 +632,15 @@ function Dashboard() {
           )}
         </PremiumCard>
       </section>
+    </div>
+  );
+}
+
+function TargetTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-background/60 p-2">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-sm font-semibold">{value}</div>
     </div>
   );
 }

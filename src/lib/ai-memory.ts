@@ -9,14 +9,17 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export type AiMemoryKey =
-  | "profile"          // { name?, weight_kg?, protein_target_g?, water_target_ml? }
-  | "favorites_top"    // string[] of favorite food names
-  | "supplements"      // { name, schedule?: 'morning'|'evening'|'night' }[]
-  | "sleep"            // { avg_hours?, usual_bedtime?, night_shift_bedtime? }
-  | "meal_habits"      // { [mealTypeLabel]: { avg_time_hhmm, top_foods: string[] } }
-  | "weight_trend"     // { last_kg?, delta_30d?, updated_at }
-  | "pain_state"       // { neck?: number, sciatica?: number, ac_joint?: number }
-  | "coach_seen";      // { [hintId]: iso string } — throttle repeat hints
+  | "profile"
+  | "favorites_top"
+  | "supplements"
+  | "sleep"
+  | "meal_habits"
+  | "weight_trend"
+  | "pain_state"
+  | "coach_seen"
+  | "personal_facts"    // string[] of remembered personal facts
+  | `day_intake:${string}` // morning intake per biological day
+  | `day_targets:${string}`; // derived targets per biological day
 
 export async function getMemory<T = unknown>(key: AiMemoryKey): Promise<T | null> {
   const { data, error } = await supabase

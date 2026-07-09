@@ -35,7 +35,7 @@ export function AIHeroCard({ brief, isLoading, isError, errorMessage, onRetry, d
           </div>
           <div className="min-w-0">
             <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-              KobiOS · המאמן האישי
+              Viora · המאמן האישי
             </p>
             <h2 className="text-lg font-bold">
               היום הגוף שלך אומר{displayName ? <span className="text-foreground/80">, {displayName}</span> : "..."}
@@ -47,7 +47,7 @@ export function AIHeroCard({ brief, isLoading, isError, errorMessage, onRetry, d
           {isLoading && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Sparkles className={cn("h-4 w-4 animate-pulse text-primary")} />
-              <span>KobiOS מכין את הניתוח היומי שלך…</span>
+              <span>Viora מכין את הניתוח היומי שלך…</span>
             </div>
           )}
           {isError && (

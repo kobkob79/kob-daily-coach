@@ -11,9 +11,9 @@
   },
   "mcp": {
     "server": {
-      "name": "kobios-mcp",
+      "name": "viora-mcp",
       "version": "0.1.0",
-      "title": "KobiOS"
+      "title": "Viora"
     },
     "tools": [
       {

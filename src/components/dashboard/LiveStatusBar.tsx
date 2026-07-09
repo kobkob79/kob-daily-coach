@@ -74,7 +74,7 @@ export function LiveStatusBar({
           <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
         </span>
         <p className="text-xs font-medium text-muted-foreground">
-          {statusLine ?? "KobiOS עוקב אחריך בזמן אמת"}
+          {statusLine ?? "Viora עוקב אחריך בזמן אמת"}
         </p>
       </div>
       <ul className="mt-3 flex flex-wrap gap-2">

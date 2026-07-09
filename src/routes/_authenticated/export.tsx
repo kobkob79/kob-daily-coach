@@ -1,5 +1,5 @@
 /**
- * KobiOS Premium Health Book — replaces the old PDF export.
+ * Viora Premium Health Book — replaces the old PDF export.
  *
  * The report is rendered as real HTML with an Assistant Hebrew font so
  * text shapes and RTL flow correctly. html2pdf.js (html2canvas + jsPDF)
@@ -114,7 +114,7 @@ function HealthBookPage() {
         setBusy("");
         return;
       }
-      const base = `kobios-health-${built.data.from}_${built.data.to}`;
+      const base = `viora-health-${built.data.from}_${built.data.to}`;
 
       if (mode === "csv") {
         downloadBlob(`${base}.csv`, "text/csv;charset=utf-8", toCsv(built.data));
@@ -240,7 +240,7 @@ function HealthBookPage() {
   return (
     <div className="space-y-6 pb-2">
       <section className="pt-2">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">KobiOS</p>
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Viora</p>
         <h1 className="mt-1.5 text-2xl font-bold tracking-tight">{t("hb.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("hb.subtitle")}</p>
       </section>

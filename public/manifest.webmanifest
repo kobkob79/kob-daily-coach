@@ -1,6 +1,6 @@
 {
-  "name": "KobiOS",
-  "short_name": "KobiOS",
+  "name": "Viora",
+  "short_name": "Viora",
   "description": "Personal command center — training, nutrition, health, and shift schedule.",
   "start_url": "/",
   "display": "standalone",

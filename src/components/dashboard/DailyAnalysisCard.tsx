@@ -1,5 +1,5 @@
 /**
- * KobiOS Daily Analysis — renders the AI-generated multi-section report.
+ * Viora Daily Analysis — renders the AI-generated multi-section report.
  */
 import { Brain, CheckCircle2, ArrowUpCircle, Target, Lightbulb, Pill } from "lucide-react";
 import { PremiumCard, SectionHeader } from "@/components/ui-kit/Section";
@@ -50,7 +50,7 @@ export function DailyAnalysisCard({ brief }: { brief: DailyBrief }) {
   return (
     <section className="space-y-3">
       <SectionHeader
-        title="הניתוח היומי של KobiOS"
+        title="הניתוח היומי של Viora"
         subtitle="תזונה · אימון · שינה · תוספים — הכל ביחד"
       />
 
