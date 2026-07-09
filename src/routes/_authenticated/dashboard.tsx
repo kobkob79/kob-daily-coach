@@ -635,3 +635,12 @@ function Dashboard() {
     </div>
   );
 }
+
+function TargetTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-background/60 p-2">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-sm font-semibold">{value}</div>
+    </div>
+  );
+}
