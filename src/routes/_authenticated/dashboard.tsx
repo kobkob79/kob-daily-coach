@@ -48,6 +48,17 @@ function Dashboard() {
   const bioDay = biologicalDay(now);
   const todayIso = format(now, "yyyy-MM-dd");
   const yesterdayIso = format(subDays(now, 1), "yyyy-MM-dd");
+  const queryClient = useQueryClient();
+
+  const intakeQ = useQuery({
+    queryKey: ["day-intake", bioDay],
+    queryFn: async () => {
+      const intake = await getMemory<DayIntake>(`day_intake:${bioDay}`);
+      const targets = await getMemory<DayTargets>(`day_targets:${bioDay}`);
+      return { intake, targets };
+    },
+    staleTime: 60_000,
+  });
 
   const shiftQ = useQuery({
     queryKey: ["shift-config"],
