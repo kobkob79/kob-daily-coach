@@ -9,7 +9,7 @@ export const DEFAULT_LOCALE: Locale = "he";
 type Dict = Record<string, string>;
 
 const HE: Dict = {
-  "app.name": "KobiOS",
+  "app.name": "Viora",
   "app.tagline": "מרכז השליטה האישי שלך",
 
   "nav.home": "היום",
@@ -368,7 +368,7 @@ const HE: Dict = {
 
   // Profile — the personal digital twin
   "profile.title": "הפרופיל שלי",
-  "profile.subtitle": "התאום הדיגיטלי האישי שלך ב־KobiOS",
+  "profile.subtitle": "התאום הדיגיטלי האישי שלך ב־Viora",
   "profile.edit": "עריכה",
   "profile.saved": "הפרופיל נשמר",
   "profile.namePlaceholder": "הוסף את שמך המלא",
@@ -426,7 +426,7 @@ const HE: Dict = {
   "profile.angle.left": "צד שמאל",
   "profile.angle.right": "צד ימין",
 
-  "profile.know.title": "מה KobiOS יודע עליי",
+  "profile.know.title": "מה Viora יודע עליי",
   "profile.know.subtitle": "עובדות מהפרופיל ודפוסים שהמערכת למדה עליך",
   "profile.know.nutrition": "תזונה",
   "profile.know.training": "אימונים",
@@ -523,7 +523,7 @@ const HE: Dict = {
 
 
 const EN: Dict = {
-  "app.name": "KobiOS",
+  "app.name": "Viora",
   "nav.home": "Today",
   "coach.hello": "Hello",
   "action.signOut": "Sign out",

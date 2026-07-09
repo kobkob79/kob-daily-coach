@@ -1,5 +1,5 @@
 /**
- * Client-side helpers for the KobiOS Daily Brief.
+ * Client-side helpers for the Viora Daily Brief.
  *
  * - buildBodyStatus: local, deterministic scoring for the colorful body
  *   cards (recovery, hydration, energy, fat-burn, sleep, general).

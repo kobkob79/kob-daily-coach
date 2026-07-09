@@ -4,7 +4,7 @@
  * Three sections:
  *   1. Editable profile form (avatar + personal + goals + habits).
  *   2. Body-progress gallery, grouped by shooting angle.
- *   3. "What KobiOS knows about me" — cards that surface persisted
+ *   3. "What Viora knows about me" — cards that surface persisted
  *      facts + learned patterns (fed from ai_memory).
  *
  * Kept UI on the same premium dark language as the rest of the shell —
@@ -547,7 +547,7 @@ function BodyPhotoComposer({ onDone, onCancel }: { onDone: () => void; onCancel:
   );
 }
 
-/* ---------------- "What KobiOS knows about me" ---------------- */
+/* ---------------- "What Viora knows about me" ---------------- */
 
 interface KnowledgeCard {
   icon: React.ComponentType<{ className?: string }>;

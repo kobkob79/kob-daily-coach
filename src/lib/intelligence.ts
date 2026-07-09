@@ -1,5 +1,5 @@
 /**
- * KobiOS Intelligence Engine.
+ * Viora Intelligence Engine.
  *
  * A single, deterministic reasoning layer that consumes context from every
  * module (shift, meals, water, workouts, health, sleep, weight, memory)

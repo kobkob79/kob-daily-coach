@@ -598,7 +598,7 @@ function coverPage(data: HealthBookData) {
       </div>
       <div class="hb-cover-footer">
         <div>הופק ב־${generated}</div>
-        <div>KobiOS · מרכז השליטה האישי שלך</div>
+        <div>Viora · מרכז השליטה האישי שלך</div>
       </div>
     </div>
   </section>`;
@@ -843,7 +843,7 @@ function aiPage(a: HealthBookAnalytics) {
   <section class="hb-page">
     <header class="hb-page-header">
       <div>
-        <p class="hb-eyebrow-dark">הניתוח של KobiOS</p>
+        <p class="hb-eyebrow-dark">הניתוח של Viora</p>
         <h2 class="hb-h2">מה למדנו עליך</h2>
       </div>
       <div class="hb-page-num">09</div>

@@ -86,9 +86,9 @@ function Consent() {
   return (
     <main dir="rtl" className="min-h-[100dvh] flex items-center justify-center p-6">
       <div className="surface-card w-full max-w-md space-y-4 p-6 text-right">
-        <h1 className="text-2xl font-bold">חיבור {clientName} ל־KobiOS</h1>
+        <h1 className="text-2xl font-bold">חיבור {clientName} ל־Viora</h1>
         <p className="text-sm text-muted-foreground">
-          {clientName} תקבל גישה לפעולות ה־MCP של KobiOS בשמך: קריאת יעדים
+          {clientName} תקבל גישה לפעולות ה־MCP של Viora בשמך: קריאת יעדים
           יומיים, רישום מים ורישום ארוחות.
         </p>
         {error && (
