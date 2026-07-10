@@ -7,6 +7,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { liveModules } from "@/lib/modules";
 import { t } from "@/lib/i18n";
 import { QuickAddButton } from "@/components/ui-kit/QuickAddSheet";
+import { VioraLogo } from "@/components/brand/VioraLogo";
+
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -29,15 +31,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-border/40 bg-background/70 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-5 py-3.5">
           <Link to="/dashboard" className="flex items-center gap-2.5">
-            <div
-              className="h-9 w-9 rounded-2xl ring-glow"
-              style={{ background: "var(--gradient-primary)" }}
-              aria-hidden
-            />
+            <VioraLogo className="h-9 w-9 rounded-2xl ring-glow" />
             <span className="font-display text-lg font-bold tracking-tight">
               <span className="gradient-text">Viora</span>
             </span>
           </Link>
+
           <div className="flex items-center gap-1">
             <Link
               to="/capture"

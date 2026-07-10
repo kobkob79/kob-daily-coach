@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
+import { VioraLogo } from "@/components/brand/VioraLogo";
+
 
 // Only allow same-origin relative paths as post-login targets so a
 // crafted `?next=` cannot bounce users off-origin.
@@ -87,7 +89,7 @@ function AuthPage() {
     <div className="min-h-[100dvh] bg-background text-foreground flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <div className="h-14 w-14 rounded-2xl ring-glow" style={{ background: "var(--gradient-primary)" }} />
+          <VioraLogo className="h-14 w-14 rounded-2xl ring-glow" />
           <h1 className="font-display text-3xl font-bold tracking-tight">
             <span className="gradient-text">Viora</span>
           </h1>
