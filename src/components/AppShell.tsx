@@ -35,7 +35,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               aria-hidden
             />
             <span className="font-display text-lg font-bold tracking-tight">
-              Kobi<span className="gradient-text">OS</span>
+              <span className="gradient-text">Viora</span>
             </span>
           </Link>
           <div className="flex items-center gap-1">

@@ -89,7 +89,7 @@ function AuthPage() {
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <div className="h-14 w-14 rounded-2xl ring-glow" style={{ background: "var(--gradient-primary)" }} />
           <h1 className="font-display text-3xl font-bold tracking-tight">
-            Kobi<span className="gradient-text">OS</span>
+            <span className="gradient-text">Viora</span>
           </h1>
           <p className="text-sm text-muted-foreground">{t("auth.tagline")}</p>
         </div>
