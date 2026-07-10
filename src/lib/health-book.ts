@@ -582,7 +582,7 @@ function coverPage(data: HealthBookData) {
     <div class="hb-cover-inner">
       <div class="hb-brand">
         <div class="hb-logo"></div>
-        <div class="hb-brand-text">Kobi<span>OS</span></div>
+        <div class="hb-brand-text">Viora</div>
       </div>
       <div class="hb-cover-body">
         <p class="hb-eyebrow">דו״ח בריאות אישי</p>
