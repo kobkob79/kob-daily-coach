@@ -519,6 +519,48 @@ const HE: Dict = {
   "hb.cat.all": "דוח מלא",
   "hb.cat.core": "בריאות ואימונים בלבד",
   "hb.cat.medical": "רפואי בלבד",
+
+  // Life Profile / Onboarding
+  "action.continue": "המשך",
+  "action.back": "חזרה",
+  "life.ctx.employee":       "שכיר",
+  "life.ctx.shift_worker":   "עובד/ת משמרות",
+  "life.ctx.student":        "סטודנט/ית",
+  "life.ctx.self_employed":  "עצמאי/ת",
+  "life.ctx.parent_home":    "הורה בבית",
+  "life.ctx.retired":        "פנסיונר/ית",
+  "life.ctx.other":          "אחר",
+
+  "onboarding.stepIndicator": "שלב {n} מתוך {total}",
+  "onboarding.finish": "סיום",
+
+  "onboarding.step.first_name.title": "איך קוראים לך?",
+  "onboarding.step.first_name.hint":  "השם הפרטי שלך — כדי שנוכל לפנות אליך בצורה אישית.",
+  "onboarding.step.birth_date.title": "מתי נולדת?",
+  "onboarding.step.birth_date.hint":  "משמש לחישובי בריאות בלבד.",
+  "onboarding.step.sex.title":        "מין ביולוגי",
+  "onboarding.step.sex.hint":         "כדי לחשב יעדים תזונתיים מותאמים.",
+  "onboarding.step.height.title":     "מה הגובה שלך?",
+  "onboarding.step.height.hint":      "בסנטימטרים.",
+  "onboarding.step.weight.title":     "מה המשקל הנוכחי שלך?",
+  "onboarding.step.weight.hint":      "בקילוגרמים — נעדכן ככל שתשתנה.",
+  "onboarding.step.life_context.title": "איך נראה היום־יום שלך?",
+  "onboarding.step.life_context.hint":  "בחר/י את הקרוב ביותר — אפשר לשנות בכל רגע.",
+  "onboarding.step.shift_cycle.title":  "המחזור שלך",
+  "onboarding.step.shift_cycle.hint":   "תארו את מחזור המשמרות החוזר — לא משנה איזה מקום עבודה.",
+  "onboarding.step.done.title":         "הכל מוכן",
+  "onboarding.step.done.hint":          "",
+
+  "onboarding.field.firstName":   "שם פרטי",
+  "onboarding.field.firstNamePh": "הקלד/י את שמך",
+  "onboarding.field.birthDate":   "תאריך לידה",
+  "onboarding.field.height":      "גובה (ס״מ)",
+  "onboarding.field.weight":      "משקל (ק״ג)",
+  "onboarding.field.cycleLength": "אורך מחזור (ימים)",
+  "onboarding.field.dayShifts":   "משמרות יום",
+  "onboarding.field.nightShifts": "משמרות לילה",
+  "onboarding.field.offDays":     "ימי מנוחה",
+  "onboarding.field.cycleSumHint":"הסכום צריך להיות שווה לאורך המחזור.",
 };
 
 
