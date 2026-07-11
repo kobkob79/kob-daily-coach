@@ -18,6 +18,8 @@ import { OneTapBar } from "@/components/dashboard/OneTapBar";
 import { useCoachMemory } from "@/lib/coach-memory";
 import { buildRecommendations } from "@/lib/intelligence";
 import { SmartRecommendations } from "@/components/dashboard/SmartRecommendations";
+import { fetchLifeProfile, needsOnboarding } from "@/lib/life-profile";
+import { LifeProfileOnboarding } from "@/components/onboarding/LifeProfileOnboarding";
 
 import { getShiftPositionForDate } from "@/lib/shift";
 import { AIHeroCard } from "@/components/dashboard/AIHeroCard";
@@ -397,9 +399,21 @@ function Dashboard() {
   const targets = intakeQ.data?.targets;
   const showIntake = intakeQ.isSuccess && !intakeQ.data?.intake;
 
+  const lifeQ = useQuery({
+    queryKey: ["life-profile"],
+    queryFn: fetchLifeProfile,
+  });
+  const showOnboarding = lifeQ.isSuccess && needsOnboarding(lifeQ.data);
+
   return (
     <div className="space-y-6 pb-2">
-      {showIntake && (
+      {showOnboarding && (
+        <LifeProfileOnboarding
+          initial={lifeQ.data ?? null}
+          onComplete={() => queryClient.invalidateQueries({ queryKey: ["life-profile"] })}
+        />
+      )}
+      {showIntake && !showOnboarding && (
         <MorningIntake
           bioDay={bioDay}
           onComplete={() => queryClient.invalidateQueries({ queryKey: ["day-intake", bioDay] })}
