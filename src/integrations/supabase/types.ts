@@ -368,10 +368,14 @@ export type Database = {
           created_at: string
           current_weight_kg: number | null
           display_name: string | null
+          first_name: string | null
           full_name: string | null
           gender: string | null
           height_cm: number | null
           id: string
+          life_context: string | null
+          onboarding_completed_at: string | null
+          onboarding_step: number
           personal_notes: string | null
           protein_target_g: number | null
           target_weight_kg: number | null
@@ -387,10 +391,14 @@ export type Database = {
           created_at?: string
           current_weight_kg?: number | null
           display_name?: string | null
+          first_name?: string | null
           full_name?: string | null
           gender?: string | null
           height_cm?: number | null
           id: string
+          life_context?: string | null
+          onboarding_completed_at?: string | null
+          onboarding_step?: number
           personal_notes?: string | null
           protein_target_g?: number | null
           target_weight_kg?: number | null
@@ -406,10 +414,14 @@ export type Database = {
           created_at?: string
           current_weight_kg?: number | null
           display_name?: string | null
+          first_name?: string | null
           full_name?: string | null
           gender?: string | null
           height_cm?: number | null
           id?: string
+          life_context?: string | null
+          onboarding_completed_at?: string | null
+          onboarding_step?: number
           personal_notes?: string | null
           protein_target_g?: number | null
           target_weight_kg?: number | null
@@ -423,6 +435,10 @@ export type Database = {
         Row: {
           anchor_date: string
           anchor_shift: Database["public"]["Enums"]["shift_type"]
+          cycle_length: number | null
+          day_shifts: number | null
+          night_shifts: number | null
+          off_days: number | null
           pattern: string
           updated_at: string
           user_id: string
@@ -430,6 +446,10 @@ export type Database = {
         Insert: {
           anchor_date: string
           anchor_shift?: Database["public"]["Enums"]["shift_type"]
+          cycle_length?: number | null
+          day_shifts?: number | null
+          night_shifts?: number | null
+          off_days?: number | null
           pattern?: string
           updated_at?: string
           user_id: string
@@ -437,6 +457,10 @@ export type Database = {
         Update: {
           anchor_date?: string
           anchor_shift?: Database["public"]["Enums"]["shift_type"]
+          cycle_length?: number | null
+          day_shifts?: number | null
+          night_shifts?: number | null
+          off_days?: number | null
           pattern?: string
           updated_at?: string
           user_id?: string
