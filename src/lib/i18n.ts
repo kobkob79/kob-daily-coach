@@ -561,6 +561,43 @@ const HE: Dict = {
   "onboarding.field.nightShifts": "משמרות לילה",
   "onboarding.field.offDays":     "ימי מנוחה",
   "onboarding.field.cycleSumHint":"הסכום צריך להיות שווה לאורך המחזור.",
+  "onboarding.field.workplace":   "מקום עבודה",
+  "onboarding.field.workplacePh": "לדוגמה: אינטל, בית ספר, סטארטאפ",
+  "onboarding.field.jobTitle":    "תפקיד",
+  "onboarding.field.jobTitlePh":  "לדוגמה: מהנדס, סטודנט, יועצת",
+  "onboarding.field.workOptional":"שדות אופציונליים — אפשר לדלג ולעדכן בהמשך.",
+  "onboarding.step.work_details.title": "איפה את/ה עובד/ת?",
+  "onboarding.step.work_details.hint":  "מקום העבודה והתפקיד — כדי להתאים המלצות לשגרה שלך.",
+  "onboarding.field.cycleStart":     "תחילת המחזור הנוכחי",
+  "onboarding.field.cycleStartToday":"מתחיל היום",
+  "onboarding.field.cycleStartPick": "בחר תאריך",
+
+  // Life Profile screen — work section
+  "profile.section.work": "עבודה",
+  "profile.field.workplace": "מקום עבודה",
+  "profile.field.jobTitle": "תפקיד",
+  "profile.field.workType": "סוג עבודה",
+  "profile.field.lifeContext": "אורח חיים",
+  "profile.field.shiftCycle": "מחזור משמרות",
+  "profile.shift.summary": "{d} יום · {n} לילה · {o} חופש (מחזור {c} ימים)",
+  "profile.shift.startsOn": "מתחיל ב־{date}",
+
+  // Developer tools (visible only in DEV)
+  "dev.title": "כלי מפתח",
+  "dev.subtitle": "פעולות פנימיות לבדיקות — מוצג רק במצב פיתוח",
+  "dev.section.reset": "איפוסים",
+  "dev.section.simulate": "סימולציית יום",
+  "dev.resetOnboarding": "אפס את שלבי ה-Onboarding",
+  "dev.resetLifeProfile": "אפס את הפרופיל האישי",
+  "dev.resetToday": "מחק את נתוני היום",
+  "dev.forceNewDay": "התחל יום מחדש",
+  "dev.simDay": "סמלץ משמרת יום",
+  "dev.simNight": "סמלץ משמרת לילה",
+  "dev.simOff": "סמלץ יום חופש",
+  "dev.clearSim": "נקה סימולציה",
+  "dev.confirm": "לבצע? הפעולה בלתי הפיכה.",
+  "dev.done": "בוצע",
+  "dev.overrideActive": "סימולציה פעילה: {kind}",
 };
 
 
