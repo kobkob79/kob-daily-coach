@@ -21,6 +21,7 @@ import { t } from "@/lib/i18n";
 import {
   LIFE_CONTEXTS,
   ONBOARDING_STEPS,
+  WORK_CONTEXTS,
   fetchLifeProfile,
   nextOnboardingStep,
   patchLifeProfile,
