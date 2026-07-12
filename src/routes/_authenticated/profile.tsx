@@ -46,6 +46,7 @@ export const Route = createFileRoute("/_authenticated/profile")({
 function ProfilePage() {
   const qc = useQueryClient();
   const profileQ = useQuery({ queryKey: ["profile"], queryFn: fetchProfile });
+  const lifeQ    = useQuery({ queryKey: ["life-profile"], queryFn: fetchLifeProfile });
   const photosQ = useQuery({ queryKey: ["body-photos"], queryFn: listBodyPhotos });
   const memoryQ = useQuery({ queryKey: ["ai-memory-all"], queryFn: getAllMemory });
 
