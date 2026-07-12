@@ -1,19 +1,13 @@
 /**
  * Life Profile — the generic, multi-user foundation.
  *
- * Purpose: give every module (nutrition, sleep, workouts, AI coach,
- * reminders, shift calendar, …) ONE canonical place to read the
- * user's personal facts from, instead of duplicating them.
+ * One canonical read/write surface for every domain module (nutrition, sleep,
+ * workouts, AI coach, reminders, shift calendar, …). Fields live on the
+ * existing `profiles` row and, for shift workers only, on `shift_config`.
  *
- * Everything here is deliberately generic: no company, no shift
- * pattern, no domain assumption is hardcoded. Shift-work users
- * describe their cycle themselves (cycle length + counts) and the
- * shift module derives the schedule from those numbers.
- *
- * Persistence: fields live on the existing `profiles` row and on
- * `shift_config` (only when the user says they are a shift worker).
- * Onboarding progress is stored on `profiles.onboarding_step` so
- * the wizard can be resumed at any time.
+ * Nothing here is company-specific: users describe their own daily life
+ * (employee / shift worker / student / self-employed / parent / retired),
+ * and shift workers describe their own repeating cycle.
  */
 import { supabase } from "@/integrations/supabase/client";
 
@@ -36,6 +30,11 @@ export const LIFE_CONTEXTS: { key: LifeContext; labelKey: string }[] = [
   { key: "other",          labelKey: "life.ctx.other" },
 ];
 
+/** Contexts where "workplace / job title" makes sense in onboarding. */
+export const WORK_CONTEXTS: LifeContext[] = [
+  "employee", "shift_worker", "self_employed", "student",
+];
+
 export type Sex = "male" | "female" | "other";
 
 export interface LifeProfile {
@@ -46,6 +45,8 @@ export interface LifeProfile {
   height_cm: number | null;
   weight_kg: number | null;
   life_context: LifeContext | null;
+  workplace: string | null;
+  job_title: string | null;
   shift_cycle: ShiftCycle | null;
   onboarding_completed_at: string | null;
   onboarding_step: number;
@@ -56,10 +57,10 @@ export interface ShiftCycle {
   day_shifts: number;
   night_shifts: number;
   off_days: number;
-  anchor_date: string; // when the current cycle started (defaults to today)
+  anchor_date: string; // calendar date the current cycle started on
 }
 
-/** Total ordered onboarding steps, used by the wizard for progress + resume. */
+/** Ordered onboarding steps — used by the wizard for resume + progress. */
 export const ONBOARDING_STEPS = [
   "first_name",
   "birth_date",
@@ -67,7 +68,8 @@ export const ONBOARDING_STEPS = [
   "height",
   "weight",
   "life_context",
-  "shift_cycle", // only reached when life_context === "shift_worker"
+  "work_details", // only reached for WORK_CONTEXTS
+  "shift_cycle",  // only reached when life_context === "shift_worker"
   "done",
 ] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
@@ -88,6 +90,8 @@ export async function fetchLifeProfile(): Promise<LifeProfile | null> {
     height_cm: number | null;
     current_weight_kg: number | null;
     life_context: string | null;
+    workplace: string | null;
+    job_title: string | null;
     onboarding_completed_at: string | null;
     onboarding_step: number | null;
   } | null;
@@ -119,6 +123,8 @@ export async function fetchLifeProfile(): Promise<LifeProfile | null> {
     height_cm: profile?.height_cm ?? null,
     weight_kg: profile?.current_weight_kg ?? null,
     life_context: (profile?.life_context as LifeContext | null) ?? null,
+    workplace: profile?.workplace ?? null,
+    job_title: profile?.job_title ?? null,
     shift_cycle,
     onboarding_completed_at: profile?.onboarding_completed_at ?? null,
     onboarding_step: profile?.onboarding_step ?? 0,
@@ -132,6 +138,8 @@ export async function patchLifeProfile(patch: {
   height_cm?: number | null;
   weight_kg?: number | null;
   life_context?: LifeContext | null;
+  workplace?: string | null;
+  job_title?: string | null;
   onboarding_step?: number;
   onboarding_completed_at?: string | null;
 }): Promise<void> {
@@ -144,6 +152,8 @@ export async function patchLifeProfile(patch: {
   if (patch.height_cm !== undefined) row.height_cm = patch.height_cm;
   if (patch.weight_kg !== undefined) row.current_weight_kg = patch.weight_kg;
   if (patch.life_context !== undefined) row.life_context = patch.life_context;
+  if (patch.workplace !== undefined) row.workplace = patch.workplace;
+  if (patch.job_title !== undefined) row.job_title = patch.job_title;
   if (patch.onboarding_step !== undefined) row.onboarding_step = patch.onboarding_step;
   if (patch.onboarding_completed_at !== undefined)
     row.onboarding_completed_at = patch.onboarding_completed_at;
@@ -174,17 +184,14 @@ export async function saveShiftCycle(cycle: ShiftCycle): Promise<void> {
 }
 
 /**
- * Whether onboarding needs to run. We consider it "done" only when the
- * user has an explicit completion timestamp — this way a partial profile
- * from a previous version still triggers the wizard once.
+ * Whether onboarding needs to run. Only an explicit completion timestamp
+ * counts as "done" so partial profiles still trigger the wizard once.
  */
 export function needsOnboarding(p: LifeProfile | null): boolean {
   return !p || !p.onboarding_completed_at;
 }
 
-/**
- * Compute the next unfinished step, so the wizard resumes where the user left off.
- */
+/** Compute the next unfinished step so the wizard resumes where it left off. */
 export function nextOnboardingStep(p: LifeProfile | null): OnboardingStep {
   if (!p) return "first_name";
   if (!p.first_name) return "first_name";
@@ -193,6 +200,35 @@ export function nextOnboardingStep(p: LifeProfile | null): OnboardingStep {
   if (!p.height_cm) return "height";
   if (!p.weight_kg) return "weight";
   if (!p.life_context) return "life_context";
+  if (WORK_CONTEXTS.includes(p.life_context) && !p.workplace && !p.job_title)
+    return "work_details";
   if (p.life_context === "shift_worker" && !p.shift_cycle) return "shift_cycle";
   return "done";
+}
+
+/* ---------- Developer / maintenance helpers ---------- */
+
+/** Wipe onboarding progress so the wizard shows again next launch. */
+export async function resetOnboarding(): Promise<void> {
+  await patchLifeProfile({ onboarding_step: 0, onboarding_completed_at: null });
+}
+
+/** Blank every Life Profile field (kept row so RLS stays intact). */
+export async function resetLifeProfile(): Promise<void> {
+  await patchLifeProfile({
+    first_name: null,
+    birth_date: null,
+    sex: null,
+    height_cm: null,
+    weight_kg: null,
+    life_context: null,
+    workplace: null,
+    job_title: null,
+    onboarding_step: 0,
+    onboarding_completed_at: null,
+  });
+  const { data: u } = await supabase.auth.getUser();
+  if (u.user) {
+    await supabase.from("shift_config").delete().eq("user_id", u.user.id);
+  }
 }
