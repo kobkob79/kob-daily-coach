@@ -94,14 +94,21 @@ export function LifeProfileOnboarding({ initial, onComplete }: Props) {
       if (step === "height")      patch.height_cm   = heightCm ? Number(heightCm) : null;
       if (step === "weight")      patch.weight_kg   = weightKg ? Number(weightKg) : null;
       if (step === "life_context") patch.life_context = (lifeCtx as LifeContext) || null;
+      if (step === "work_details") {
+        patch.workplace = workplace.trim() || null;
+        patch.job_title = jobTitle.trim() || null;
+      }
 
       if (step === "shift_cycle") {
+        const anchor = cycleStartMode === "today"
+          ? format(new Date(), "yyyy-MM-dd")
+          : (cycleStartDate || format(new Date(), "yyyy-MM-dd"));
         await saveShiftCycle({
           cycle_length: Math.max(1, Number(cycleLen) || 0),
           day_shifts:   Math.max(0, Number(dayShifts) || 0),
           night_shifts: Math.max(0, Number(nightShifts) || 0),
           off_days:     Math.max(0, Number(offDays) || 0),
-          anchor_date:  format(new Date(), "yyyy-MM-dd"),
+          anchor_date:  anchor,
         });
       }
 
@@ -112,6 +119,7 @@ export function LifeProfileOnboarding({ initial, onComplete }: Props) {
       qc.invalidateQueries({ queryKey: ["life-profile"] });
       qc.invalidateQueries({ queryKey: ["profile"] });
       qc.invalidateQueries({ queryKey: ["shift-config"] });
+      qc.invalidateQueries({ queryKey: ["day-context"] });
       if (next === "done") onComplete();
       else setStep(next);
     },
@@ -126,37 +134,23 @@ export function LifeProfileOnboarding({ initial, onComplete }: Props) {
       case "height":       return Number(heightCm) > 0;
       case "weight":       return Number(weightKg) > 0;
       case "life_context": return !!lifeCtx;
+      case "work_details": return true; // both fields optional
       case "shift_cycle": {
         const c = Number(cycleLen), d = Number(dayShifts), n = Number(nightShifts), o = Number(offDays);
-        return c > 0 && d + n + o === c;
+        const anchorOk = cycleStartMode === "today" || !!cycleStartDate;
+        return c > 0 && d + n + o === c && anchorOk;
       }
       default: return true;
     }
   })();
 
   const nextStep = (): OnboardingStep => {
-    switch (step) {
-      case "first_name":   return "birth_date";
-      case "birth_date":   return "sex";
-      case "sex":          return "height";
-      case "height":       return "weight";
-      case "weight":       return "life_context";
-      case "life_context": return lifeCtx === "shift_worker" ? "shift_cycle" : "done";
-      case "shift_cycle":  return "done";
-      default:             return "done";
-    }
+    const i = flow.indexOf(step);
+    return flow[Math.min(flow.length - 1, i + 1)];
   };
-
   const prevStep = (): OnboardingStep | null => {
-    switch (step) {
-      case "birth_date":   return "first_name";
-      case "sex":          return "birth_date";
-      case "height":       return "sex";
-      case "weight":       return "height";
-      case "life_context": return "weight";
-      case "shift_cycle":  return "life_context";
-      default:             return null;
-    }
+    const i = flow.indexOf(step);
+    return i > 0 ? flow[i - 1] : null;
   };
 
   const title = t(`onboarding.step.${step}.title`);
