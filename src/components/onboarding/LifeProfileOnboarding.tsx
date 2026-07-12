@@ -245,6 +245,23 @@ export function LifeProfileOnboarding({ initial, onComplete }: Props) {
               stacked
             />
           )}
+          {step === "work_details" && (
+            <div className="space-y-3">
+              <Field label={t("onboarding.field.workplace")}>
+                <Input dir="rtl" value={workplace}
+                  onChange={(e) => setWorkplace(e.target.value)}
+                  placeholder={t("onboarding.field.workplacePh")} />
+              </Field>
+              <Field label={t("onboarding.field.jobTitle")}>
+                <Input dir="rtl" value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
+                  placeholder={t("onboarding.field.jobTitlePh")} />
+              </Field>
+              <p className="text-[11px] text-muted-foreground">
+                {t("onboarding.field.workOptional")}
+              </p>
+            </div>
+          )}
           {step === "shift_cycle" && (
             <div className="space-y-3">
               <Field label={t("onboarding.field.cycleLength")}>
@@ -273,6 +290,24 @@ export function LifeProfileOnboarding({ initial, onComplete }: Props) {
               <p className="text-[11px] text-muted-foreground">
                 {t("onboarding.field.cycleSumHint")}
               </p>
+
+              <div className="pt-2">
+                <p className="mb-2 text-xs text-muted-foreground">{t("onboarding.field.cycleStart")}</p>
+                <PillGroup
+                  value={cycleStartMode}
+                  onChange={(v) => setCycleStartMode(v as "today" | "pick")}
+                  options={[
+                    { value: "today", label: t("onboarding.field.cycleStartToday") },
+                    { value: "pick",  label: t("onboarding.field.cycleStartPick") },
+                  ]}
+                />
+                {cycleStartMode === "pick" && (
+                  <div className="mt-2">
+                    <Input type="date" value={cycleStartDate}
+                      onChange={(e) => setCycleStartDate(e.target.value)} />
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
