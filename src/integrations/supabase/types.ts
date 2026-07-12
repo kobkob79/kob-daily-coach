@@ -373,6 +373,7 @@ export type Database = {
           gender: string | null
           height_cm: number | null
           id: string
+          job_title: string | null
           life_context: string | null
           onboarding_completed_at: string | null
           onboarding_step: number
@@ -382,6 +383,7 @@ export type Database = {
           updated_at: string
           water_target_ml: number | null
           work_type: string | null
+          workplace: string | null
         }
         Insert: {
           activity_level?: string | null
@@ -396,6 +398,7 @@ export type Database = {
           gender?: string | null
           height_cm?: number | null
           id: string
+          job_title?: string | null
           life_context?: string | null
           onboarding_completed_at?: string | null
           onboarding_step?: number
@@ -405,6 +408,7 @@ export type Database = {
           updated_at?: string
           water_target_ml?: number | null
           work_type?: string | null
+          workplace?: string | null
         }
         Update: {
           activity_level?: string | null
@@ -419,6 +423,7 @@ export type Database = {
           gender?: string | null
           height_cm?: number | null
           id?: string
+          job_title?: string | null
           life_context?: string | null
           onboarding_completed_at?: string | null
           onboarding_step?: number
@@ -428,6 +433,7 @@ export type Database = {
           updated_at?: string
           water_target_ml?: number | null
           work_type?: string | null
+          workplace?: string | null
         }
         Relationships: []
       }

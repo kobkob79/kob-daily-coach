@@ -21,6 +21,7 @@ import { t } from "@/lib/i18n";
 import {
   LIFE_CONTEXTS,
   ONBOARDING_STEPS,
+  WORK_CONTEXTS,
   fetchLifeProfile,
   nextOnboardingStep,
   patchLifeProfile,
@@ -54,16 +55,30 @@ export function LifeProfileOnboarding({ initial, onComplete }: Props) {
   const [heightCm,   setHeightCm]   = useState(initial?.height_cm?.toString() ?? "");
   const [weightKg,   setWeightKg]   = useState(initial?.weight_kg?.toString() ?? "");
   const [lifeCtx,    setLifeCtx]    = useState<LifeContext | "">(initial?.life_context ?? "");
+  const [workplace,  setWorkplace]  = useState(initial?.workplace ?? "");
+  const [jobTitle,   setJobTitle]   = useState(initial?.job_title ?? "");
   const [cycleLen,   setCycleLen]   = useState(initial?.shift_cycle?.cycle_length?.toString() ?? "");
   const [dayShifts,  setDayShifts]  = useState(initial?.shift_cycle?.day_shifts?.toString() ?? "");
   const [nightShifts,setNightShifts]= useState(initial?.shift_cycle?.night_shifts?.toString() ?? "");
   const [offDays,    setOffDays]    = useState(initial?.shift_cycle?.off_days?.toString() ?? "");
-
-  const totalSteps = useMemo(
-    () => (lifeCtx === "shift_worker" ? ONBOARDING_STEPS.length - 1 : ONBOARDING_STEPS.length - 2),
-    [lifeCtx],
+  const [cycleStartMode, setCycleStartMode] = useState<"today" | "pick">(
+    initial?.shift_cycle?.anchor_date ? "pick" : "today",
   );
-  const currentIndex = ONBOARDING_STEPS.indexOf(step);
+  const [cycleStartDate, setCycleStartDate] = useState(
+    initial?.shift_cycle?.anchor_date ?? format(new Date(), "yyyy-MM-dd"),
+  );
+
+  // Which steps actually apply for the current life context, in order.
+  const flow = useMemo<OnboardingStep[]>(() => {
+    const base: OnboardingStep[] = ["first_name","birth_date","sex","height","weight","life_context"];
+    if (lifeCtx && WORK_CONTEXTS.includes(lifeCtx as LifeContext)) base.push("work_details");
+    if (lifeCtx === "shift_worker") base.push("shift_cycle");
+    base.push("done");
+    return base;
+  }, [lifeCtx]);
+
+  const totalSteps = flow.length - 1; // exclude "done"
+  const currentIndex = Math.max(0, flow.indexOf(step));
   const progress = Math.min(1, (currentIndex + 1) / totalSteps);
 
   const persistStep = useMutation({
@@ -79,14 +94,21 @@ export function LifeProfileOnboarding({ initial, onComplete }: Props) {
       if (step === "height")      patch.height_cm   = heightCm ? Number(heightCm) : null;
       if (step === "weight")      patch.weight_kg   = weightKg ? Number(weightKg) : null;
       if (step === "life_context") patch.life_context = (lifeCtx as LifeContext) || null;
+      if (step === "work_details") {
+        patch.workplace = workplace.trim() || null;
+        patch.job_title = jobTitle.trim() || null;
+      }
 
       if (step === "shift_cycle") {
+        const anchor = cycleStartMode === "today"
+          ? format(new Date(), "yyyy-MM-dd")
+          : (cycleStartDate || format(new Date(), "yyyy-MM-dd"));
         await saveShiftCycle({
           cycle_length: Math.max(1, Number(cycleLen) || 0),
           day_shifts:   Math.max(0, Number(dayShifts) || 0),
           night_shifts: Math.max(0, Number(nightShifts) || 0),
           off_days:     Math.max(0, Number(offDays) || 0),
-          anchor_date:  format(new Date(), "yyyy-MM-dd"),
+          anchor_date:  anchor,
         });
       }
 
@@ -97,6 +119,7 @@ export function LifeProfileOnboarding({ initial, onComplete }: Props) {
       qc.invalidateQueries({ queryKey: ["life-profile"] });
       qc.invalidateQueries({ queryKey: ["profile"] });
       qc.invalidateQueries({ queryKey: ["shift-config"] });
+      qc.invalidateQueries({ queryKey: ["day-context"] });
       if (next === "done") onComplete();
       else setStep(next);
     },
@@ -111,37 +134,23 @@ export function LifeProfileOnboarding({ initial, onComplete }: Props) {
       case "height":       return Number(heightCm) > 0;
       case "weight":       return Number(weightKg) > 0;
       case "life_context": return !!lifeCtx;
+      case "work_details": return true; // both fields optional
       case "shift_cycle": {
         const c = Number(cycleLen), d = Number(dayShifts), n = Number(nightShifts), o = Number(offDays);
-        return c > 0 && d + n + o === c;
+        const anchorOk = cycleStartMode === "today" || !!cycleStartDate;
+        return c > 0 && d + n + o === c && anchorOk;
       }
       default: return true;
     }
   })();
 
   const nextStep = (): OnboardingStep => {
-    switch (step) {
-      case "first_name":   return "birth_date";
-      case "birth_date":   return "sex";
-      case "sex":          return "height";
-      case "height":       return "weight";
-      case "weight":       return "life_context";
-      case "life_context": return lifeCtx === "shift_worker" ? "shift_cycle" : "done";
-      case "shift_cycle":  return "done";
-      default:             return "done";
-    }
+    const i = flow.indexOf(step);
+    return flow[Math.min(flow.length - 1, i + 1)];
   };
-
   const prevStep = (): OnboardingStep | null => {
-    switch (step) {
-      case "birth_date":   return "first_name";
-      case "sex":          return "birth_date";
-      case "height":       return "sex";
-      case "weight":       return "height";
-      case "life_context": return "weight";
-      case "shift_cycle":  return "life_context";
-      default:             return null;
-    }
+    const i = flow.indexOf(step);
+    return i > 0 ? flow[i - 1] : null;
   };
 
   const title = t(`onboarding.step.${step}.title`);
@@ -236,6 +245,23 @@ export function LifeProfileOnboarding({ initial, onComplete }: Props) {
               stacked
             />
           )}
+          {step === "work_details" && (
+            <div className="space-y-3">
+              <Field label={t("onboarding.field.workplace")}>
+                <Input dir="rtl" value={workplace}
+                  onChange={(e) => setWorkplace(e.target.value)}
+                  placeholder={t("onboarding.field.workplacePh")} />
+              </Field>
+              <Field label={t("onboarding.field.jobTitle")}>
+                <Input dir="rtl" value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
+                  placeholder={t("onboarding.field.jobTitlePh")} />
+              </Field>
+              <p className="text-[11px] text-muted-foreground">
+                {t("onboarding.field.workOptional")}
+              </p>
+            </div>
+          )}
           {step === "shift_cycle" && (
             <div className="space-y-3">
               <Field label={t("onboarding.field.cycleLength")}>
@@ -264,6 +290,24 @@ export function LifeProfileOnboarding({ initial, onComplete }: Props) {
               <p className="text-[11px] text-muted-foreground">
                 {t("onboarding.field.cycleSumHint")}
               </p>
+
+              <div className="pt-2">
+                <p className="mb-2 text-xs text-muted-foreground">{t("onboarding.field.cycleStart")}</p>
+                <PillGroup
+                  value={cycleStartMode}
+                  onChange={(v) => setCycleStartMode(v as "today" | "pick")}
+                  options={[
+                    { value: "today", label: t("onboarding.field.cycleStartToday") },
+                    { value: "pick",  label: t("onboarding.field.cycleStartPick") },
+                  ]}
+                />
+                {cycleStartMode === "pick" && (
+                  <div className="mt-2">
+                    <Input type="date" value={cycleStartDate}
+                      onChange={(e) => setCycleStartDate(e.target.value)} />
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
