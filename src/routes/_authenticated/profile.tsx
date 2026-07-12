@@ -174,7 +174,18 @@ function ProfileHeader({ profile, onChanged }: { profile: Profile | null; onChan
 
 /* ---------------- Summary (read-only view) ---------------- */
 
-function ProfileSummary({ profile }: { profile: Profile | null }) {
+function ProfileSummary({ profile, life }: { profile: Profile | null; life: import("@/lib/life-profile").LifeProfile | null }) {
+  const workplace = life?.workplace ?? null;
+  const jobTitle = life?.job_title ?? null;
+  const lifeCtx = life?.life_context ?? null;
+  const cycle = life?.shift_cycle ?? null;
+  const shiftSummary = cycle
+    ? t("profile.shift.summary")
+        .replace("{d}", String(cycle.day_shifts))
+        .replace("{n}", String(cycle.night_shifts))
+        .replace("{o}", String(cycle.off_days))
+        .replace("{c}", String(cycle.cycle_length))
+    : null;
   const rows: { labelKey: string; value: string | null }[] = [
     { labelKey: "profile.field.fullName", value: profile?.full_name ?? null },
     { labelKey: "profile.field.birthDate", value: profile?.birth_date ?? null },
@@ -186,7 +197,11 @@ function ProfileSummary({ profile }: { profile: Profile | null }) {
     { labelKey: "profile.field.waterTarget", value: profile?.water_target_ml ? `${profile.water_target_ml} מ״ל` : null },
     { labelKey: "profile.field.calorieTarget", value: profile?.calorie_target ? `${profile.calorie_target} קק״ל` : null },
     { labelKey: "profile.field.activity", value: profile?.activity_level ? t(`profile.activity.${profile.activity_level}`) : null },
-    { labelKey: "profile.field.work", value: profile?.work_type ? t(`profile.work.${profile.work_type}`) : null },
+    { labelKey: "profile.field.lifeContext", value: lifeCtx ? t(`life.ctx.${lifeCtx}`) : null },
+    { labelKey: "profile.field.workplace", value: workplace },
+    { labelKey: "profile.field.jobTitle", value: jobTitle },
+    { labelKey: "profile.field.workType", value: profile?.work_type ? t(`profile.work.${profile.work_type}`) : null },
+    { labelKey: "profile.field.shiftCycle", value: shiftSummary },
   ];
 
   return (
