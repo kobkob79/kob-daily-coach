@@ -86,7 +86,7 @@ function ProfilePage() {
           }}
         />
       ) : (
-        <ProfileSummary profile={profileQ.data ?? null} />
+        <ProfileSummary profile={profileQ.data ?? null} life={lifeQ.data ?? null} />
       )}
 
       <BodyPhotosSection
@@ -95,6 +95,8 @@ function ProfilePage() {
       />
 
       <KnowledgeSection profile={profileQ.data ?? null} memory={memoryQ.data ?? {}} />
+
+      {import.meta.env.DEV && <DevToolsCard />}
     </div>
   );
 }
