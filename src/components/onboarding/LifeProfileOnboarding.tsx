@@ -55,16 +55,30 @@ export function LifeProfileOnboarding({ initial, onComplete }: Props) {
   const [heightCm,   setHeightCm]   = useState(initial?.height_cm?.toString() ?? "");
   const [weightKg,   setWeightKg]   = useState(initial?.weight_kg?.toString() ?? "");
   const [lifeCtx,    setLifeCtx]    = useState<LifeContext | "">(initial?.life_context ?? "");
+  const [workplace,  setWorkplace]  = useState(initial?.workplace ?? "");
+  const [jobTitle,   setJobTitle]   = useState(initial?.job_title ?? "");
   const [cycleLen,   setCycleLen]   = useState(initial?.shift_cycle?.cycle_length?.toString() ?? "");
   const [dayShifts,  setDayShifts]  = useState(initial?.shift_cycle?.day_shifts?.toString() ?? "");
   const [nightShifts,setNightShifts]= useState(initial?.shift_cycle?.night_shifts?.toString() ?? "");
   const [offDays,    setOffDays]    = useState(initial?.shift_cycle?.off_days?.toString() ?? "");
-
-  const totalSteps = useMemo(
-    () => (lifeCtx === "shift_worker" ? ONBOARDING_STEPS.length - 1 : ONBOARDING_STEPS.length - 2),
-    [lifeCtx],
+  const [cycleStartMode, setCycleStartMode] = useState<"today" | "pick">(
+    initial?.shift_cycle?.anchor_date ? "pick" : "today",
   );
-  const currentIndex = ONBOARDING_STEPS.indexOf(step);
+  const [cycleStartDate, setCycleStartDate] = useState(
+    initial?.shift_cycle?.anchor_date ?? format(new Date(), "yyyy-MM-dd"),
+  );
+
+  // Which steps actually apply for the current life context, in order.
+  const flow = useMemo<OnboardingStep[]>(() => {
+    const base: OnboardingStep[] = ["first_name","birth_date","sex","height","weight","life_context"];
+    if (lifeCtx && WORK_CONTEXTS.includes(lifeCtx as LifeContext)) base.push("work_details");
+    if (lifeCtx === "shift_worker") base.push("shift_cycle");
+    base.push("done");
+    return base;
+  }, [lifeCtx]);
+
+  const totalSteps = flow.length - 1; // exclude "done"
+  const currentIndex = Math.max(0, flow.indexOf(step));
   const progress = Math.min(1, (currentIndex + 1) / totalSteps);
 
   const persistStep = useMutation({
