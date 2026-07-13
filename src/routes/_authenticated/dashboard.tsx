@@ -416,7 +416,13 @@ function Dashboard() {
       {showIntake && !showOnboarding && (
         <MorningIntake
           bioDay={bioDay}
-          onComplete={() => queryClient.invalidateQueries({ queryKey: ["day-intake", bioDay] })}
+          context={dayCtxQ.data ?? null}
+          hasChronicPain={chronicPainQ.data ?? false}
+          firstName={lifeQ.data?.first_name ?? null}
+          onComplete={() => {
+            queryClient.invalidateQueries({ queryKey: ["day-intake", bioDay] });
+            queryClient.invalidateQueries({ queryKey: ["daily-engine"] });
+          }}
         />
       )}
       {/* Header */}
