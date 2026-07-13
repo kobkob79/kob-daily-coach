@@ -20,6 +20,8 @@ import { buildRecommendations } from "@/lib/intelligence";
 import { SmartRecommendations } from "@/components/dashboard/SmartRecommendations";
 import { fetchLifeProfile, needsOnboarding } from "@/lib/life-profile";
 import { LifeProfileOnboarding } from "@/components/onboarding/LifeProfileOnboarding";
+import { useDayContext } from "@/lib/day-context";
+import { useHasChronicPain } from "@/lib/daily-engine";
 
 import { getShiftPositionForDate } from "@/lib/shift";
 import { AIHeroCard } from "@/components/dashboard/AIHeroCard";
