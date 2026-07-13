@@ -1,25 +1,45 @@
 /**
- * Morning Intake — full-screen overlay shown once per biological day.
+ * Morning Intake — dynamic, single-source-of-truth day starter.
  *
- * Collects the day's context (location, intensity, mood, sleep, free text),
- * persists it into ai_memory as `day_intake:<bioDay>`, derives adaptive
- * targets stored as `day_targets:<bioDay>`, and extracts personal facts
- * from the free-text note into `personal_facts`.
+ * The old "one questionnaire fits all" flow is gone. This component asks
+ * ONLY questions the Daily Engine cannot answer for the current user:
+ *
+ *   • Sleep hours + sleep quality       — always
+ *   • Mood                              — always
+ *   • Planned workout today             — always
+ *   • Day status confirmation            — always, but PREFILLED from the
+ *                                          Day Context (shift workers rarely
+ *                                          need to change it)
+ *   • Location                          — skipped for shift workers (their
+ *                                          shift IS the location)
+ *   • Pain level                        — only if the user has a chronic
+ *                                          pain baseline in the last 30 days
+ *   • Free-text note                    — always (feeds personal_facts)
+ *
+ * Writes into `ai_memory` as:
+ *   • day_intake:<bioDay>    — the raw answers (used everywhere)
+ *   • day_targets:<bioDay>   — derived adaptive targets
+ *   • personal_facts         — extracted long-term facts
  */
 import { useEffect, useState } from "react";
 import { Sparkles, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getMemory, setMemory, patchMemory } from "@/lib/ai-memory";
+import { getMemory, setMemory } from "@/lib/ai-memory";
+import type { DayContext, DayKind } from "@/lib/day-context";
 
 type Location = "work" | "home" | "vacation" | "study" | "trip" | "other";
 type Intensity = "calm" | "medium" | "hard";
 type Mood = "great" | "good" | "ok" | "tired" | "exhausted";
 
 export type DayIntake = {
-  location: Location;
+  location: Location | null;
   intensity: Intensity;
   mood: Mood;
   sleepHours: number;
+  sleepQuality: number | null;    // 1–5, null when not asked
+  plannedWorkout: boolean | null; // null when not asked
+  painLevel: number | null;       // 0–10, null when user has no chronic pain
+  dayStatusOverride: DayKind | "vacation" | "sick" | null; // user-confirmed override
   note: string;
   createdAt: string;
 };
@@ -56,7 +76,15 @@ const MOODS: { key: Mood; label: string; emoji: string }[] = [
   { key: "exhausted", label: "מותש", emoji: "😣" },
 ];
 
-function deriveTargets(intake: DayIntake): DayTargets {
+const DAY_STATUSES: { key: DayIntake["dayStatusOverride"]; label: string; emoji: string }[] = [
+  { key: "day", label: "יום עבודה", emoji: "☀️" },
+  { key: "night", label: "משמרת לילה", emoji: "🌙" },
+  { key: "off", label: "יום חופשי", emoji: "🌴" },
+  { key: "vacation", label: "חופשה", emoji: "✈️" },
+  { key: "sick", label: "מחלה", emoji: "🤒" },
+];
+
+function deriveTargets(intake: DayIntake, context: DayContext | null): DayTargets {
   let water = 3000;
   let protein = 160;
   let steps = 8000;
@@ -73,24 +101,30 @@ function deriveTargets(intake: DayIntake): DayTargets {
     activity -= 10;
   }
 
-  if (intake.location === "work") {
-    steps = Math.max(steps, 9000);
-    recs.push("הוסף הליכה קצרה בין המשימות.");
-  } else if (intake.location === "vacation") {
-    protein -= 20;
-    recs.push("תיהנה מהיום — שמור על שתייה.");
-  } else if (intake.location === "trip") {
-    steps += 3000;
+  const effectiveStatus = intake.dayStatusOverride ?? context?.kind ?? null;
+  if (effectiveStatus === "night") {
     water += 500;
-  } else if (intake.location === "home") {
-    steps = Math.max(6000, steps - 1000);
+    recs.push("משמרת לילה — קפאין מוקדם, מים לאורך המשמרת.");
+  } else if (effectiveStatus === "off" || effectiveStatus === "vacation") {
+    steps = Math.max(6000, steps - 500);
+    recs.push("יום פנוי — הזדמנות מצוינת לאימון ולארוחה איכותית.");
+  } else if (effectiveStatus === "sick") {
+    activity = Math.max(10, activity - 20);
+    warns.push("יום מחלה — התמקד במים, מנוחה וקלוריות איכותיות.");
   }
 
+  if (intake.location === "work") steps = Math.max(steps, 9000);
+  if (intake.location === "trip") { steps += 3000; water += 500; }
+
   if (intake.sleepHours < 6) {
-    warns.push("ישנת פחות מ־6 שעות — מומלץ להאט היום.");
+    warns.push("ישנת פחות מ־6 שעות — האט היום ותוסיף חלבון.");
     protein += 10;
   } else if (intake.sleepHours >= 8) {
     recs.push("שינה טובה — נצל את האנרגיה לאימון איכותי.");
+  }
+
+  if (intake.sleepQuality != null && intake.sleepQuality <= 2) {
+    warns.push("איכות שינה נמוכה — תזמן הפסקות קצרות במהלך היום.");
   }
 
   if (intake.mood === "tired" || intake.mood === "exhausted") {
@@ -98,19 +132,23 @@ function deriveTargets(intake: DayIntake): DayTargets {
     activity = Math.max(15, activity - 15);
   }
 
-  const note = intake.note.toLowerCase();
-  if (/(אימון|כוח|חדר כושר|gym)/.test(note)) {
+  if (intake.plannedWorkout) {
     protein += 30;
     water += 500;
     recs.push("יש אימון היום — הוסף חלבון ושתייה סביב האימון.");
   }
-  if (/(גב|כאב|פציעה)/.test(note)) {
-    warns.push("שים לב לגב — הקפד על מתיחות קלות.");
+
+  if (intake.painLevel != null && intake.painLevel >= 4) {
+    warns.push("רמת כאב גבוהה — מתיחות ומנוחה עדיפים על אימון עצים.");
+    activity = Math.max(10, activity - 20);
   }
-  if (/(משמרת|לילה|אינטל)/.test(note)) {
-    water += 400;
-    recs.push("משמרת ארוכה — קבע תזכורות מים כל שעה.");
+
+  const note = intake.note.toLowerCase();
+  if (/(אימון|כוח|חדר כושר|gym)/.test(note) && !intake.plannedWorkout) {
+    protein += 30;
+    water += 300;
   }
+  if (/(גב|כאב|פציעה)/.test(note)) warns.push("שים לב לגוף — הקפד על מתיחות קלות.");
 
   return {
     water_ml: Math.round(water),
@@ -138,34 +176,68 @@ function extractFacts(note: string): string[] {
   return facts;
 }
 
+export interface MorningIntakeProps {
+  bioDay: string;
+  onComplete: () => void;
+  /** Auto-derived Day Context; drives which questions are shown. */
+  context?: DayContext | null;
+  /** True when the user has a chronic-pain baseline (recent pain logs). */
+  hasChronicPain?: boolean;
+  firstName?: string | null;
+}
+
 export function MorningIntake({
   bioDay,
   onComplete,
-}: {
-  bioDay: string;
-  onComplete: () => void;
-}) {
+  context = null,
+  hasChronicPain = false,
+  firstName = null,
+}: MorningIntakeProps) {
+  const isShiftWorker = context?.lifeContext === "shift_worker";
+  const askLocation = !isShiftWorker;
+
   const [location, setLocation] = useState<Location | null>(null);
   const [intensity, setIntensity] = useState<Intensity | null>(null);
   const [mood, setMood] = useState<Mood | null>(null);
   const [sleep, setSleep] = useState(7);
+  const [sleepQuality, setSleepQuality] = useState<number>(3);
+  const [plannedWorkout, setPlannedWorkout] = useState<boolean | null>(null);
+  const [painLevel, setPainLevel] = useState<number>(0);
+  const [dayStatus, setDayStatus] = useState<DayIntake["dayStatusOverride"]>(
+    (context?.kind as DayKind | undefined) ?? null,
+  );
   const [note, setNote] = useState("");
   const [building, setBuilding] = useState(false);
 
-  const canSubmit = location && intensity && mood && !building;
+  useEffect(() => {
+    if (context?.kind && !dayStatus) setDayStatus(context.kind);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [context?.kind]);
+
+  const canSubmit =
+    (!askLocation || location) &&
+    intensity &&
+    mood &&
+    plannedWorkout !== null &&
+    !building;
 
   const submit = async () => {
-    if (!location || !intensity || !mood) return;
+    if (!intensity || !mood || plannedWorkout === null) return;
+    if (askLocation && !location) return;
     setBuilding(true);
     const intake: DayIntake = {
-      location,
+      location: askLocation ? location : null,
       intensity,
       mood,
       sleepHours: sleep,
+      sleepQuality,
+      plannedWorkout,
+      painLevel: hasChronicPain ? painLevel : null,
+      dayStatusOverride: dayStatus,
       note: note.trim(),
       createdAt: new Date().toISOString(),
     };
-    const targets = deriveTargets(intake);
+    const targets = deriveTargets(intake, context);
     const facts = extractFacts(intake.note);
 
     await Promise.all([
@@ -180,8 +252,7 @@ export function MorningIntake({
         : Promise.resolve(),
     ]);
 
-    // small delay for the "AI thinking" animation
-    await new Promise((r) => setTimeout(r, 2200));
+    await new Promise((r) => setTimeout(r, 1600));
     setBuilding(false);
     onComplete();
   };
@@ -199,7 +270,7 @@ export function MorningIntake({
           >
             <Sparkles className="h-7 w-7 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold">בוקר טוב 👋</h1>
+          <h1 className="text-2xl font-bold">בוקר טוב{firstName ? ` ${firstName}` : ""} 👋</h1>
           <p className="text-muted-foreground">בוא נבנה את היום שלך.</p>
         </div>
 
@@ -210,20 +281,42 @@ export function MorningIntake({
           </div>
         ) : (
           <>
-            <Section title="איפה תהיה היום?">
+            <Section title={isShiftWorker ? "אישור סטטוס היום" : "איך היום שלך מוגדר?"}>
+              <p className="text-[11px] text-muted-foreground pb-1">
+                {isShiftWorker
+                  ? "לפי המחזור שלך זה מה שהתגלה — שנה רק אם משהו השתנה."
+                  : "יום עבודה, חופשי או משהו אחר?"}
+              </p>
               <div className="grid grid-cols-3 gap-2">
-                {LOCATIONS.map((l) => (
+                {DAY_STATUSES.map((s) => (
                   <ChoiceBtn
-                    key={l.key}
-                    active={location === l.key}
-                    onClick={() => setLocation(l.key)}
+                    key={s.key}
+                    active={dayStatus === s.key}
+                    onClick={() => setDayStatus(s.key)}
                   >
-                    <div className="text-xl">{l.emoji}</div>
-                    <div className="mt-1 text-sm">{l.label}</div>
+                    <div className="text-xl">{s.emoji}</div>
+                    <div className="mt-1 text-xs">{s.label}</div>
                   </ChoiceBtn>
                 ))}
               </div>
             </Section>
+
+            {askLocation && (
+              <Section title="איפה תהיה היום?">
+                <div className="grid grid-cols-3 gap-2">
+                  {LOCATIONS.map((l) => (
+                    <ChoiceBtn
+                      key={l.key}
+                      active={location === l.key}
+                      onClick={() => setLocation(l.key)}
+                    >
+                      <div className="text-xl">{l.emoji}</div>
+                      <div className="mt-1 text-sm">{l.label}</div>
+                    </ChoiceBtn>
+                  ))}
+                </div>
+              </Section>
+            )}
 
             <Section title="רמת הפעילות">
               <div className="grid grid-cols-3 gap-2">
@@ -243,11 +336,7 @@ export function MorningIntake({
             <Section title="איך אתה מרגיש?">
               <div className="grid grid-cols-5 gap-2">
                 {MOODS.map((m) => (
-                  <ChoiceBtn
-                    key={m.key}
-                    active={mood === m.key}
-                    onClick={() => setMood(m.key)}
-                  >
+                  <ChoiceBtn key={m.key} active={mood === m.key} onClick={() => setMood(m.key)}>
                     <div className="text-xl">{m.emoji}</div>
                     <div className="mt-0.5 text-[11px]">{m.label}</div>
                   </ChoiceBtn>
@@ -268,13 +357,57 @@ export function MorningIntake({
               />
             </Section>
 
-            <Section title="ספר ל־Viora בקצרה על היום שלך">
+            <Section title={`איכות השינה · ${["גרועה","בינונית","סבירה","טובה","מצוינת"][sleepQuality-1]}`}>
+              <input
+                type="range"
+                min={1}
+                max={5}
+                step={1}
+                value={sleepQuality}
+                onChange={(e) => setSleepQuality(Number(e.target.value))}
+                className="w-full accent-primary"
+                dir="ltr"
+              />
+            </Section>
+
+            <Section title="מתוכנן אימון היום?">
+              <div className="grid grid-cols-2 gap-2">
+                <ChoiceBtn active={plannedWorkout === true} onClick={() => setPlannedWorkout(true)}>
+                  <div className="text-xl">💪</div>
+                  <div className="mt-1 text-sm">כן</div>
+                </ChoiceBtn>
+                <ChoiceBtn active={plannedWorkout === false} onClick={() => setPlannedWorkout(false)}>
+                  <div className="text-xl">🛋️</div>
+                  <div className="mt-1 text-sm">לא היום</div>
+                </ChoiceBtn>
+              </div>
+            </Section>
+
+            {hasChronicPain && (
+              <Section title={`רמת כאב הבוקר · ${painLevel}/10`}>
+                <p className="text-[11px] text-muted-foreground pb-1">
+                  זיהינו שאתה מתעד כאב בקביעות — כך נדע להתאים את היום.
+                </p>
+                <input
+                  type="range"
+                  min={0}
+                  max={10}
+                  step={1}
+                  value={painLevel}
+                  onChange={(e) => setPainLevel(Number(e.target.value))}
+                  className="w-full accent-primary"
+                  dir="ltr"
+                />
+              </Section>
+            )}
+
+            <Section title="ספר ל־Viora בקצרה על היום שלך (אופציונלי)">
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={3}
                 dir="rtl"
-                placeholder='לדוגמה: "היום יש לי משמרת באינטל" · "יש לי אימון ערב" · "אני עם כאבי גב"'
+                placeholder='לדוגמה: "פגישה חשובה בצהריים" · "אני עם כאבי גב"'
                 className="w-full rounded-2xl border border-border/60 bg-muted/20 p-3 text-sm outline-none focus:border-primary transition-colors resize-none"
               />
             </Section>

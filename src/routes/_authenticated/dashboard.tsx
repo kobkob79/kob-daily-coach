@@ -20,6 +20,8 @@ import { buildRecommendations } from "@/lib/intelligence";
 import { SmartRecommendations } from "@/components/dashboard/SmartRecommendations";
 import { fetchLifeProfile, needsOnboarding } from "@/lib/life-profile";
 import { LifeProfileOnboarding } from "@/components/onboarding/LifeProfileOnboarding";
+import { useDayContext } from "@/lib/day-context";
+import { useHasChronicPain } from "@/lib/daily-engine";
 
 import { getShiftPositionForDate } from "@/lib/shift";
 import { AIHeroCard } from "@/components/dashboard/AIHeroCard";
@@ -404,6 +406,8 @@ function Dashboard() {
     queryFn: fetchLifeProfile,
   });
   const showOnboarding = lifeQ.isSuccess && needsOnboarding(lifeQ.data);
+  const dayCtxQ = useDayContext(now);
+  const chronicPainQ = useHasChronicPain();
 
   return (
     <div className="space-y-6 pb-2">
@@ -416,7 +420,13 @@ function Dashboard() {
       {showIntake && !showOnboarding && (
         <MorningIntake
           bioDay={bioDay}
-          onComplete={() => queryClient.invalidateQueries({ queryKey: ["day-intake", bioDay] })}
+          context={dayCtxQ.data ?? null}
+          hasChronicPain={chronicPainQ.data ?? false}
+          firstName={lifeQ.data?.first_name ?? null}
+          onComplete={() => {
+            queryClient.invalidateQueries({ queryKey: ["day-intake", bioDay] });
+            queryClient.invalidateQueries({ queryKey: ["daily-engine"] });
+          }}
         />
       )}
       {/* Header */}
