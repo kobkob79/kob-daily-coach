@@ -406,6 +406,8 @@ function Dashboard() {
     queryFn: fetchLifeProfile,
   });
   const showOnboarding = lifeQ.isSuccess && needsOnboarding(lifeQ.data);
+  const dayCtxQ = useDayContext(now);
+  const chronicPainQ = useHasChronicPain();
 
   return (
     <div className="space-y-6 pb-2">
