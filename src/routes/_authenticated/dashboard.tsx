@@ -39,6 +39,9 @@ import {
   useDailyBrief,
   type DailyBriefContext,
 } from "@/lib/daily-brief";
+import { buildHomeInsight } from "@/lib/home-insight";
+import { HomeInsightCards } from "@/components/dashboard/HomeInsightCards";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
