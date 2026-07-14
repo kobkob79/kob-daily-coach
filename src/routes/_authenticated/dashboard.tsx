@@ -39,6 +39,9 @@ import {
   useDailyBrief,
   type DailyBriefContext,
 } from "@/lib/daily-brief";
+import { buildHomeInsight } from "@/lib/home-insight";
+import { HomeInsightCards } from "@/components/dashboard/HomeInsightCards";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -175,6 +178,19 @@ function Dashboard() {
       return data ?? [];
     },
   });
+
+  const waterYesterdayQ = useQuery({
+    queryKey: ["daily-events", "yesterday-water", yesterdayIso],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("daily_events")
+        .select("amount")
+        .eq("kind", "water")
+        .eq("biological_day", yesterdayIso);
+      return data ?? [];
+    },
+  });
+
 
   const PROTEIN_TARGET_G = profileQ.data?.protein_target_g ?? PROTEIN_TARGET_G_DEFAULT;
   const WATER_TARGET_ML = profileQ.data?.water_target_ml ?? WATER_TARGET_ML_DEFAULT;
@@ -409,6 +425,56 @@ function Dashboard() {
   const dayCtxQ = useDayContext(now);
   const chronicPainQ = useHasChronicPain();
 
+  // ---- Home Insight (Sprint 4 — AI Home Experience) ----
+  const waterYesterdayMl = (waterYesterdayQ.data ?? []).reduce(
+    (s, e) => s + Number(e.amount ?? 0),
+    0,
+  );
+  const waterYesterdayPct =
+    waterYesterdayQ.isSuccess && WATER_TARGET_ML > 0
+      ? (waterYesterdayMl / WATER_TARGET_ML) * 100
+      : null;
+  const homeInsight = useMemo(
+    () =>
+      buildHomeInsight({
+        now,
+        displayName: lifeQ.data?.first_name?.trim() || displayName,
+        dayContext: dayCtxQ.data ?? null,
+        shift,
+        cycleDay: shiftPos?.indexInPhase ?? null,
+        lastSleepHours,
+        avgSleepHours,
+        proteinToday: protein,
+        proteinTarget: PROTEIN_TARGET_G,
+        waterMlToday: waterMl,
+        waterTargetMl: WATER_TARGET_ML,
+        waterYesterdayPct,
+        workoutTodayMinutes,
+        plannedWorkoutToday: intakeQ.data?.intake?.plannedWorkout ?? null,
+        stepsToday: null,
+        stepsTarget: intakeQ.data?.targets?.steps ?? null,
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      dayCtxQ.data,
+      shift,
+      shiftPos?.indexInPhase,
+      lastSleepHours,
+      avgSleepHours,
+      protein,
+      PROTEIN_TARGET_G,
+      waterMl,
+      WATER_TARGET_ML,
+      waterYesterdayPct,
+      workoutTodayMinutes,
+      intakeQ.data?.intake?.plannedWorkout,
+      intakeQ.data?.targets?.steps,
+      displayName,
+      lifeQ.data?.first_name,
+    ],
+  );
+
+
   return (
     <div className="space-y-6 pb-2">
       {showOnboarding && (
@@ -436,6 +502,10 @@ function Dashboard() {
         </p>
         <h1 className="mt-1.5 text-2xl font-bold tracking-tight">{t("home.title")}</h1>
       </section>
+
+      {/* Sprint 4 — AI Home Experience: Daily Brief · Priorities · Progress */}
+      <HomeInsightCards insight={homeInsight} />
+
 
       {targets && (targets.recommendations.length > 0 || targets.warnings.length > 0) && (
         <div className="rounded-2xl border border-border/50 bg-muted/20 p-4 space-y-2 animate-fade-in">
