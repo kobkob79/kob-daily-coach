@@ -179,6 +179,19 @@ function Dashboard() {
     },
   });
 
+  const waterYesterdayQ = useQuery({
+    queryKey: ["daily-events", "yesterday-water", yesterdayIso],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("daily_events")
+        .select("amount")
+        .eq("kind", "water")
+        .eq("biological_day", yesterdayIso);
+      return data ?? [];
+    },
+  });
+
+
   const PROTEIN_TARGET_G = profileQ.data?.protein_target_g ?? PROTEIN_TARGET_G_DEFAULT;
   const WATER_TARGET_ML = profileQ.data?.water_target_ml ?? WATER_TARGET_ML_DEFAULT;
 
