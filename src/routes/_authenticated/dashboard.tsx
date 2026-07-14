@@ -503,6 +503,10 @@ function Dashboard() {
         <h1 className="mt-1.5 text-2xl font-bold tracking-tight">{t("home.title")}</h1>
       </section>
 
+      {/* Sprint 4 — AI Home Experience: Daily Brief · Priorities · Progress */}
+      <HomeInsightCards insight={homeInsight} />
+
+
       {targets && (targets.recommendations.length > 0 || targets.warnings.length > 0) && (
         <div className="rounded-2xl border border-border/50 bg-muted/20 p-4 space-y-2 animate-fade-in">
           <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
