@@ -8,6 +8,7 @@ import { getShiftForDate, SHIFT_STYLES, SHIFT_HOURS, type ShiftConfig } from "@/
 import { format, subDays, differenceInYears } from "date-fns";
 import { Dumbbell, HeartPulse, CalendarClock, ChevronLeft, BookOpen, Footprints, Flame, Moon, Droplet, Zap, Sparkles } from "lucide-react";
 import { t } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { PremiumCard, SectionHeader, EmptyState } from "@/components/ui-kit/Section";
 import { ProgressRing } from "@/components/ui-kit/ProgressRing";
 import { biologicalDay } from "@/lib/meals";
