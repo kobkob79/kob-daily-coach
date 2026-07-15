@@ -6,8 +6,9 @@ import { getMemory } from "@/lib/ai-memory";
 import { supabase } from "@/integrations/supabase/client";
 import { getShiftForDate, SHIFT_STYLES, SHIFT_HOURS, type ShiftConfig } from "@/lib/shift";
 import { format, subDays, differenceInYears } from "date-fns";
-import { Dumbbell, HeartPulse, CalendarClock, ChevronLeft, BookOpen } from "lucide-react";
+import { Dumbbell, HeartPulse, CalendarClock, ChevronLeft, BookOpen, Footprints, Flame, Moon, Droplet, Zap, Sparkles } from "lucide-react";
 import { t } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { PremiumCard, SectionHeader, EmptyState } from "@/components/ui-kit/Section";
 import { ProgressRing } from "@/components/ui-kit/ProgressRing";
 import { biologicalDay } from "@/lib/meals";
@@ -475,6 +476,28 @@ function Dashboard() {
   );
 
 
+  const greetingHour = now.getHours();
+  const greetingPrefix =
+    greetingHour < 5 ? "לילה טוב" :
+    greetingHour < 12 ? "בוקר טוב" :
+    greetingHour < 17 ? "צהריים טובים" :
+    greetingHour < 21 ? "ערב טוב" : "לילה טוב";
+  const firstName = (lifeQ.data?.first_name?.trim() || displayName || "").split(" ")[0];
+
+  const aiScore = briefCtx?.healthScore ?? homeInsight.progress?.length
+    ? Math.round(
+        (homeInsight.progress ?? []).reduce((s, r) => s + Math.min(100, r.pct), 0) /
+          Math.max(1, (homeInsight.progress ?? []).length),
+      )
+    : 0;
+  const scoreValue = briefCtx?.healthScore ?? aiScore;
+  const ringCircumference = 2 * Math.PI * 88;
+  const ringOffset = ringCircumference * (1 - Math.min(100, scoreValue) / 100);
+
+  const proteinPctInt = Math.round(Math.min(100, proteinPct * 100));
+  const waterPctInt = WATER_TARGET_ML > 0 ? Math.round(Math.min(100, (waterMl / WATER_TARGET_ML) * 100)) : 0;
+  const dateStr = format(now, "EEEE · d MMMM");
+
   return (
     <div className="space-y-6 pb-2">
       {showOnboarding && (
@@ -495,162 +518,213 @@ function Dashboard() {
           }}
         />
       )}
-      {/* Header */}
-      <section className="pt-2">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {format(now, "EEEE · d MMMM")}
+
+      {/* Hero — greeting + AI daily score ring */}
+      <section className="animate-stagger">
+        <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-muted-foreground">
+          {dateStr}
         </p>
-        <h1 className="mt-1.5 text-2xl font-bold tracking-tight">{t("home.title")}</h1>
+        <h1 className="mt-2 text-[34px] font-bold leading-[1.05] tracking-tight">
+          {greetingPrefix},
+          <br />
+          <span className="gradient-text">{firstName || "אורח"}</span>
+        </h1>
+
+        <div className="mt-6 flex flex-col items-center">
+          <div className="relative h-52 w-52">
+            <div className="absolute inset-0 rounded-full bg-primary/20 blur-2xl animate-soft-pulse" aria-hidden />
+            <svg viewBox="0 0 192 192" className="h-full w-full -rotate-90">
+              <circle cx="96" cy="96" r="88" stroke="oklch(1 0 0 / 6%)" strokeWidth="10" fill="none" />
+              <circle
+                cx="96"
+                cy="96"
+                r="88"
+                stroke="url(#scoreGrad)"
+                strokeWidth="10"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray={ringCircumference}
+                strokeDashoffset={ringOffset}
+                style={{ transition: "stroke-dashoffset 1.2s cubic-bezier(0.22, 1, 0.36, 1)" }}
+                className="drop-shadow-[0_0_12px_oklch(0.93_0.24_125/0.55)]"
+              />
+              <defs>
+                <linearGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="oklch(0.93 0.24 125)" />
+                  <stop offset="100%" stopColor="oklch(0.85 0.20 145)" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-6xl font-bold tracking-tighter tabular-nums">{scoreValue}</span>
+              <span className="mt-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                AI Score
+              </span>
+            </div>
+          </div>
+
+          {(homeInsight.headline || briefQ.data?.statusLine) && (
+            <p className="mt-5 max-w-[280px] text-center text-[15px] leading-relaxed text-muted-foreground">
+              {briefQ.data?.statusLine || homeInsight.headline}
+            </p>
+          )}
+        </div>
       </section>
 
-      {/* Sprint 4 — AI Home Experience: Daily Brief · Priorities · Progress */}
-      <HomeInsightCards insight={homeInsight} />
-
-
-      {targets && (targets.recommendations.length > 0 || targets.warnings.length > 0) && (
-        <div className="rounded-2xl border border-border/50 bg-muted/20 p-4 space-y-2 animate-fade-in">
-          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-            היעדים של Viora להיום
-          </p>
-          <div className="grid grid-cols-4 gap-2 text-center">
-            <TargetTile label="מים" value={`${Math.round(targets.water_ml / 100) / 10}L`} />
-            <TargetTile label="חלבון" value={`${targets.protein_g}g`} />
-            <TargetTile label="צעדים" value={`${(targets.steps / 1000).toFixed(1)}K`} />
-            <TargetTile label="פעילות" value={`${targets.activity_min}′`} />
+      {/* Today's priorities */}
+      {homeInsight.priorities.length > 0 && (
+        <section className="animate-stagger">
+          <div className="mb-3 flex items-center justify-between px-1">
+            <h2 className="text-[15px] font-bold tracking-tight">העדיפויות להיום</h2>
+            <span className="text-[11px] font-medium text-muted-foreground">
+              {homeInsight.priorities.length} משימות
+            </span>
           </div>
-          {targets.recommendations.map((r, i) => (
-            <p key={`r-${i}`} className="text-sm text-foreground/80">✨ {r}</p>
-          ))}
-          {targets.warnings.map((w, i) => (
-            <p key={`w-${i}`} className="text-sm text-warning">⚠️ {w}</p>
-          ))}
-        </div>
+          <div className="space-y-2.5">
+            {homeInsight.priorities.map((p, i) => (
+              <div
+                key={p.id}
+                className="glass-tile flex items-center gap-3 p-3.5"
+              >
+                <div
+                  className={cn(
+                    "grid h-11 w-11 shrink-0 place-items-center rounded-2xl",
+                    i === 0 && "bg-primary/15 text-primary",
+                    i === 1 && "bg-accent/20 text-accent",
+                    i === 2 && "bg-white/10 text-foreground",
+                  )}
+                >
+                  <span className="text-sm font-bold tabular-nums">{i + 1}</span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[14px] font-semibold leading-tight">{p.title}</p>
+                  {p.hint && (
+                    <p className="mt-0.5 truncate text-[12px] text-muted-foreground">{p.hint}</p>
+                  )}
+                </div>
+                <ChevronLeft className="h-4 w-4 text-muted-foreground/60 rtl:rotate-180" />
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
-      {/* Today's Story */}
-      <TodaysStoryCard bioDay={bioDay} />
-
-      {/* AI Coach placeholder */}
-      <AICoachPlaceholderCard />
-
-      {/* Body Score placeholder */}
-      <BodyScorePlaceholderCard />
-
-      {/* AI Hero — "היום הגוף שלך אומר..." */}
-      <AIHeroCard
-        brief={briefQ.data}
-        isLoading={briefQ.isLoading || briefQ.isFetching}
-        isError={briefQ.isError}
-        errorMessage={briefErrorMessage}
-        onRetry={() => briefQ.refetch()}
-        displayName={displayName}
-      />
-
-      {/* Live Status Bar */}
-      {briefCtx && (
-        <LiveStatusBar
-          proteinLeftG={proteinLeftG}
-          waterLeftMl={waterLeftMl}
-          supplementsTodayCount={supplementsToday.length}
-          recoveryPct={briefCtx.recoveryPct}
-          calorieNet={calorieNet}
-          healthScore={briefCtx.healthScore}
-          statusLine={briefQ.data?.statusLine}
+      {/* Bento — metrics grid */}
+      <section className="grid grid-cols-2 gap-3 animate-stagger">
+        <MetricTile
+          icon={<Footprints className="h-5 w-5" strokeWidth={1.8} />}
+          label="צעדים"
+          value="—"
+          hint="בקרוב"
+          accent="lime"
         />
-      )}
+        <MetricTile
+          icon={<Flame className="h-5 w-5" strokeWidth={1.8} />}
+          label="קלוריות"
+          value={caloriesEaten > 0 ? Math.round(caloriesEaten).toLocaleString() : "—"}
+          hint={caloriesBurned > 0 ? `נשרפו ${Math.round(caloriesBurned)}` : "עדיין לא נאכל"}
+          accent="orange"
+        />
+        <MetricTile
+          icon={<Moon className="h-5 w-5" strokeWidth={1.8} />}
+          label="שינה"
+          value={lastSleepHours != null ? `${lastSleepHours.toFixed(1)}ש'` : "—"}
+          hint={avgSleepHours != null ? `ממוצע ${avgSleepHours.toFixed(1)}ש'` : "אין נתונים"}
+          accent="indigo"
+        />
+        <MetricTile
+          icon={<HeartPulse className="h-5 w-5" strokeWidth={1.8} />}
+          label="דופק"
+          value="—"
+          hint="חיבור מכשיר"
+          accent="rose"
+        />
+        <MetricTile
+          icon={<Droplet className="h-5 w-5" strokeWidth={1.8} />}
+          label="מים"
+          value={waterMl > 0 ? `${(waterMl / 1000).toFixed(1)}L` : "—"}
+          hint={`${waterPctInt}% מהיעד`}
+          accent="cyan"
+          progress={waterPctInt}
+        />
+        <MetricTile
+          icon={<Zap className="h-5 w-5" strokeWidth={1.8} />}
+          label="חלבון"
+          value={protein > 0 ? `${Math.round(protein)}g` : "—"}
+          hint={`${proteinPctInt}% מהיעד`}
+          accent="lime"
+          progress={proteinPctInt}
+        />
+      </section>
 
-      {/* Body Status */}
-      {bodyCards.length > 0 && <BodyStatusGrid cards={bodyCards} />}
+      {/* AI Coach shortcut */}
+      <Link to="/capture" className="block animate-stagger">
+        <div className="glass-card relative flex items-center gap-4 p-5 overflow-hidden">
+          <div className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-primary/20 blur-2xl" aria-hidden />
+          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-[0_10px_30px_-8px_oklch(0.93_0.24_125/0.55)]">
+            <Sparkles className="h-6 w-6" strokeWidth={2} />
+          </div>
+          <div className="relative min-w-0 flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+              AI Coach
+            </p>
+            <p className="mt-0.5 text-[15px] font-bold leading-tight">המאמן האישי שלך</p>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
+              שאל שאלה או צלם ארוחה, מסמך רפואי, תווית תזונה
+            </p>
+          </div>
+          <ChevronLeft className="h-5 w-5 text-muted-foreground rtl:rotate-180" />
+        </div>
+      </Link>
 
-      {/* AI Daily Analysis */}
-      {briefQ.data && <DailyAnalysisCard brief={briefQ.data} />}
-
-      {/* Smart Coach */}
+      {/* Smart Coach hints */}
       <SmartCoach hints={hints} name={displayName} />
 
-      {/* Deterministic recommendations */}
+      {/* Personalized recommendations */}
       <SmartRecommendations recommendations={recommendations} />
 
-      {/* Water moved to dedicated /hydration page — data still flows into AI brief */}
-
-      {/* Daily Journal — history navigator */}
+      {/* Daily Journal */}
       <Link to="/journal">
-        <PremiumCard interactive className="flex items-center justify-between">
+        <div className="glass-tile flex items-center justify-between p-4">
           <div className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md">
-              <BookOpen className="h-5 w-5" />
+            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-accent/20 text-accent">
+              <BookOpen className="h-5 w-5" strokeWidth={1.8} />
             </div>
             <div>
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
                 {t("home.journal.title")}
               </p>
-              <p className="text-base font-semibold">היום · אתמול · ימים קודמים</p>
-              <p className="text-[11px] text-muted-foreground">{t("home.journal.hint")}</p>
+              <p className="text-[14px] font-semibold">היום · אתמול · ימים קודמים</p>
             </div>
           </div>
           <ChevronLeft className="h-5 w-5 text-muted-foreground rtl:rotate-180" />
-        </PremiumCard>
+        </div>
       </Link>
-
-
 
       {/* Shift banner */}
       {shift && shiftStyle && (
         <Link to="/shift">
-          <PremiumCard interactive className="flex items-center justify-between">
+          <div className="glass-tile flex items-center justify-between p-4">
             <div className="flex items-center gap-3">
-              <div className={`grid h-11 w-11 place-items-center rounded-2xl border ${shiftStyle.className}`}>
-                <CalendarClock className="h-5 w-5" />
+              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-primary/15 text-primary">
+                <CalendarClock className="h-5 w-5" strokeWidth={1.8} />
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
                   {t("shift.today")}
                 </p>
-                <p className="text-base font-semibold">
+                <p className="text-[14px] font-semibold">
                   {shiftStyle.label}
-                  <span className="ms-2 text-xs font-normal text-muted-foreground">
+                  <span className="ms-2 text-[11px] font-normal text-muted-foreground">
                     {SHIFT_HOURS[shift]}
                   </span>
                 </p>
               </div>
             </div>
             <ChevronLeft className="h-5 w-5 text-muted-foreground rtl:rotate-180" />
-          </PremiumCard>
+          </div>
         </Link>
       )}
-
-      {/* Protein progress */}
-      <section>
-        <SectionHeader title={t("home.section.protein")} />
-        <PremiumCard>
-          <div className="flex items-center gap-5">
-            <ProgressRing
-              value={proteinPct}
-              label={`${Math.round(protein)}`}
-              sub={t("common.grams")}
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm text-muted-foreground">
-                {Math.round(protein)} {t("common.grams")} {t("home.protein.of")}{" "}
-                <span className="font-semibold text-foreground">{PROTEIN_TARGET_G}</span>{" "}
-                {t("common.grams")}
-              </p>
-              <p className="mt-1 text-2xl font-bold tracking-tight">
-                {Math.round(Math.min(1, proteinPct) * 100)}%
-              </p>
-              <Link
-                to="/meals"
-                className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary"
-              >
-                {t("action.logMeal")} <ChevronLeft className="h-3.5 w-3.5 rtl:rotate-180" />
-              </Link>
-            </div>
-          </div>
-        </PremiumCard>
-      </section>
-
-      {/* One-tap quick add */}
-      <OneTapBar />
 
       {/* Timeline */}
       <Timeline items={timelineItems} />
@@ -667,7 +741,7 @@ function Dashboard() {
                     className="grid h-11 w-11 place-items-center rounded-2xl"
                     style={{ background: "var(--gradient-primary)" }}
                   >
-                    <Dumbbell className="h-5 w-5 text-primary-foreground" />
+                    <Dumbbell className="h-5 w-5 text-primary-foreground" strokeWidth={1.8} />
                   </div>
                   <div>
                     <p className="font-semibold">{primaryWorkout.name ?? t("timeline.workout")}</p>
@@ -698,12 +772,10 @@ function Dashboard() {
                 <li key={i} className="flex items-center justify-between px-5 py-3.5">
                   <div className="flex items-center gap-3">
                     <div className="grid h-9 w-9 place-items-center rounded-xl bg-muted/50 text-primary">
-                      <HeartPulse className="h-4 w-4" />
+                      <HeartPulse className="h-4 w-4" strokeWidth={1.8} />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">
-                        {t(`health.area.${h.area}`)}
-                      </p>
+                      <p className="text-sm font-medium">{t(`health.area.${h.area}`)}</p>
                       <p className="text-[11px] text-muted-foreground">
                         {format(new Date(h.date), "EEE d MMM")}
                       </p>
@@ -718,10 +790,7 @@ function Dashboard() {
             </ul>
           ) : (
             <div className="p-5">
-              <EmptyState
-                icon={<HeartPulse className="h-5 w-5" />}
-                title={t("home.health.none")}
-              />
+              <EmptyState icon={<HeartPulse className="h-5 w-5" />} title={t("home.health.none")} />
             </div>
           )}
         </PremiumCard>
@@ -730,11 +799,58 @@ function Dashboard() {
   );
 }
 
-function TargetTile({ label, value }: { label: string; value: string }) {
+function MetricTile({
+  icon,
+  label,
+  value,
+  hint,
+  accent,
+  progress,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  hint?: string;
+  accent: "lime" | "indigo" | "cyan" | "orange" | "rose";
+  progress?: number;
+}) {
+  const accentClasses: Record<string, string> = {
+    lime: "text-primary bg-primary/12",
+    indigo: "text-accent bg-accent/20",
+    cyan: "text-sky-300 bg-sky-500/15",
+    orange: "text-orange-300 bg-orange-500/15",
+    rose: "text-rose-300 bg-rose-500/15",
+  };
+  const barClasses: Record<string, string> = {
+    lime: "bg-primary",
+    indigo: "bg-accent",
+    cyan: "bg-sky-400",
+    orange: "bg-orange-400",
+    rose: "bg-rose-400",
+  };
   return (
-    <div className="rounded-xl bg-background/60 p-2">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="text-sm font-semibold">{value}</div>
+    <div className="glass-tile relative flex flex-col gap-3 overflow-hidden p-4">
+      <div className="flex items-start justify-between">
+        <div className={cn("grid h-10 w-10 place-items-center rounded-2xl", accentClasses[accent])}>
+          {icon}
+        </div>
+        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          {label}
+        </span>
+      </div>
+      <div>
+        <p className="text-[24px] font-bold leading-none tracking-tight tabular-nums">{value}</p>
+        {hint && <p className="mt-1.5 text-[11px] text-muted-foreground">{hint}</p>}
+      </div>
+      {typeof progress === "number" && (
+        <div className="h-1 overflow-hidden rounded-full bg-white/5">
+          <div
+            className={cn("h-full rounded-full transition-all duration-700", barClasses[accent])}
+            style={{ width: `${Math.max(2, Math.min(100, progress))}%` }}
+          />
+        </div>
+      )}
     </div>
   );
 }
+
