@@ -201,6 +201,25 @@ html {
   background-image: var(--gradient-hero);
 }
 
+@utility glass-card {
+  background: color-mix(in oklab, var(--color-card) 70%, transparent);
+  border: 1px solid oklch(1 0 0 / 8%);
+  backdrop-filter: blur(24px) saturate(140%);
+  border-radius: 32px;
+  box-shadow: var(--shadow-card);
+}
+
+@utility glass-tile {
+  background: color-mix(in oklab, var(--color-card) 60%, transparent);
+  border: 1px solid oklch(1 0 0 / 6%);
+  backdrop-filter: blur(20px) saturate(140%);
+  border-radius: 28px;
+}
+
+@utility ring-glow-accent {
+  box-shadow: var(--shadow-glow-accent);
+}
+
 @keyframes slide-up {
   from { transform: translateY(20px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
@@ -213,6 +232,17 @@ html {
   0%   { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
+@keyframes soft-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 0.85; transform: scale(1.05); }
+}
+@keyframes stagger-in {
+  from { transform: translateY(14px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
 
-.animate-slide-up { animation: slide-up 0.32s cubic-bezier(0.22, 1, 0.36, 1); }
-.animate-fade-in  { animation: fade-in 0.25s ease-out; }
+.animate-slide-up  { animation: slide-up 0.32s cubic-bezier(0.22, 1, 0.36, 1); }
+.animate-fade-in   { animation: fade-in 0.25s ease-out; }
+.animate-soft-pulse { animation: soft-pulse 4s ease-in-out infinite; }
+.animate-stagger    { animation: stagger-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
