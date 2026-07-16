@@ -550,21 +550,49 @@ function Dashboard() {
         />
       )}
 
-      {/* Hero — greeting + AI daily score ring */}
+      {/* Hero — greeting + AI daily score ring with particles */}
       <section className="animate-stagger">
-        <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-muted-foreground">
-          {dateStr}
-        </p>
-        <h1 className="mt-2 text-[34px] font-bold leading-[1.05] tracking-tight">
-          {greetingPrefix},
-          <br />
-          <span className="gradient-text">{firstName || "אורח"}</span>
-        </h1>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-muted-foreground">
+              {dateStr}
+            </p>
+            <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-tight">
+              {greetingPrefix},
+              <br />
+              <span className="gradient-text">{firstName || "אורח"}</span>
+            </h1>
+          </div>
+          <div className="mt-1 flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-card/60 px-3 py-1.5 backdrop-blur-xl">
+            <Sun className="h-4 w-4 text-warning" strokeWidth={1.8} />
+            <span className="text-[12px] font-semibold tabular-nums">22°</span>
+          </div>
+        </div>
 
-        <div className="mt-6 flex flex-col items-center">
-          <div className="relative h-52 w-52">
-            <div className="absolute inset-0 rounded-full bg-primary/20 blur-2xl animate-soft-pulse" aria-hidden />
-            <svg viewBox="0 0 192 192" className="h-full w-full -rotate-90">
+        <div className="relative mt-6 flex flex-col items-center">
+          {/* Particle field */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-64 w-64 overflow-visible" aria-hidden>
+            {particles.map((p, i) => (
+              <span
+                key={i}
+                className="absolute bottom-4 rounded-full bg-primary shadow-[0_0_10px_2px_oklch(0.93_0.24_125/0.7)] animate-particle"
+                style={{
+                  left: p.left,
+                  width: p.size,
+                  height: p.size,
+                  opacity: p.opacity,
+                  ["--dur" as string]: p.dur,
+                  ["--delay" as string]: p.delay,
+                  ["--px" as string]: p.px,
+                  ["--py" as string]: p.py,
+                }}
+              />
+            ))}
+          </div>
+
+          <div className="relative h-56 w-56">
+            <div className="absolute inset-2 rounded-full bg-primary/30 animate-breathe" aria-hidden />
+            <svg viewBox="0 0 192 192" className="relative h-full w-full -rotate-90">
               <circle cx="96" cy="96" r="88" stroke="oklch(1 0 0 / 6%)" strokeWidth="10" fill="none" />
               <circle
                 cx="96"
@@ -576,8 +604,8 @@ function Dashboard() {
                 strokeLinecap="round"
                 strokeDasharray={ringCircumference}
                 strokeDashoffset={ringOffset}
-                style={{ transition: "stroke-dashoffset 1.2s cubic-bezier(0.22, 1, 0.36, 1)" }}
-                className="drop-shadow-[0_0_12px_oklch(0.93_0.24_125/0.55)]"
+                style={{ transition: "stroke-dashoffset 1.4s cubic-bezier(0.22, 1, 0.36, 1)" }}
+                className="drop-shadow-[0_0_14px_oklch(0.93_0.24_125/0.65)]"
               />
               <defs>
                 <linearGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1">
@@ -587,18 +615,18 @@ function Dashboard() {
               </defs>
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-6xl font-bold tracking-tighter tabular-nums">{scoreValue}</span>
-              <span className="mt-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+              <span className="text-[64px] font-bold tracking-tighter tabular-nums leading-none">
+                {Math.round(animatedScore)}
+              </span>
+              <span className="mt-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
                 AI Score
               </span>
             </div>
           </div>
 
-          {(homeInsight.headline || briefQ.data?.statusLine) && (
-            <p className="mt-5 max-w-[280px] text-center text-[15px] leading-relaxed text-muted-foreground">
-              {briefQ.data?.statusLine || homeInsight.headline}
-            </p>
-          )}
+          <p className="mt-5 max-w-[300px] text-center text-[15px] font-medium leading-relaxed text-foreground/85">
+            {dynamicInsight}
+          </p>
         </div>
       </section>
 
@@ -615,7 +643,7 @@ function Dashboard() {
             {homeInsight.priorities.map((p, i) => (
               <div
                 key={p.id}
-                className="glass-tile flex items-center gap-3 p-3.5"
+                className="glass-tile flex items-center gap-3 p-3.5 transition-all duration-300"
               >
                 <div
                   className={cn(
@@ -640,53 +668,71 @@ function Dashboard() {
         </section>
       )}
 
-      {/* Bento — metrics grid */}
-      <section className="grid grid-cols-2 gap-3 animate-stagger">
-        <MetricTile
-          icon={<Footprints className="h-5 w-5" strokeWidth={1.8} />}
-          label="צעדים"
-          value="—"
-          hint="בקרוב"
-          accent="lime"
-        />
-        <MetricTile
-          icon={<Flame className="h-5 w-5" strokeWidth={1.8} />}
-          label="קלוריות"
-          value={caloriesEaten > 0 ? Math.round(caloriesEaten).toLocaleString() : "—"}
-          hint={caloriesBurned > 0 ? `נשרפו ${Math.round(caloriesBurned)}` : "עדיין לא נאכל"}
-          accent="orange"
-        />
-        <MetricTile
-          icon={<Moon className="h-5 w-5" strokeWidth={1.8} />}
-          label="שינה"
-          value={lastSleepHours != null ? `${lastSleepHours.toFixed(1)}ש'` : "—"}
-          hint={avgSleepHours != null ? `ממוצע ${avgSleepHours.toFixed(1)}ש'` : "אין נתונים"}
-          accent="indigo"
-        />
-        <MetricTile
-          icon={<HeartPulse className="h-5 w-5" strokeWidth={1.8} />}
-          label="דופק"
-          value="—"
-          hint="חיבור מכשיר"
-          accent="rose"
-        />
-        <MetricTile
-          icon={<Droplet className="h-5 w-5" strokeWidth={1.8} />}
-          label="מים"
-          value={waterMl > 0 ? `${(waterMl / 1000).toFixed(1)}L` : "—"}
-          hint={`${waterPctInt}% מהיעד`}
-          accent="cyan"
-          progress={waterPctInt}
-        />
-        <MetricTile
-          icon={<Zap className="h-5 w-5" strokeWidth={1.8} />}
-          label="חלבון"
-          value={protein > 0 ? `${Math.round(protein)}g` : "—"}
-          hint={`${proteinPctInt}% מהיעד`}
-          accent="lime"
-          progress={proteinPctInt}
-        />
+      {/* Quick Health Snapshot — Steps, Sleep, Heart, Calories */}
+      <section className="animate-stagger">
+        <div className="mb-3 flex items-center justify-between px-1">
+          <h2 className="text-[15px] font-bold tracking-tight">מבט מהיר</h2>
+          <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+            </span>
+            חי
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <SnapshotTile
+            icon={<Footprints className="h-5 w-5" strokeWidth={1.8} />}
+            label="צעדים"
+            value="—"
+            hint="בקרוב"
+            accent="lime"
+          />
+          <SnapshotTile
+            icon={<Moon className="h-5 w-5" strokeWidth={1.8} />}
+            label="שינה"
+            value={lastSleepHours != null ? `${lastSleepHours.toFixed(1)}ש'` : "—"}
+            hint={avgSleepHours != null ? `ממוצע ${avgSleepHours.toFixed(1)}ש'` : "אין נתונים"}
+            accent="indigo"
+          />
+          <SnapshotTile
+            icon={<HeartPulse className="h-5 w-5" strokeWidth={1.8} />}
+            label="דופק"
+            value="—"
+            hint="חיבור מכשיר"
+            accent="rose"
+          />
+          <SnapshotTile
+            icon={<Flame className="h-5 w-5" strokeWidth={1.8} />}
+            label="קלוריות"
+            value={caloriesEaten > 0 ? Math.round(caloriesEaten).toLocaleString() : "—"}
+            hint={caloriesBurned > 0 ? `נשרפו ${Math.round(caloriesBurned)}` : "עדיין לא נאכל"}
+            accent="orange"
+          />
+        </div>
+
+        {/* Water + Protein secondary row (kept from previous functionality) */}
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <SnapshotTile
+            icon={<Droplet className="h-5 w-5" strokeWidth={1.8} />}
+            label="מים"
+            value={waterMl > 0 ? `${(waterMl / 1000).toFixed(1)}L` : "—"}
+            hint={`${waterPctInt}% מהיעד`}
+            accent="cyan"
+            progress={waterPctInt}
+          />
+          <SnapshotTile
+            icon={<Zap className="h-5 w-5" strokeWidth={1.8} />}
+            label="חלבון"
+            value={protein > 0 ? `${Math.round(protein)}g` : "—"}
+            hint={`${proteinPctInt}% מהיעד`}
+            accent="lime"
+            progress={proteinPctInt}
+          />
+        </div>
       </section>
+
+
 
       {/* AI Coach shortcut */}
       <Link to="/capture" className="block animate-stagger">
