@@ -876,7 +876,7 @@ function Dashboard() {
   );
 }
 
-function MetricTile({
+function SnapshotTile({
   icon,
   label,
   value,
