@@ -240,9 +240,21 @@ html {
   from { transform: translateY(14px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
 }
+@keyframes breathe-glow {
+  0%, 100% { opacity: 0.55; transform: scale(1); filter: blur(30px); }
+  50%      { opacity: 0.95; transform: scale(1.08); filter: blur(38px); }
+}
+@keyframes particle-float {
+  0%   { transform: translate3d(0, 0, 0) scale(1);   opacity: 0; }
+  15%  { opacity: 0.9; }
+  100% { transform: translate3d(var(--px, 20px), var(--py, -140px), 0) scale(0.4); opacity: 0; }
+}
 
 .animate-slide-up  { animation: slide-up 0.32s cubic-bezier(0.22, 1, 0.36, 1); }
 .animate-fade-in   { animation: fade-in 0.25s ease-out; }
 .animate-soft-pulse { animation: soft-pulse 4s ease-in-out infinite; }
 .animate-stagger    { animation: stagger-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-breathe    { animation: breathe-glow 4.5s ease-in-out infinite; }
+.animate-particle   { animation: particle-float var(--dur, 6s) ease-out infinite; animation-delay: var(--delay, 0s); }
+
 
