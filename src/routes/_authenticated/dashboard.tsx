@@ -500,6 +500,35 @@ function Dashboard() {
   const waterPctInt = WATER_TARGET_ML > 0 ? Math.round(Math.min(100, (waterMl / WATER_TARGET_ML) * 100)) : 0;
   const dateStr = format(now, "EEEE · d MMMM");
 
+  // Dynamic one-line AI insight below the ring
+  const dynamicInsight = (() => {
+    if (lastSleepHours != null && lastSleepHours >= 7.5) return "הלילה ישנת מצוין 🌙";
+    if (lastSleepHours != null && lastSleepHours < 6) return `ישנת רק ${lastSleepHours.toFixed(1)} שעות — קח את זה בקצב היום.`;
+    if (waterMl > 0 && waterMl < WATER_TARGET_ML * 0.4 && new Date().getHours() >= 12) return "הגיע הזמן לשתות מים 💧";
+    if (protein > 0 && proteinPct < 0.5 && new Date().getHours() >= 15) return `חסרים לך עוד ${Math.max(0, PROTEIN_TARGET_G - Math.round(protein))}g חלבון להיום.`;
+    if (workoutTodayMinutes > 0) return `סיימת אימון של ${workoutTodayMinutes} דקות — כל הכבוד 🔥`;
+    if (homeInsight.headline) return homeInsight.headline;
+    return "בוא נעבור על מה שחשוב היום.";
+  })();
+
+  const animatedScore = useCountUp(scoreValue, 1400);
+
+  // Deterministic-ish particle set — 14 green particles floating up behind ring.
+  const particles = Array.from({ length: 14 }, (_, i) => {
+    const seed = (i * 9301 + 49297) % 233280;
+    const rand = (n: number) => ((seed * (n + 1)) % 233280) / 233280;
+    return {
+      left: `${8 + rand(1) * 84}%`,
+      size: 3 + rand(2) * 5,
+      dur: `${4.5 + rand(3) * 4}s`,
+      delay: `${rand(4) * 5}s`,
+      px: `${(rand(5) - 0.5) * 60}px`,
+      py: `${-100 - rand(6) * 80}px`,
+      opacity: 0.4 + rand(7) * 0.5,
+    };
+  });
+
+
   return (
     <div className="space-y-6 pb-2">
       {showOnboarding && (
