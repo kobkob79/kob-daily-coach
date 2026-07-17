@@ -96,7 +96,7 @@ function ProfilePage() {
 
       <KnowledgeSection profile={profileQ.data ?? null} memory={memoryQ.data ?? {}} />
 
-      {import.meta.env.DEV && <DevToolsCard />}
+      <QAToolsCard />
     </div>
   );
 }
