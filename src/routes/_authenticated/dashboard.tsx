@@ -6,7 +6,7 @@ import { getMemory } from "@/lib/ai-memory";
 import { supabase } from "@/integrations/supabase/client";
 import { getShiftForDate, SHIFT_STYLES, SHIFT_HOURS, type ShiftConfig } from "@/lib/shift";
 import { format, subDays, differenceInYears } from "date-fns";
-import { Dumbbell, HeartPulse, CalendarClock, ChevronLeft, BookOpen, Footprints, Flame, Moon, Droplet, Zap, Sparkles, Sun } from "lucide-react";
+import { Dumbbell, HeartPulse, CalendarClock, ChevronLeft, BookOpen, Footprints, Flame, Moon, Droplet, Zap } from "lucide-react";
 import { useCountUp } from "@/hooks/useCountUp";
 
 import { t } from "@/lib/i18n";
