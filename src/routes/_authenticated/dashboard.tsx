@@ -570,10 +570,7 @@ function Dashboard() {
               <span className="gradient-text">{firstName || "אורח"}</span>
             </h1>
           </div>
-          <div className="mt-1 flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-card/60 px-3 py-1.5 backdrop-blur-xl">
-            <Sun className="h-4 w-4 text-warning" strokeWidth={1.8} />
-            <span className="text-[12px] font-semibold tabular-nums">22°</span>
-          </div>
+          {/* Weather chip hidden until a real weather integration is connected. */}
         </div>
 
         <div className="relative mt-6 flex flex-col items-center">
