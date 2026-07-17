@@ -486,15 +486,22 @@ function Dashboard() {
     greetingHour < 21 ? "ערב טוב" : "לילה טוב";
   const firstName = (lifeQ.data?.first_name?.trim() || displayName || "").split(" ")[0];
 
-  const aiScore = briefCtx?.healthScore ?? homeInsight.progress?.length
-    ? Math.round(
-        (homeInsight.progress ?? []).reduce((s, r) => s + Math.min(100, r.pct), 0) /
-          Math.max(1, (homeInsight.progress ?? []).length),
-      )
-    : 0;
-  const scoreValue = briefCtx?.healthScore ?? aiScore;
+  // ---- AI Score (0–100) ----
+  // Prefer the explicit healthScore from the daily brief when data is
+  // ready; fall back to the average of the home-insight progress rings
+  // (which are themselves clamped 0–100). If neither has data yet we
+  // return null so the UI can show "עדיין לומדת אותך" instead of a
+  // misleading zero.
+  const progressPcts = (homeInsight.progress ?? []).map((r) => Math.min(100, Math.max(0, r.pct)));
+  const insightAvg =
+    progressPcts.length > 0
+      ? Math.round(progressPcts.reduce((s, v) => s + v, 0) / progressPcts.length)
+      : null;
+  const rawScore = briefCtx?.healthScore ?? insightAvg;
+  const hasEnoughData = rawScore != null && progressPcts.length > 0;
+  const scoreValue = hasEnoughData ? Math.min(100, Math.max(0, Math.round(rawScore))) : 0;
   const ringCircumference = 2 * Math.PI * 88;
-  const ringOffset = ringCircumference * (1 - Math.min(100, scoreValue) / 100);
+  const ringOffset = ringCircumference * (1 - scoreValue / 100);
 
   const proteinPctInt = Math.round(Math.min(100, proteinPct * 100));
   const waterPctInt = WATER_TARGET_ML > 0 ? Math.round(Math.min(100, (waterMl / WATER_TARGET_ML) * 100)) : 0;
