@@ -738,25 +738,8 @@ function Dashboard() {
 
 
 
-      {/* AI Coach shortcut */}
-      <Link to="/capture" className="block animate-stagger">
-        <div className="glass-card relative flex items-center gap-4 p-5 overflow-hidden">
-          <div className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-primary/20 blur-2xl" aria-hidden />
-          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-[0_10px_30px_-8px_oklch(0.93_0.24_125/0.55)]">
-            <Sparkles className="h-6 w-6" strokeWidth={2} />
-          </div>
-          <div className="relative min-w-0 flex-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
-              AI Coach
-            </p>
-            <p className="mt-0.5 text-[15px] font-bold leading-tight">המאמן האישי שלך</p>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
-              שאל שאלה או צלם ארוחה, מסמך רפואי, תווית תזונה
-            </p>
-          </div>
-          <ChevronLeft className="h-5 w-5 text-muted-foreground rtl:rotate-180" />
-        </div>
-      </Link>
+      {/* AI Coach shortcut removed — the single global entry point is
+          the center button in the bottom navigation (AskVioraSheet). */}
 
       {/* Smart Coach hints */}
       <SmartCoach hints={hints} name={displayName} />
