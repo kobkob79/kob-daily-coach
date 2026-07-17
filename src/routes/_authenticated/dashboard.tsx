@@ -6,7 +6,7 @@ import { getMemory } from "@/lib/ai-memory";
 import { supabase } from "@/integrations/supabase/client";
 import { getShiftForDate, SHIFT_STYLES, SHIFT_HOURS, type ShiftConfig } from "@/lib/shift";
 import { format, subDays, differenceInYears } from "date-fns";
-import { Dumbbell, HeartPulse, CalendarClock, ChevronLeft, BookOpen, Footprints, Flame, Moon, Droplet, Zap, Sparkles, Sun } from "lucide-react";
+import { Dumbbell, HeartPulse, CalendarClock, ChevronLeft, BookOpen, Footprints, Flame, Moon, Droplet, Zap } from "lucide-react";
 import { useCountUp } from "@/hooks/useCountUp";
 
 import { t } from "@/lib/i18n";
@@ -486,15 +486,22 @@ function Dashboard() {
     greetingHour < 21 ? "ערב טוב" : "לילה טוב";
   const firstName = (lifeQ.data?.first_name?.trim() || displayName || "").split(" ")[0];
 
-  const aiScore = briefCtx?.healthScore ?? homeInsight.progress?.length
-    ? Math.round(
-        (homeInsight.progress ?? []).reduce((s, r) => s + Math.min(100, r.pct), 0) /
-          Math.max(1, (homeInsight.progress ?? []).length),
-      )
-    : 0;
-  const scoreValue = briefCtx?.healthScore ?? aiScore;
+  // ---- AI Score (0–100) ----
+  // Prefer the explicit healthScore from the daily brief when data is
+  // ready; fall back to the average of the home-insight progress rings
+  // (which are themselves clamped 0–100). If neither has data yet we
+  // return null so the UI can show "עדיין לומדת אותך" instead of a
+  // misleading zero.
+  const progressPcts = (homeInsight.progress ?? []).map((r) => Math.min(100, Math.max(0, r.pct)));
+  const insightAvg =
+    progressPcts.length > 0
+      ? Math.round(progressPcts.reduce((s, v) => s + v, 0) / progressPcts.length)
+      : null;
+  const rawScore = briefCtx?.healthScore ?? insightAvg;
+  const hasEnoughData = rawScore != null && progressPcts.length > 0;
+  const scoreValue = hasEnoughData ? Math.min(100, Math.max(0, Math.round(rawScore))) : 0;
   const ringCircumference = 2 * Math.PI * 88;
-  const ringOffset = ringCircumference * (1 - Math.min(100, scoreValue) / 100);
+  const ringOffset = ringCircumference * (1 - scoreValue / 100);
 
   const proteinPctInt = Math.round(Math.min(100, proteinPct * 100));
   const waterPctInt = WATER_TARGET_ML > 0 ? Math.round(Math.min(100, (waterMl / WATER_TARGET_ML) * 100)) : 0;
@@ -563,10 +570,7 @@ function Dashboard() {
               <span className="gradient-text">{firstName || "אורח"}</span>
             </h1>
           </div>
-          <div className="mt-1 flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-card/60 px-3 py-1.5 backdrop-blur-xl">
-            <Sun className="h-4 w-4 text-warning" strokeWidth={1.8} />
-            <span className="text-[12px] font-semibold tabular-nums">22°</span>
-          </div>
+          {/* Weather chip hidden until a real weather integration is connected. */}
         </div>
 
         <div className="relative mt-6 flex flex-col items-center">
@@ -615,12 +619,20 @@ function Dashboard() {
               </defs>
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-[64px] font-bold tracking-tighter tabular-nums leading-none">
-                {Math.round(animatedScore)}
-              </span>
-              <span className="mt-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-                AI Score
-              </span>
+              {hasEnoughData ? (
+                <>
+                  <span className="text-[64px] font-bold tracking-tighter tabular-nums leading-none">
+                    {Math.round(animatedScore)}
+                  </span>
+                  <span className="mt-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                    AI Score
+                  </span>
+                </>
+              ) : (
+                <span className="max-w-[140px] text-center text-[13px] font-semibold leading-snug text-muted-foreground">
+                  עדיין לומדת אותך
+                </span>
+              )}
             </div>
           </div>
 
@@ -672,12 +684,10 @@ function Dashboard() {
       <section className="animate-stagger">
         <div className="mb-3 flex items-center justify-between px-1">
           <h2 className="text-[15px] font-bold tracking-tight">מבט מהיר</h2>
-          <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-            </span>
-            חי
+          {/* "חי" only appears once at least one live device is connected.
+              For now no live sources exist, so we show an honest waiting state. */}
+          <span className="text-[11px] font-medium text-muted-foreground">
+            ממתין לחיבור מכשיר
           </span>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -685,7 +695,7 @@ function Dashboard() {
             icon={<Footprints className="h-5 w-5" strokeWidth={1.8} />}
             label="צעדים"
             value="—"
-            hint="בקרוב"
+            hint="לא מחובר"
             accent="lime"
           />
           <SnapshotTile
@@ -699,7 +709,7 @@ function Dashboard() {
             icon={<HeartPulse className="h-5 w-5" strokeWidth={1.8} />}
             label="דופק"
             value="—"
-            hint="חיבור מכשיר"
+            hint="לא מחובר"
             accent="rose"
           />
           <SnapshotTile
@@ -734,25 +744,8 @@ function Dashboard() {
 
 
 
-      {/* AI Coach shortcut */}
-      <Link to="/capture" className="block animate-stagger">
-        <div className="glass-card relative flex items-center gap-4 p-5 overflow-hidden">
-          <div className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-primary/20 blur-2xl" aria-hidden />
-          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-[0_10px_30px_-8px_oklch(0.93_0.24_125/0.55)]">
-            <Sparkles className="h-6 w-6" strokeWidth={2} />
-          </div>
-          <div className="relative min-w-0 flex-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
-              AI Coach
-            </p>
-            <p className="mt-0.5 text-[15px] font-bold leading-tight">המאמן האישי שלך</p>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
-              שאל שאלה או צלם ארוחה, מסמך רפואי, תווית תזונה
-            </p>
-          </div>
-          <ChevronLeft className="h-5 w-5 text-muted-foreground rtl:rotate-180" />
-        </div>
-      </Link>
+      {/* AI Coach shortcut removed — the single global entry point is
+          the center button in the bottom navigation (AskVioraSheet). */}
 
       {/* Smart Coach hints */}
       <SmartCoach hints={hints} name={displayName} />

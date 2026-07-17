@@ -36,8 +36,8 @@ import {
   type Profile, type BodyPhoto, type ViewAngle,
 } from "@/lib/profile";
 import { getAllMemory } from "@/lib/ai-memory";
-import { fetchLifeProfile, resetOnboarding, resetLifeProfile } from "@/lib/life-profile";
-import { getDayOverride, setDayOverride, clearDayOverride, type DayKind } from "@/lib/day-context";
+import { fetchLifeProfile } from "@/lib/life-profile";
+import { QAToolsCard } from "@/components/qa/QAToolsCard";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   component: ProfilePage,
@@ -96,7 +96,7 @@ function ProfilePage() {
 
       <KnowledgeSection profile={profileQ.data ?? null} memory={memoryQ.data ?? {}} />
 
-      {import.meta.env.DEV && <DevToolsCard />}
+      <QAToolsCard />
     </div>
   );
 }
@@ -668,78 +668,4 @@ function useSignedUrl(bucket: string, path: string | null) {
   return q.data ?? null;
 }
 
-/* ---------------- Developer Tools (DEV only) ---------------- */
-
-function DevToolsCard() {
-  const qc = useQueryClient();
-  const [override, setOverrideState] = useState<DayKind | null>(() => getDayOverride());
-
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["profile"] });
-    qc.invalidateQueries({ queryKey: ["life-profile"] });
-    qc.invalidateQueries({ queryKey: ["shift-config"] });
-    qc.invalidateQueries({ queryKey: ["day-context"] });
-    qc.invalidateQueries({ queryKey: ["daily-events"] });
-    qc.invalidateQueries({ queryKey: ["daily-notes"] });
-  };
-
-  const resetOnb = useMutation({
-    mutationFn: resetOnboarding,
-    onSuccess: () => { toast.success(t("dev.done")); invalidate(); },
-    onError: (e) => toast.error((e as Error).message),
-  });
-  const resetProfile = useMutation({
-    mutationFn: resetLifeProfile,
-    onSuccess: () => { toast.success(t("dev.done")); invalidate(); },
-    onError: (e) => toast.error((e as Error).message),
-  });
-  const resetToday = useMutation({
-    mutationFn: async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) throw new Error("Not signed in");
-      const today = format(new Date(), "yyyy-MM-dd");
-      await supabase.from("daily_events").delete().eq("user_id", u.user.id).eq("event_date", today);
-      await supabase.from("daily_notes" as never).delete().eq("user_id", u.user.id).eq("note_date", today);
-    },
-    onSuccess: () => { toast.success(t("dev.done")); invalidate(); },
-    onError: (e) => toast.error((e as Error).message),
-  });
-
-  const applyOverride = (k: DayKind | null) => {
-    if (k) setDayOverride(k); else clearDayOverride();
-    setOverrideState(k);
-    invalidate();
-  };
-
-  const confirmAnd = (fn: () => void) => {
-    if (window.confirm(t("dev.confirm"))) fn();
-  };
-
-  return (
-    <PremiumCard className="space-y-4 border-warning/40">
-      <SectionHeader title={t("dev.title")} subtitle={t("dev.subtitle")} />
-
-      <div className="space-y-2">
-        <p className="text-xs font-semibold text-muted-foreground">{t("dev.section.reset")}</p>
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={() => confirmAnd(() => resetOnb.mutate())}>{t("dev.resetOnboarding")}</Button>
-          <Button size="sm" variant="outline" onClick={() => confirmAnd(() => resetProfile.mutate())}>{t("dev.resetLifeProfile")}</Button>
-          <Button size="sm" variant="outline" onClick={() => confirmAnd(() => resetToday.mutate())}>{t("dev.resetToday")}</Button>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <p className="text-xs font-semibold text-muted-foreground">{t("dev.section.simulate")}</p>
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant={override === "day"   ? "default" : "outline"} onClick={() => applyOverride("day")}>{t("dev.simDay")}</Button>
-          <Button size="sm" variant={override === "night" ? "default" : "outline"} onClick={() => applyOverride("night")}>{t("dev.simNight")}</Button>
-          <Button size="sm" variant={override === "off"   ? "default" : "outline"} onClick={() => applyOverride("off")}>{t("dev.simOff")}</Button>
-          <Button size="sm" variant="ghost" onClick={() => applyOverride(null)}>{t("dev.clearSim")}</Button>
-        </div>
-        {override && (
-          <p className="text-[11px] text-warning">{t("dev.overrideActive").replace("{kind}", override)}</p>
-        )}
-      </div>
-    </PremiumCard>
-  );
-}
+/* Developer/QA tools moved to <QAToolsCard> — see src/components/qa/QAToolsCard.tsx */

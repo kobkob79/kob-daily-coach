@@ -1,14 +1,21 @@
 /**
  * AskVioraSheet — the bottom sheet triggered by the center navigation
- * button. Compact (~45% viewport) surface with voice, text, camera and
- * quick suggestion chips. The AI is context-aware: it receives the
- * current pathname so downstream flows can adapt.
+ * button. Compact (~45% viewport, capped at 60%) surface with camera,
+ * text input, quick suggestions and an honest "coming soon" voice
+ * button. The AI is context-aware: it receives the current pathname
+ * so the /ask conversation can adapt.
+ *
+ * Text questions are ALWAYS preserved — we navigate to /ask?q=… so
+ * nothing is silently discarded.
+ * Camera actions route to /capture as before.
  */
 import { useState } from "react";
 import { useRouter } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { Camera, Mic, Send, Sparkles } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { encodeAIContext, screenFromPath, type AIContext } from "@/lib/ai-context";
 
 const SCREEN_LABELS: Record<string, string> = {
   "/dashboard": "מסך הבית",
@@ -43,12 +50,43 @@ export function AskVioraSheet({
   const [text, setText] = useState("");
   const screenLabel = SCREEN_LABELS[pathname] ?? "האפליקציה";
 
+  const buildContext = (): AIContext => {
+    const screen = screenFromPath(pathname);
+    // Only the home screen currently owns rich live context; other
+    // screens send just the screen id and let /ask lazily hydrate.
+    if (screen === "home") {
+      return {
+        screen,
+        shift: null,
+        sleepHours: null,
+        waterMl: null,
+        waterTargetMl: null,
+        proteinG: null,
+        proteinTargetG: null,
+        workoutTodayMinutes: null,
+      };
+    }
+    return { screen } as AIContext;
+  };
+
   const send = (q?: string) => {
     const query = (q ?? text).trim();
     if (!query) return;
     onOpenChange(false);
     setText("");
+    router.navigate({
+      to: "/ask",
+      search: { q: query, ctx: encodeAIContext(buildContext()) },
+    });
+  };
+
+  const openCamera = () => {
+    onOpenChange(false);
     router.navigate({ to: "/capture" });
+  };
+
+  const voiceComingSoon = () => {
+    toast("קלט קולי בפיתוח — יגיע בקרוב", { icon: "🎙️" });
   };
 
   return (
@@ -58,10 +96,18 @@ export function AskVioraSheet({
         className={cn(
           "border-0 bg-transparent p-0 shadow-none",
           "data-[state=open]:duration-300",
+          // Height caps: ~45% default, up to 60% when keyboard is open.
+          // max-h ensures we never cover the full screen.
+          "max-h-[60dvh]",
         )}
       >
         <div className="mx-auto w-full max-w-2xl px-3 pb-[env(safe-area-inset-bottom)]">
-          <div className="relative overflow-hidden rounded-t-[32px] border border-white/10 bg-card/90 p-5 backdrop-blur-2xl shadow-[0_-24px_80px_-20px_oklch(0.93_0.24_125/0.35)]">
+          <div
+            className={cn(
+              "relative flex flex-col overflow-hidden rounded-t-[32px] border border-white/10 bg-card/90 p-5 backdrop-blur-2xl shadow-[0_-24px_80px_-20px_oklch(0.93_0.24_125/0.35)]",
+              "max-h-[60dvh]",
+            )}
+          >
             {/* Ambient glow */}
             <div
               className="pointer-events-none absolute -top-24 left-1/2 h-56 w-56 -translate-x-1/2 rounded-full bg-primary/25 blur-3xl animate-soft-pulse"
@@ -82,27 +128,26 @@ export function AskVioraSheet({
               </div>
             </div>
 
-            {/* Suggestion chips */}
-            <div className="relative -mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => send(s)}
-                  className="shrink-0 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[12.5px] font-medium text-foreground/85 transition hover:border-primary/40 hover:bg-primary/10 hover:text-primary active:scale-95"
-                >
-                  {s}
-                </button>
-              ))}
+            {/* Scrollable body — keyboard-safe */}
+            <div className="relative flex-1 overflow-y-auto pb-3">
+              <div className="-mx-1 mb-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => send(s)}
+                    className="shrink-0 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[12.5px] font-medium text-foreground/85 transition hover:border-primary/40 hover:bg-primary/10 hover:text-primary active:scale-95"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Composer */}
             <div className="relative flex items-center gap-2 rounded-3xl border border-white/10 bg-background/60 p-2">
               <button
                 aria-label="מצלמה"
-                onClick={() => {
-                  onOpenChange(false);
-                  router.navigate({ to: "/capture" });
-                }}
+                onClick={openCamera}
                 className="grid h-10 w-10 place-items-center rounded-2xl bg-white/5 text-foreground/80 transition hover:bg-primary/15 hover:text-primary active:scale-95"
               >
                 <Camera className="h-[18px] w-[18px]" strokeWidth={1.8} />
@@ -116,11 +161,17 @@ export function AskVioraSheet({
                 className="min-w-0 flex-1 bg-transparent px-2 text-[14px] text-foreground placeholder:text-muted-foreground/70 focus:outline-none"
               />
 
+              {/* Voice — honest "coming soon" state */}
               <button
-                aria-label="קול"
-                className="grid h-10 w-10 place-items-center rounded-2xl bg-white/5 text-foreground/80 transition hover:bg-primary/15 hover:text-primary active:scale-95"
+                aria-label="קול (בקרוב)"
+                onClick={voiceComingSoon}
+                title="קלט קולי בפיתוח"
+                className="relative grid h-10 w-10 place-items-center rounded-2xl bg-white/5 text-muted-foreground/70 transition active:scale-95"
               >
-                <Mic className="h-[18px] w-[18px]" strokeWidth={1.8} />
+                <Mic className="h-[18px] w-[18px]" strokeWidth={1.6} />
+                <span className="absolute -top-1 -right-1 rounded-full bg-warning/80 px-1 text-[8px] font-bold text-black">
+                  בקרוב
+                </span>
               </button>
 
               <button
