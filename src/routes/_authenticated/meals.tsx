@@ -264,15 +264,28 @@ function MealsPage() {
         </div>
       </PremiumCard>
 
-      {/* Floating add */}
+      {/* Inline "add meal" card — replaces the previous floating "+" button.
+          Opens the existing bottom sheet with all four entry modes visible. */}
       <button
         type="button"
         onClick={() => openSheet("manual")}
-        aria-label={t("meals.add")}
-        className="fixed bottom-24 end-5 z-40 grid h-14 w-14 place-items-center rounded-full text-primary-foreground shadow-glow transition-transform active:scale-95"
-        style={{ background: "var(--gradient-primary)" }}
+        className="glass-card w-full p-4 text-right transition active:scale-[0.99]"
       >
-        <Plus className="h-6 w-6" strokeWidth={2.5} />
+        <div className="flex items-center gap-3">
+          <span
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-primary-foreground"
+            style={{ background: "var(--gradient-primary)" }}
+          >
+            <Plus className="h-5 w-5" strokeWidth={2.4} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[15px] font-bold leading-tight">{t("meals.add")}</p>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
+              צילום · הזנה בקול · הוספה ידנית · מועדפים
+            </p>
+          </div>
+          <ChevronLeft className="h-5 w-5 text-muted-foreground rtl:rotate-180" />
+        </div>
       </button>
 
       {sheetOpen && (
