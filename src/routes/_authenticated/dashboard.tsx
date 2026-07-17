@@ -619,12 +619,20 @@ function Dashboard() {
               </defs>
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-[64px] font-bold tracking-tighter tabular-nums leading-none">
-                {Math.round(animatedScore)}
-              </span>
-              <span className="mt-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-                AI Score
-              </span>
+              {hasEnoughData ? (
+                <>
+                  <span className="text-[64px] font-bold tracking-tighter tabular-nums leading-none">
+                    {Math.round(animatedScore)}
+                  </span>
+                  <span className="mt-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                    AI Score
+                  </span>
+                </>
+              ) : (
+                <span className="max-w-[140px] text-center text-[13px] font-semibold leading-snug text-muted-foreground">
+                  עדיין לומדת אותך
+                </span>
+              )}
             </div>
           </div>
 
