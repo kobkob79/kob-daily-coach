@@ -684,12 +684,10 @@ function Dashboard() {
       <section className="animate-stagger">
         <div className="mb-3 flex items-center justify-between px-1">
           <h2 className="text-[15px] font-bold tracking-tight">מבט מהיר</h2>
-          <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-            </span>
-            חי
+          {/* "חי" only appears once at least one live device is connected.
+              For now no live sources exist, so we show an honest waiting state. */}
+          <span className="text-[11px] font-medium text-muted-foreground">
+            ממתין לחיבור מכשיר
           </span>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -697,7 +695,7 @@ function Dashboard() {
             icon={<Footprints className="h-5 w-5" strokeWidth={1.8} />}
             label="צעדים"
             value="—"
-            hint="בקרוב"
+            hint="לא מחובר"
             accent="lime"
           />
           <SnapshotTile
@@ -711,7 +709,7 @@ function Dashboard() {
             icon={<HeartPulse className="h-5 w-5" strokeWidth={1.8} />}
             label="דופק"
             value="—"
-            hint="חיבור מכשיר"
+            hint="לא מחובר"
             accent="rose"
           />
           <SnapshotTile
