@@ -36,8 +36,8 @@ import {
   type Profile, type BodyPhoto, type ViewAngle,
 } from "@/lib/profile";
 import { getAllMemory } from "@/lib/ai-memory";
-import { fetchLifeProfile, resetOnboarding, resetLifeProfile } from "@/lib/life-profile";
-import { getDayOverride, setDayOverride, clearDayOverride, type DayKind } from "@/lib/day-context";
+import { fetchLifeProfile } from "@/lib/life-profile";
+import { QAToolsCard } from "@/components/qa/QAToolsCard";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   component: ProfilePage,
