@@ -33,6 +33,7 @@ import { Route as AuthenticatedWorkoutSessionWorkoutIdRouteImport } from './rout
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedWorkoutsSessionSessionIdRouteImport } from './routes/_authenticated/workouts.session.$sessionId'
+import { Route as AuthenticatedWorkoutsSessionSessionIdSummaryRouteImport } from './routes/_authenticated/workouts.session.$sessionId.summary'
 import { Route as AuthenticatedWorkoutsSessionSessionIdBriefRouteImport } from './routes/_authenticated/workouts.session.$sessionId.brief'
 
 const McpRoute = McpRouteImport.update({
@@ -160,6 +161,12 @@ const AuthenticatedWorkoutsSessionSessionIdRoute =
     path: '/session/$sessionId',
     getParentRoute: () => AuthenticatedWorkoutsRoute,
   } as any)
+const AuthenticatedWorkoutsSessionSessionIdSummaryRoute =
+  AuthenticatedWorkoutsSessionSessionIdSummaryRouteImport.update({
+    id: '/summary',
+    path: '/summary',
+    getParentRoute: () => AuthenticatedWorkoutsSessionSessionIdRoute,
+  } as any)
 const AuthenticatedWorkoutsSessionSessionIdBriefRoute =
   AuthenticatedWorkoutsSessionSessionIdBriefRouteImport.update({
     id: '/brief',
@@ -192,6 +199,7 @@ export interface FileRoutesByFullPath {
   '/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
   '/workouts/session/$sessionId': typeof AuthenticatedWorkoutsSessionSessionIdRouteWithChildren
   '/workouts/session/$sessionId/brief': typeof AuthenticatedWorkoutsSessionSessionIdBriefRoute
+  '/workouts/session/$sessionId/summary': typeof AuthenticatedWorkoutsSessionSessionIdSummaryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -218,6 +226,7 @@ export interface FileRoutesByTo {
   '/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
   '/workouts/session/$sessionId': typeof AuthenticatedWorkoutsSessionSessionIdRouteWithChildren
   '/workouts/session/$sessionId/brief': typeof AuthenticatedWorkoutsSessionSessionIdBriefRoute
+  '/workouts/session/$sessionId/summary': typeof AuthenticatedWorkoutsSessionSessionIdSummaryRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -246,6 +255,7 @@ export interface FileRoutesById {
   '/_authenticated/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
   '/_authenticated/workouts/session/$sessionId': typeof AuthenticatedWorkoutsSessionSessionIdRouteWithChildren
   '/_authenticated/workouts/session/$sessionId/brief': typeof AuthenticatedWorkoutsSessionSessionIdBriefRoute
+  '/_authenticated/workouts/session/$sessionId/summary': typeof AuthenticatedWorkoutsSessionSessionIdSummaryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -274,6 +284,7 @@ export interface FileRouteTypes {
     | '/workout-session/$workoutId'
     | '/workouts/session/$sessionId'
     | '/workouts/session/$sessionId/brief'
+    | '/workouts/session/$sessionId/summary'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -300,6 +311,7 @@ export interface FileRouteTypes {
     | '/workout-session/$workoutId'
     | '/workouts/session/$sessionId'
     | '/workouts/session/$sessionId/brief'
+    | '/workouts/session/$sessionId/summary'
   id:
     | '__root__'
     | '/'
@@ -327,6 +339,7 @@ export interface FileRouteTypes {
     | '/_authenticated/workout-session/$workoutId'
     | '/_authenticated/workouts/session/$sessionId'
     | '/_authenticated/workouts/session/$sessionId/brief'
+    | '/_authenticated/workouts/session/$sessionId/summary'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -510,6 +523,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWorkoutsSessionSessionIdRouteImport
       parentRoute: typeof AuthenticatedWorkoutsRoute
     }
+    '/_authenticated/workouts/session/$sessionId/summary': {
+      id: '/_authenticated/workouts/session/$sessionId/summary'
+      path: '/summary'
+      fullPath: '/workouts/session/$sessionId/summary'
+      preLoaderRoute: typeof AuthenticatedWorkoutsSessionSessionIdSummaryRouteImport
+      parentRoute: typeof AuthenticatedWorkoutsSessionSessionIdRoute
+    }
     '/_authenticated/workouts/session/$sessionId/brief': {
       id: '/_authenticated/workouts/session/$sessionId/brief'
       path: '/brief'
@@ -522,12 +542,15 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedWorkoutsSessionSessionIdRouteChildren {
   AuthenticatedWorkoutsSessionSessionIdBriefRoute: typeof AuthenticatedWorkoutsSessionSessionIdBriefRoute
+  AuthenticatedWorkoutsSessionSessionIdSummaryRoute: typeof AuthenticatedWorkoutsSessionSessionIdSummaryRoute
 }
 
 const AuthenticatedWorkoutsSessionSessionIdRouteChildren: AuthenticatedWorkoutsSessionSessionIdRouteChildren =
   {
     AuthenticatedWorkoutsSessionSessionIdBriefRoute:
       AuthenticatedWorkoutsSessionSessionIdBriefRoute,
+    AuthenticatedWorkoutsSessionSessionIdSummaryRoute:
+      AuthenticatedWorkoutsSessionSessionIdSummaryRoute,
   }
 
 const AuthenticatedWorkoutsSessionSessionIdRouteWithChildren =
