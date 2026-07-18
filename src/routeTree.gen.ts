@@ -32,6 +32,7 @@ import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]
 import { Route as AuthenticatedWorkoutSessionWorkoutIdRouteImport } from './routes/_authenticated/workout-session.$workoutId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as AuthenticatedWorkoutsSessionSessionIdBriefRouteImport } from './routes/_authenticated/workouts.session.$sessionId.brief'
 
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
@@ -152,6 +153,12 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedWorkoutsSessionSessionIdBriefRoute =
+  AuthenticatedWorkoutsSessionSessionIdBriefRouteImport.update({
+    id: '/session/$sessionId/brief',
+    path: '/session/$sessionId/brief',
+    getParentRoute: () => AuthenticatedWorkoutsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -172,10 +179,11 @@ export interface FileRoutesByFullPath {
   '/progress': typeof AuthenticatedProgressRoute
   '/shift': typeof AuthenticatedShiftRoute
   '/workout-templates': typeof AuthenticatedWorkoutTemplatesRoute
-  '/workouts': typeof AuthenticatedWorkoutsRoute
+  '/workouts': typeof AuthenticatedWorkoutsRouteWithChildren
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
+  '/workouts/session/$sessionId/brief': typeof AuthenticatedWorkoutsSessionSessionIdBriefRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -196,10 +204,11 @@ export interface FileRoutesByTo {
   '/progress': typeof AuthenticatedProgressRoute
   '/shift': typeof AuthenticatedShiftRoute
   '/workout-templates': typeof AuthenticatedWorkoutTemplatesRoute
-  '/workouts': typeof AuthenticatedWorkoutsRoute
+  '/workouts': typeof AuthenticatedWorkoutsRouteWithChildren
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
+  '/workouts/session/$sessionId/brief': typeof AuthenticatedWorkoutsSessionSessionIdBriefRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -222,10 +231,11 @@ export interface FileRoutesById {
   '/_authenticated/progress': typeof AuthenticatedProgressRoute
   '/_authenticated/shift': typeof AuthenticatedShiftRoute
   '/_authenticated/workout-templates': typeof AuthenticatedWorkoutTemplatesRoute
-  '/_authenticated/workouts': typeof AuthenticatedWorkoutsRoute
+  '/_authenticated/workouts': typeof AuthenticatedWorkoutsRouteWithChildren
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
+  '/_authenticated/workouts/session/$sessionId/brief': typeof AuthenticatedWorkoutsSessionSessionIdBriefRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -252,6 +262,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/workout-session/$workoutId'
+    | '/workouts/session/$sessionId/brief'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -276,6 +287,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/workout-session/$workoutId'
+    | '/workouts/session/$sessionId/brief'
   id:
     | '__root__'
     | '/'
@@ -301,6 +313,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/workout-session/$workoutId'
+    | '/_authenticated/workouts/session/$sessionId/brief'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -477,8 +490,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/workouts/session/$sessionId/brief': {
+      id: '/_authenticated/workouts/session/$sessionId/brief'
+      path: '/session/$sessionId/brief'
+      fullPath: '/workouts/session/$sessionId/brief'
+      preLoaderRoute: typeof AuthenticatedWorkoutsSessionSessionIdBriefRouteImport
+      parentRoute: typeof AuthenticatedWorkoutsRoute
+    }
   }
 }
+
+interface AuthenticatedWorkoutsRouteChildren {
+  AuthenticatedWorkoutsSessionSessionIdBriefRoute: typeof AuthenticatedWorkoutsSessionSessionIdBriefRoute
+}
+
+const AuthenticatedWorkoutsRouteChildren: AuthenticatedWorkoutsRouteChildren = {
+  AuthenticatedWorkoutsSessionSessionIdBriefRoute:
+    AuthenticatedWorkoutsSessionSessionIdBriefRoute,
+}
+
+const AuthenticatedWorkoutsRouteWithChildren =
+  AuthenticatedWorkoutsRoute._addFileChildren(
+    AuthenticatedWorkoutsRouteChildren,
+  )
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAskRoute: typeof AuthenticatedAskRoute
@@ -494,7 +528,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedProgressRoute: typeof AuthenticatedProgressRoute
   AuthenticatedShiftRoute: typeof AuthenticatedShiftRoute
   AuthenticatedWorkoutTemplatesRoute: typeof AuthenticatedWorkoutTemplatesRoute
-  AuthenticatedWorkoutsRoute: typeof AuthenticatedWorkoutsRoute
+  AuthenticatedWorkoutsRoute: typeof AuthenticatedWorkoutsRouteWithChildren
   AuthenticatedWorkoutSessionWorkoutIdRoute: typeof AuthenticatedWorkoutSessionWorkoutIdRoute
 }
 
@@ -512,7 +546,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProgressRoute: AuthenticatedProgressRoute,
   AuthenticatedShiftRoute: AuthenticatedShiftRoute,
   AuthenticatedWorkoutTemplatesRoute: AuthenticatedWorkoutTemplatesRoute,
-  AuthenticatedWorkoutsRoute: AuthenticatedWorkoutsRoute,
+  AuthenticatedWorkoutsRoute: AuthenticatedWorkoutsRouteWithChildren,
   AuthenticatedWorkoutSessionWorkoutIdRoute:
     AuthenticatedWorkoutSessionWorkoutIdRoute,
 }
