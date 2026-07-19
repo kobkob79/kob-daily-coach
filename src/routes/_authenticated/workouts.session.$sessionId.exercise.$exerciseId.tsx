@@ -63,14 +63,14 @@ function ExerciseDetailPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("exercises")
-        .select("id,name,muscle_group,image_url,description")
+        .select("id,name,muscle_group,image_path,description")
         .eq("id", exerciseId)
         .maybeSingle();
       return data as {
         id: string;
         name: string;
         muscle_group: string | null;
-        image_url: string | null;
+        image_path: string | null;
         description: string | null;
       } | null;
     },
@@ -195,8 +195,8 @@ function ExerciseDetailPage() {
 
       {/* Hero */}
       <div className="surface-card overflow-hidden p-0">
-        {exQ.data?.image_url ? (
-          <img src={exQ.data.image_url} alt="" className="h-40 w-full object-cover" />
+        {exQ.data?.image_path ? (
+          <img src={exQ.data.image_path} alt="" className="h-40 w-full object-cover" />
         ) : (
           <div className="grid h-40 place-items-center text-5xl">🏋️</div>
         )}

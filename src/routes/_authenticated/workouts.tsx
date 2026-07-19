@@ -83,15 +83,15 @@ function WorkoutHome() {
     queryFn: async () => {
       const { data } = await supabase
         .from("workout_template_exercises")
-        .select("template_id, position, exercises(image_url)");
+        .select("template_id, position, exercises(image_path)");
       const map = new Map<string, string>();
       for (const row of (data ?? []) as unknown as {
         template_id: string;
         position: number;
-        exercises: { image_url: string | null } | null;
+        exercises: { image_path: string | null } | null;
       }[]) {
-        if (!map.has(row.template_id) && row.exercises?.image_url) {
-          map.set(row.template_id, row.exercises.image_url);
+        if (!map.has(row.template_id) && row.exercises?.image_path) {
+          map.set(row.template_id, row.exercises.image_path);
         }
       }
       return map;

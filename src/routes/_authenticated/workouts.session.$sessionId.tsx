@@ -38,7 +38,7 @@ export const Route = createFileRoute("/_authenticated/workouts/session/$sessionI
   component: OverviewPage,
 });
 
-type Ex = { id: string; name: string; muscle_group: string | null; image_url?: string | null };
+type Ex = { id: string; name: string; muscle_group: string | null; image_path?: string | null };
 
 function OverviewPage() {
   const { sessionId } = Route.useParams();
@@ -68,7 +68,7 @@ function OverviewPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("exercises")
-        .select("id,name,muscle_group,image_url")
+        .select("id,name,muscle_group,image_path")
         .in("id", exerciseIds);
       if (error) throw error;
       return (data ?? []) as Ex[];
@@ -221,10 +221,10 @@ function OverviewPage() {
                     }`}
                   >
                     <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-muted">
-                      {ex?.image_url ? (
+                      {ex?.image_path ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={ex.image_url}
+                          src={ex.image_path}
                           alt=""
                           className={`h-full w-full object-cover ${isDone ? "opacity-40" : ""}`}
                         />
