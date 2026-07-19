@@ -1,12 +1,19 @@
 /**
  * Pre-workout AI briefing screen.
  * Short rule-based 3-line insight before the session begins.
+ * On "Start", seeds planned sets from the template (using last-performance
+ * per exercise when available), then navigates to the overview.
  */
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Play, ChevronRight } from "lucide-react";
-import { buildBriefing, getSession } from "@/lib/workout-session";
+import { toast } from "sonner";
+import {
+  buildBriefing,
+  getSession,
+  seedSessionFromTemplate,
+} from "@/lib/workout-session";
 
 export const Route = createFileRoute("/_authenticated/workouts/session/$sessionId/brief")({
   component: BriefPage,
@@ -35,8 +42,20 @@ function BriefPage() {
     },
   });
 
+  const start = useMutation({
+    mutationFn: async () => {
+      if (q.data?.session?.template_id) {
+        await seedSessionFromTemplate(sessionId, q.data.session.template_id);
+      }
+    },
+    onSuccess: () => {
+      navigate({ to: "/workouts/session/$sessionId", params: { sessionId } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
-    <div className="mx-auto max-w-md space-y-4 py-4">
+    <div dir="rtl" className="mx-auto max-w-md space-y-4 py-4">
       <Button asChild variant="ghost" size="sm">
         <Link to="/workouts">
           <ChevronRight className="ml-1 h-4 w-4 rtl:rotate-180" /> חזור
@@ -66,9 +85,8 @@ function BriefPage() {
       <Button
         size="lg"
         className="h-14 w-full text-lg"
-        onClick={() =>
-          navigate({ to: "/workouts/session/$sessionId", params: { sessionId } })
-        }
+        onClick={() => start.mutate()}
+        disabled={start.isPending}
       >
         <Play className="mr-2 h-5 w-5" /> בואו נתחיל
       </Button>
