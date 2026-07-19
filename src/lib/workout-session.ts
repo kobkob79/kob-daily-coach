@@ -326,3 +326,123 @@ export async function buildBriefing(
   }
   return { todayLine, previousLine, tipLine };
 }
+
+/* --------------------------- Seeding from history --------------------------- */
+
+interface TemplateExerciseRow {
+  exercise_id: string;
+  position: number;
+  target_sets: number;
+  target_reps: number | null;
+  target_weight_kg: number | null;
+}
+
+/**
+ * Return the sets from the user's most recent *completed* session that
+ * included this exercise. Sorted by set_number.
+ */
+export async function getLastPerformanceByExercise(
+  exerciseId: string,
+): Promise<SessionSet[]> {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) return [];
+  // Find most recent completed session containing this exercise
+  const { data: rows } = await (supabase as any)
+    .from("workout_sets")
+    .select("session_id, workout_sessions!inner(status, finished_at)")
+    .eq("user_id", u.user.id)
+    .eq("exercise_id", exerciseId)
+    .eq("workout_sessions.status", "completed")
+    .not("completed_at", "is", null)
+    .order("workout_sessions(finished_at)", { ascending: false })
+    .limit(1);
+  const sessionId = (rows ?? [])[0]?.session_id as string | undefined;
+  if (!sessionId) return [];
+  const { data } = await (supabase as any)
+    .from("workout_sets")
+    .select("*")
+    .eq("session_id", sessionId)
+    .eq("exercise_id", exerciseId)
+    .order("set_number", { ascending: true });
+  return (data ?? []) as SessionSet[];
+}
+
+/**
+ * PR = max weight ever lifted for this exercise (completed sets only).
+ */
+export async function getExercisePR(exerciseId: string): Promise<number> {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) return 0;
+  const { data } = await (supabase as any)
+    .from("workout_sets")
+    .select("weight_kg")
+    .eq("user_id", u.user.id)
+    .eq("exercise_id", exerciseId)
+    .not("completed_at", "is", null)
+    .order("weight_kg", { ascending: false })
+    .limit(1);
+  return (data?.[0]?.weight_kg as number | null) ?? 0;
+}
+
+/**
+ * Seed a session with planned sets. For each template exercise, prefer the
+ * user's last actual performance (weight/reps per set), else fall back to
+ * template targets. Idempotent: if the session already has any sets, no-op.
+ */
+export async function seedSessionFromTemplate(
+  sessionId: string,
+  templateId: string,
+): Promise<void> {
+  const existing = await getSessionSets(sessionId);
+  if (existing.length > 0) return;
+  const { data: rows } = await (supabase as any)
+    .from("workout_template_exercises")
+    .select("exercise_id, position, target_sets, target_reps, target_weight_kg")
+    .eq("template_id", templateId)
+    .order("position");
+  const tplRows = (rows ?? []) as TemplateExerciseRow[];
+  let pos = 0;
+  const DEFAULT_REST = 90;
+  for (const r of tplRows) {
+    const history = await getLastPerformanceByExercise(r.exercise_id);
+    const targetSets = r.target_sets ?? 3;
+    for (let n = 1; n <= targetSets; n++) {
+      pos += 1;
+      const past = history.find((h) => h.set_number === n);
+      await insertPlannedSet({
+        sessionId,
+        exerciseId: r.exercise_id,
+        position: pos,
+        setNumber: n,
+        weightKg: past?.weight_kg ?? r.target_weight_kg ?? null,
+        reps: past?.reps ?? r.target_reps ?? null,
+        plannedRestSec: past?.planned_rest_seconds ?? DEFAULT_REST,
+      });
+    }
+  }
+}
+
+/**
+ * Compare current session's best weight per exercise vs the exercise's PR
+ * BEFORE this session — used to render trophies in the overview.
+ */
+export async function getPriorPRs(
+  exerciseIds: string[],
+  excludeSessionId: string,
+): Promise<Record<string, number>> {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user || exerciseIds.length === 0) return {};
+  const { data } = await (supabase as any)
+    .from("workout_sets")
+    .select("exercise_id, weight_kg")
+    .eq("user_id", u.user.id)
+    .in("exercise_id", exerciseIds)
+    .not("completed_at", "is", null)
+    .neq("session_id", excludeSessionId);
+  const map: Record<string, number> = {};
+  for (const row of (data ?? []) as { exercise_id: string; weight_kg: number | null }[]) {
+    map[row.exercise_id] = Math.max(map[row.exercise_id] ?? 0, row.weight_kg ?? 0);
+  }
+  return map;
+}
+
