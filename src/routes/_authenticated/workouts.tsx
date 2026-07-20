@@ -1,15 +1,21 @@
 /**
  * /workouts — Workout Home.
  *
- * Sprint 2 redesign: premium program-progress card at the top, followed by
- * a timeline of planned workouts for the week. Neon-lime accent for the
- * next workout, green check for completed ones. Cards remain assignable
- * via a lightweight sheet.
+ * Sprint fix: reliable start/resume flow.
+ *  - Tapping the card body OR the "התחל / המשך" button starts/resumes the
+ *    session for that template.
+ *  - Editing (day assignment / template) is only reachable via a dedicated
+ *    pencil icon that stops propagation.
+ *  - A prominent "אימון פעיל" card at the top always resumes the current
+ *    in-progress session, no matter which template it belongs to.
+ *  - Duplicate starts are blocked (mutation-level guard + DB unique index).
+ *  - Trying to start a *different* workout while another is active opens a
+ *    conflict modal with continue / finish-previous / cancel.
  */
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -32,17 +38,24 @@ import {
   ChevronLeft,
   Dumbbell,
   ChartLine,
+  Pencil,
+  Flame,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { t } from "@/lib/i18n";
 import {
-  createSessionFromTemplate,
+  ActiveSessionConflictError,
+  getActiveSession,
   getWeeklyPlan,
   listSessions,
   setPlanSlot,
+  startOrResumeSessionForTemplate,
   WEEKDAY_HE,
   type PlanSlot,
+  type SessionRow,
 } from "@/lib/workout-session";
+import { formatTotalTime } from "@/hooks/useWorkoutTimer";
 
 export const Route = createFileRoute("/_authenticated/workouts")({
   component: WorkoutHome,
@@ -61,6 +74,11 @@ function WorkoutHome() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [editing, setEditing] = useState<number | null>(null);
+  const [conflict, setConflict] = useState<{
+    active: SessionRow;
+    pending: { templateId: string; name: string };
+  } | null>(null);
+  const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null);
 
   const planQ = useQuery({ queryKey: ["weekly-plan"], queryFn: getWeeklyPlan });
   const templatesQ = useQuery({
@@ -77,6 +95,12 @@ function WorkoutHome() {
   const sessionsQ = useQuery({
     queryKey: ["sessions", "recent"],
     queryFn: () => listSessions(30),
+  });
+  const activeQ = useQuery({
+    queryKey: ["active-session"],
+    queryFn: getActiveSession,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30_000,
   });
   const exImagesQ = useQuery({
     queryKey: ["template_hero_images"],
@@ -105,7 +129,6 @@ function WorkoutHome() {
     return map;
   }, [planQ.data]);
 
-  // Progress: completed sessions this week / planned slots
   const weekStart = startOfWeek();
   const completedThisWeek = (sessionsQ.data ?? []).filter(
     (s) =>
@@ -121,6 +144,9 @@ function WorkoutHome() {
   const progress =
     planned.length > 0 ? Math.round((doneCount / planned.length) * 100) : 0;
 
+  const active = activeQ.data ?? null;
+  const activeTemplateId = active?.template_id ?? null;
+
   const nextWeekday = useMemo(() => {
     for (let i = 0; i < 7; i++) {
       const d = (today + i) % 7;
@@ -134,18 +160,39 @@ function WorkoutHome() {
     mutationFn: async (slot: PlanSlot) => {
       if (!slot.template_id) throw new Error("אין תבנית ליום זה");
       const tpl = templatesQ.data?.find((x) => x.id === slot.template_id);
-      return createSessionFromTemplate(
-        slot.template_id,
-        slot.display_name ?? tpl?.name ?? "אימון",
-      );
+      const name = slot.display_name ?? tpl?.name ?? "אימון";
+      return {
+        templateId: slot.template_id,
+        name,
+        result: await startOrResumeSessionForTemplate(slot.template_id, name),
+      };
     },
-    onSuccess: (sessionId) => {
+    onMutate: (slot) => {
+      setPendingTemplateId(slot.template_id ?? null);
+    },
+    onSettled: () => setPendingTemplateId(null),
+    onSuccess: ({ result }) => {
+      qc.invalidateQueries({ queryKey: ["active-session"] });
       navigate({
-        to: "/workouts/session/$sessionId/brief",
-        params: { sessionId },
+        to: "/workouts/session/$sessionId",
+        params: { sessionId: result.sessionId },
       });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (err: unknown, slot) => {
+      if (err instanceof ActiveSessionConflictError && slot.template_id) {
+        const tpl = templatesQ.data?.find((x) => x.id === slot.template_id);
+        setConflict({
+          active: err.active,
+          pending: {
+            templateId: slot.template_id,
+            name: slot.display_name ?? tpl?.name ?? "אימון",
+          },
+        });
+        return;
+      }
+      console.error("[workouts] start failed", err);
+      toast.error("לא הצלחנו להתחיל את האימון — נסה שוב בעוד רגע");
+    },
   });
 
   const programName = planned.length ? "Full Body" : "ללא תוכנית";
@@ -155,7 +202,6 @@ function WorkoutHome() {
 
   return (
     <div dir="rtl" className="space-y-5 pb-4">
-      {/* Header */}
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-extrabold">{t("workouts.title")}</h1>
@@ -175,7 +221,8 @@ function WorkoutHome() {
         </div>
       </header>
 
-      {/* Program progress card */}
+      {active && <ActiveSessionCard session={active} />}
+
       <Link
         to="/workouts/program"
         className="relative block overflow-hidden rounded-3xl border border-primary/30 p-5 hero-glow"
@@ -183,14 +230,7 @@ function WorkoutHome() {
         <div className="flex items-center gap-4">
           <div className="relative h-20 w-20 shrink-0">
             <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
-              <circle
-                cx="50"
-                cy="50"
-                r="42"
-                stroke="oklch(1 0 0 / 8%)"
-                strokeWidth="8"
-                fill="none"
-              />
+              <circle cx="50" cy="50" r="42" stroke="oklch(1 0 0 / 8%)" strokeWidth="8" fill="none" />
               <circle
                 cx="50"
                 cy="50"
@@ -208,9 +248,7 @@ function WorkoutHome() {
             </div>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] uppercase tracking-wider text-primary">
-              תוכנית פעילה
-            </p>
+            <p className="text-[11px] uppercase tracking-wider text-primary">תוכנית פעילה</p>
             <p className="truncate text-lg font-extrabold">תוכנית {programName}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {doneCount} מתוך {planned.length} אימונים השבוע
@@ -220,13 +258,10 @@ function WorkoutHome() {
         </div>
       </Link>
 
-      {/* Weekly timeline */}
       <div>
         <div className="mb-3 flex items-baseline justify-between">
           <h2 className="text-lg font-extrabold">אימוני השבוע</h2>
-          <span className="text-xs text-muted-foreground">
-            {WEEKDAY_HE[today]}
-          </span>
+          <span className="text-xs text-muted-foreground">{WEEKDAY_HE[today]}</span>
         </div>
         <div className="space-y-3">
           {WEEKDAY_HE.map((label, idx) => {
@@ -234,23 +269,52 @@ function WorkoutHome() {
             const tpl = slot?.template_id
               ? templatesQ.data?.find((x) => x.id === slot.template_id)
               : null;
-            const done = slot?.template_id
-              ? doneIds.has(slot.template_id)
-              : false;
+            const done = slot?.template_id ? doneIds.has(slot.template_id) : false;
             const isNext = idx === nextWeekday;
             const isToday = idx === today;
             const image = slot?.template_id
               ? exImagesQ.data?.get(slot.template_id) ?? heroImage
               : null;
+            const isActiveHere =
+              !!activeTemplateId && slot?.template_id === activeTemplateId;
+            const isPending =
+              start.isPending && pendingTemplateId === slot?.template_id;
+
+            const handleCardClick = () => {
+              if (!slot?.template_id) {
+                setEditing(idx);
+                return;
+              }
+              if (start.isPending) return;
+              start.mutate(slot);
+            };
+
             return (
               <div
                 key={idx}
-                className={`flex items-center gap-3 rounded-3xl border p-3 transition ${
-                  isNext
+                role={slot?.template_id ? "button" : undefined}
+                tabIndex={slot?.template_id ? 0 : -1}
+                onClick={slot?.template_id ? handleCardClick : undefined}
+                onKeyDown={
+                  slot?.template_id
+                    ? (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleCardClick();
+                        }
+                      }
+                    : undefined
+                }
+                className={`relative flex items-center gap-3 rounded-3xl border p-3 transition ${
+                  slot?.template_id ? "cursor-pointer active:scale-[0.99]" : ""
+                } ${
+                  isActiveHere
                     ? "border-primary bg-card shadow-glow"
-                    : done
-                      ? "border-primary/30 bg-primary/[0.04]"
-                      : "border-border bg-card"
+                    : isNext
+                      ? "border-primary bg-card shadow-glow"
+                      : done
+                        ? "border-primary/30 bg-primary/[0.04]"
+                        : "border-border bg-card"
                 }`}
               >
                 <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-muted">
@@ -273,40 +337,72 @@ function WorkoutHome() {
                     </div>
                   )}
                 </div>
-                <button
-                  className="min-w-0 flex-1 text-right"
-                  onClick={() => setEditing(idx)}
-                >
+                <div className="min-w-0 flex-1 text-right">
                   <p
                     className={`text-[11px] uppercase tracking-wider ${
-                      isNext ? "text-primary" : "text-muted-foreground"
+                      isNext || isActiveHere ? "text-primary" : "text-muted-foreground"
                     }`}
                   >
                     יום {label}
                     {isToday ? " · היום" : ""}
-                    {isNext ? " · הבא" : ""}
+                    {isActiveHere ? " · פעיל" : isNext ? " · הבא" : ""}
                   </p>
                   <p className="truncate text-base font-bold">
                     {tpl?.name ?? slot?.display_name ?? "יום חופש"}
                   </p>
-                </button>
+                </div>
+
                 {slot?.template_id ? (
-                  done ? (
-                    <span className="text-xs font-semibold text-primary">הושלם</span>
-                  ) : (
-                    <Button
-                      size="sm"
-                      onClick={() => start.mutate(slot)}
-                      disabled={start.isPending}
+                  <>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditing(idx);
+                      }}
+                      aria-label="ערוך יום"
+                      className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted-foreground transition hover:bg-white/5 hover:text-foreground"
                     >
-                      <Play className="ml-1 h-3.5 w-3.5" /> התחל
-                    </Button>
-                  )
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    {done && !isActiveHere ? (
+                      <span className="text-xs font-semibold text-primary">הושלם</span>
+                    ) : (
+                      <Button
+                        size="lg"
+                        className="h-[54px] min-w-[96px] px-5 text-[20px] font-extrabold"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (start.isPending) return;
+                          start.mutate(slot);
+                        }}
+                        disabled={isPending}
+                      >
+                        {isPending ? (
+                          <>
+                            <Loader2 className="ml-1 h-4 w-4 animate-spin" />
+                            מתחיל…
+                          </>
+                        ) : isActiveHere ? (
+                          <>
+                            <Play className="ml-1 h-4 w-4" /> המשך
+                          </>
+                        ) : (
+                          <>
+                            <Play className="ml-1 h-4 w-4" /> התחל
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </>
                 ) : (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setEditing(idx)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditing(idx);
+                    }}
                   >
                     שיוך
                     <ChevronLeft className="mr-1 h-4 w-4 rtl:rotate-180" />
@@ -330,7 +426,121 @@ function WorkoutHome() {
           }}
         />
       )}
+
+      {conflict && (
+        <ConflictDialog
+          active={conflict.active}
+          onClose={() => setConflict(null)}
+          onContinueActive={() => {
+            const id = conflict.active.id;
+            setConflict(null);
+            navigate({ to: "/workouts/session/$sessionId", params: { sessionId: id } });
+          }}
+          onFinishActive={() => {
+            const id = conflict.active.id;
+            setConflict(null);
+            navigate({
+              to: "/workouts/session/$sessionId/summary",
+              params: { sessionId: id },
+            });
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function ActiveSessionCard({ session }: { session: SessionRow }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  const elapsed = Math.max(
+    0,
+    Math.floor((now - new Date(session.started_at).getTime()) / 1000),
+  );
+  return (
+    <Link
+      to="/workouts/session/$sessionId"
+      params={{ sessionId: session.id }}
+      className="block rounded-3xl border-2 border-primary bg-card p-4 shadow-glow transition active:scale-[0.99]"
+      style={{ minHeight: 130 }}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 text-primary">
+            <Flame className="h-4 w-4" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider">
+              אימון פעיל
+            </span>
+          </div>
+          <p className="mt-1 truncate text-[24px] font-extrabold leading-tight">
+            {session.name ?? "אימון"}
+          </p>
+          <p className="mt-1 font-mono text-[30px] font-bold tabular-nums text-primary">
+            {formatTotalTime(elapsed)}
+          </p>
+        </div>
+        <Button
+          size="lg"
+          className="h-[52px] px-5 text-base font-extrabold"
+          onClick={(e) => e.stopPropagation()}
+          asChild
+        >
+          <span>
+            <Play className="ml-1 h-4 w-4" /> המשך אימון
+          </span>
+        </Button>
+      </div>
+    </Link>
+  );
+}
+
+function ConflictDialog({
+  active,
+  onClose,
+  onContinueActive,
+  onFinishActive,
+}: {
+  active: SessionRow;
+  onClose: () => void;
+  onContinueActive: () => void;
+  onFinishActive: () => void;
+}) {
+  const startedMs = new Date(active.started_at).getTime();
+  const elapsed = Math.max(0, Math.floor((Date.now() - startedMs) / 1000));
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-sm" dir="rtl">
+        <DialogHeader>
+          <DialogTitle>יש לך אימון פעיל</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3">
+            <p className="text-base font-bold">{active.name ?? "אימון"}</p>
+            <p className="mt-1 font-mono text-sm text-muted-foreground tabular-nums">
+              {formatTotalTime(elapsed)}
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Button className="h-12 text-base font-bold" onClick={onContinueActive}>
+              המשך אימון פעיל
+            </Button>
+            <Button
+              variant="outline"
+              className="h-12 text-base font-bold"
+              onClick={onFinishActive}
+            >
+              סיים את האימון הקודם
+            </Button>
+            <Button variant="ghost" className="h-12" onClick={onClose}>
+              בטל
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
