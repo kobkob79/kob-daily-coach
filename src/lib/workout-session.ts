@@ -118,6 +118,56 @@ export async function createSessionFromTemplate(
   return (data as { id: string }).id;
 }
 
+/** Returns the current signed-in user's single active (in_progress) session, if any. */
+export async function getActiveSession(): Promise<SessionRow | null> {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) return null;
+  const { data, error } = await (supabase as any)
+    .from("workout_sessions")
+    .select("*")
+    .eq("user_id", u.user.id)
+    .eq("status", "in_progress")
+    .order("started_at", { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  return ((data ?? [])[0] as SessionRow) ?? null;
+}
+
+export class ActiveSessionConflictError extends Error {
+  active: SessionRow;
+  constructor(active: SessionRow) {
+    super("ACTIVE_SESSION_CONFLICT");
+    this.active = active;
+  }
+}
+
+/**
+ * Start a session for the given template, resume it if one already exists
+ * for the same template, or throw ActiveSessionConflictError if a *different*
+ * template already has an active session. Seeds planned sets on first create.
+ */
+export async function startOrResumeSessionForTemplate(
+  templateId: string,
+  templateName: string,
+): Promise<{ sessionId: string; resumed: boolean }> {
+  const active = await getActiveSession();
+  if (active) {
+    if (active.template_id === templateId) {
+      return { sessionId: active.id, resumed: true };
+    }
+    throw new ActiveSessionConflictError(active);
+  }
+  const sessionId = await createSessionFromTemplate(templateId, templateName);
+  try {
+    await seedSessionFromTemplate(sessionId, templateId);
+  } catch (e) {
+    // Roll back the empty session so the user isn't stuck with a dud.
+    await discardSession(sessionId).catch(() => {});
+    throw e;
+  }
+  return { sessionId, resumed: false };
+}
+
 export async function getSession(id: string): Promise<SessionRow | null> {
   const { data, error } = await (supabase as any)
     .from("workout_sessions")
