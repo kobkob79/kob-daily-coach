@@ -20,7 +20,6 @@ import { Plus, Trash2, Copy, Play, ChevronUp, ChevronDown, ChevronRight } from "
 import { toast } from "sonner";
 import { z } from "zod";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
-import { today } from "@/lib/date";
 import { t } from "@/lib/i18n";
 import { ActiveSessionConflictError, startOrResumeSessionForTemplate } from "@/lib/workout-session";
 

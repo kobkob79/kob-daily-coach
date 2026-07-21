@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  clearWorkoutTimer,
   computeVolume,
   detectPRs,
   finalizeSession,
