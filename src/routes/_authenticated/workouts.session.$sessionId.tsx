@@ -21,12 +21,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { X, Check, Trophy, Plus, ChevronLeft, Flame } from "lucide-react";
+import { X, Check, Trophy, Plus, ChevronLeft, Flame, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   discardSession,
-  getSession,
-  getSessionSets,
+  ensureSessionRestored,
   getPriorPRs,
   insertPlannedSet,
   type SessionSet,
@@ -44,19 +43,17 @@ function OverviewPage() {
   const { sessionId } = Route.useParams();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const timer = useWorkoutTimer(sessionId);
   const [exitOpen, setExitOpen] = useState(false);
 
-  const sessionQ = useQuery({
-    queryKey: ["session", sessionId],
-    queryFn: () => getSession(sessionId),
-  });
-  const setsQ = useQuery({
-    queryKey: ["session_sets", sessionId],
-    queryFn: () => getSessionSets(sessionId),
+  const restoreQ = useQuery({
+    queryKey: ["session_restore", sessionId],
+    queryFn: () => ensureSessionRestored(sessionId),
+    retry: false,
   });
 
-  const sets = setsQ.data ?? [];
+  const session = restoreQ.data?.session ?? null;
+  const timer = useWorkoutTimer(sessionId, session?.started_at, session?.status === "in_progress");
+  const sets = restoreQ.data?.sets ?? [];
   const exerciseIds = useMemo(
     () => Array.from(new Set(sets.map((s) => s.exercise_id))),
     [sets],
@@ -131,24 +128,32 @@ function OverviewPage() {
         plannedRestSec: 90,
       });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["session_sets", sessionId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["session_restore", sessionId] }),
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (sessionQ.isLoading || setsQ.isLoading) {
-    return <p className="p-6 text-center text-sm">…</p>;
-  }
-  if (sets.length === 0) {
+  if (restoreQ.isLoading) {
     return (
-      <div dir="rtl" className="mx-auto max-w-md space-y-4 py-6 text-center">
-        <p className="text-sm text-muted-foreground">
-          התבנית ריקה — הוסף תרגילים תחילה.
-        </p>
-        <Button asChild variant="outline">
-          <Link to="/workout-templates">לתבניות</Link>
-        </Button>
+      <div dir="rtl" className="mx-auto grid min-h-[50vh] max-w-md place-items-center p-6 text-center">
+        <div className="space-y-3">
+          <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">משחזרת את האימון…</p>
+        </div>
       </div>
     );
+  }
+
+  if (restoreQ.isError || !session) {
+    return (
+      <SessionRecoveryScreen
+        sessionId={sessionId}
+        onRetry={() => restoreQ.refetch()}
+        onAbandoned={() => navigate({ to: "/workouts" })}
+      />
+    );
+  }
+  if (sets.length === 0) {
+    return <SessionRecoveryScreen sessionId={sessionId} onRetry={() => restoreQ.refetch()} onAbandoned={() => navigate({ to: "/workouts" })} />;
   }
 
   return (
@@ -160,7 +165,7 @@ function OverviewPage() {
         </Button>
         <div className="text-center">
           <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-            {sessionQ.data?.name}
+            {session.name}
           </p>
           <p className="text-xs text-muted-foreground">
             {totalDone}/{totalPlanned} סטים · {progress}%
@@ -331,6 +336,7 @@ function OverviewPage() {
               onClick={async () => {
                 await discardSession(sessionId);
                 timer.stop();
+                qc.invalidateQueries({ queryKey: ["active-session"] });
                 navigate({ to: "/workouts" });
               }}
             >
@@ -339,6 +345,57 @@ function OverviewPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+function SessionRecoveryScreen({
+  sessionId,
+  onRetry,
+  onAbandoned,
+}: {
+  sessionId: string;
+  onRetry: () => void;
+  onAbandoned: () => void;
+}) {
+  const qc = useQueryClient();
+  const abandon = useMutation({
+    mutationFn: () => discardSession(sessionId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["active-session"] });
+      qc.invalidateQueries({ queryKey: ["sessions", "recent"] });
+      onAbandoned();
+    },
+    onError: (error) => {
+      console.error("[workouts] recovery abandon failed", error);
+      toast.error("לא הצלחנו לסיים את האימון התקוע");
+    },
+  });
+
+  return (
+    <div dir="rtl" className="mx-auto max-w-md space-y-4 py-6 text-center">
+      <div className="surface-card space-y-3 p-5">
+        <h1 className="text-xl font-extrabold">לא הצלחנו לשחזר את האימון הפעיל</h1>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          האימון נשמר כסשן פעיל, אך חלק מהנתונים הדרושים לפתיחתו חסרים.
+        </p>
+        <div className="grid gap-2 pt-2">
+          <Button className="h-12 font-bold" onClick={onRetry}>
+            נסה שוב
+          </Button>
+          <Button
+            variant="outline"
+            className="h-12 font-bold"
+            onClick={() => abandon.mutate()}
+            disabled={abandon.isPending}
+          >
+            {abandon.isPending ? "מסיים…" : "סיים את האימון התקוע"}
+          </Button>
+          <Button asChild variant="ghost" className="h-12">
+            <Link to="/workouts">בטל</Link>
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
