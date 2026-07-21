@@ -85,6 +85,7 @@ function WorkoutHome() {
   const [recovery, setRecovery] = useState<{
     active: SessionRow;
     mode: "stale" | "invalid";
+    completedSetCount?: number;
     message?: string;
   } | null>(null);
   const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null);
@@ -228,11 +229,11 @@ function WorkoutHome() {
     try {
       const health = await getSessionHealth(session.id);
       if (!health.restorable) {
-        setRecovery({ active: session, mode: "invalid" });
+        setRecovery({ active: session, mode: "invalid", completedSetCount: health.completedSetCount });
         return;
       }
       if (health.stale && !options?.force) {
-        setRecovery({ active: health.session ?? session, mode: "stale" });
+        setRecovery({ active: health.session ?? session, mode: "stale", completedSetCount: health.completedSetCount });
         return;
       }
       if (options?.pending && session.template_id !== options.pending.templateId) {
@@ -440,7 +441,7 @@ function WorkoutHome() {
                         {isPending ? (
                           <>
                             <Loader2 className="ml-1 h-4 w-4 animate-spin" />
-                            מתחיל…
+                            מתחיל...
                           </>
                         ) : isActiveHere ? (
                           <>
@@ -505,6 +506,7 @@ function WorkoutHome() {
         <RecoveryDialog
           active={recovery.active}
           mode={recovery.mode}
+          completedSetCount={recovery.completedSetCount ?? 0}
           message={recovery.message}
           onClose={() => setRecovery(null)}
           onRetry={async () => {
@@ -520,7 +522,7 @@ function WorkoutHome() {
                 setRecovery(null);
                 navigate({ to: "/workouts/session/$sessionId", params: { sessionId: activeNow.id } });
               } else {
-                setRecovery({ active: activeNow, mode: health.stale ? "stale" : "invalid", message: "עדיין לא הצלחנו לשחזר את האימון" });
+                setRecovery({ active: activeNow, mode: health.stale ? "stale" : "invalid", completedSetCount: health.completedSetCount, message: "עדיין לא הצלחנו לשחזר את האימון" });
               }
             } catch (error) {
               console.error("[workouts] recovery retry failed", error);
@@ -552,10 +554,17 @@ function ActiveSessionCard({ session, onOpen }: { session: SessionRow; onOpen: (
     Math.floor((now - new Date(session.started_at).getTime()) / 1000),
   );
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onOpen}
-      className="block rounded-3xl border-2 border-primary bg-card p-4 shadow-glow transition active:scale-[0.99]"
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      className="block w-full cursor-pointer rounded-3xl border-2 border-primary bg-card p-4 text-right shadow-glow transition active:scale-[0.99]"
       style={{ minHeight: 130 }}
     >
       <div className="flex items-center justify-between gap-3">
@@ -588,7 +597,7 @@ function ActiveSessionCard({ session, onOpen }: { session: SessionRow; onOpen: (
           המשך אימון
         </Button>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -642,6 +651,7 @@ function ConflictDialog({
 function RecoveryDialog({
   active,
   mode,
+  completedSetCount,
   message,
   onClose,
   onRetry,
@@ -651,6 +661,7 @@ function RecoveryDialog({
 }: {
   active: SessionRow;
   mode: "stale" | "invalid";
+  completedSetCount: number;
   message?: string;
   onClose: () => void;
   onRetry: () => void;
@@ -676,6 +687,7 @@ function RecoveryDialog({
             <p className="text-base font-bold">{active.name ?? "אימון"}</p>
             <p className="mt-1 text-muted-foreground">התחלה: {startTime}</p>
             <p className="font-mono text-primary tabular-nums">משך: {formatTotalTime(elapsed)}</p>
+            <p className="text-muted-foreground">סטים שהושלמו: {completedSetCount}</p>
           </div>
           {message && <p className="text-sm text-destructive">{message}</p>}
           <div className="flex flex-col gap-2">
@@ -685,7 +697,7 @@ function RecoveryDialog({
               <Button className="h-12 text-base font-bold" onClick={onRetry}>נסה שוב</Button>
             )}
             <Button variant="outline" className="h-12 text-base font-bold" onClick={onAbandon} disabled={abandoning}>
-              {abandoning ? "מסיים…" : mode === "stale" ? "סיים אימון תקוע" : "סיים את האימון התקוע"}
+              {abandoning ? "מסיים..." : mode === "stale" ? "סיים אימון תקוע" : "סיים את האימון התקוע"}
             </Button>
             <Button variant="ghost" className="h-12" onClick={onClose}>בטל</Button>
           </div>
