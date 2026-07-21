@@ -61,7 +61,7 @@ import {
 import { clearWorkoutTimer } from "@/hooks/useWorkoutTimer";
 import { formatTotalTime } from "@/hooks/useWorkoutTimer";
 
-export const Route = createFileRoute("/_authenticated/workouts")({
+export const Route = createFileRoute("/_authenticated/workouts/")({
   component: WorkoutHome,
 });
 
