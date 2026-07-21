@@ -29,6 +29,7 @@ import { Route as AuthenticatedCaptureRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedAskRouteImport } from './routes/_authenticated/ask'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
+import { Route as AuthenticatedWorkoutsIndexRouteImport } from './routes/_authenticated/workouts.index'
 import { Route as AuthenticatedWorkoutsProgramRouteImport } from './routes/_authenticated/workouts.program'
 import { Route as AuthenticatedWorkoutsHistoryRouteImport } from './routes/_authenticated/workouts.history'
 import { Route as AuthenticatedWorkoutSessionWorkoutIdRouteImport } from './routes/_authenticated/workout-session.$workoutId'
@@ -142,6 +143,12 @@ const Char91DotmcpChar93ListToolsRoute =
     path: '/.mcp/list-tools',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthenticatedWorkoutsIndexRoute =
+  AuthenticatedWorkoutsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedWorkoutsRoute,
+  } as any)
 const AuthenticatedWorkoutsProgramRoute =
   AuthenticatedWorkoutsProgramRouteImport.update({
     id: '/program',
@@ -227,6 +234,7 @@ export interface FileRoutesByFullPath {
   '/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
   '/workouts/history': typeof AuthenticatedWorkoutsHistoryRouteWithChildren
   '/workouts/program': typeof AuthenticatedWorkoutsProgramRoute
+  '/workouts/': typeof AuthenticatedWorkoutsIndexRoute
   '/workouts/history/$sessionId': typeof AuthenticatedWorkoutsHistorySessionIdRoute
   '/workouts/session/$sessionId': typeof AuthenticatedWorkoutsSessionSessionIdRouteWithChildren
   '/workouts/session/$sessionId/brief': typeof AuthenticatedWorkoutsSessionSessionIdBriefRoute
@@ -252,12 +260,12 @@ export interface FileRoutesByTo {
   '/progress': typeof AuthenticatedProgressRoute
   '/shift': typeof AuthenticatedShiftRoute
   '/workout-templates': typeof AuthenticatedWorkoutTemplatesRoute
-  '/workouts': typeof AuthenticatedWorkoutsRouteWithChildren
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
   '/workouts/history': typeof AuthenticatedWorkoutsHistoryRouteWithChildren
   '/workouts/program': typeof AuthenticatedWorkoutsProgramRoute
+  '/workouts': typeof AuthenticatedWorkoutsIndexRoute
   '/workouts/history/$sessionId': typeof AuthenticatedWorkoutsHistorySessionIdRoute
   '/workouts/session/$sessionId': typeof AuthenticatedWorkoutsSessionSessionIdRouteWithChildren
   '/workouts/session/$sessionId/brief': typeof AuthenticatedWorkoutsSessionSessionIdBriefRoute
@@ -291,6 +299,7 @@ export interface FileRoutesById {
   '/_authenticated/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
   '/_authenticated/workouts/history': typeof AuthenticatedWorkoutsHistoryRouteWithChildren
   '/_authenticated/workouts/program': typeof AuthenticatedWorkoutsProgramRoute
+  '/_authenticated/workouts/': typeof AuthenticatedWorkoutsIndexRoute
   '/_authenticated/workouts/history/$sessionId': typeof AuthenticatedWorkoutsHistorySessionIdRoute
   '/_authenticated/workouts/session/$sessionId': typeof AuthenticatedWorkoutsSessionSessionIdRouteWithChildren
   '/_authenticated/workouts/session/$sessionId/brief': typeof AuthenticatedWorkoutsSessionSessionIdBriefRoute
@@ -324,6 +333,7 @@ export interface FileRouteTypes {
     | '/workout-session/$workoutId'
     | '/workouts/history'
     | '/workouts/program'
+    | '/workouts/'
     | '/workouts/history/$sessionId'
     | '/workouts/session/$sessionId'
     | '/workouts/session/$sessionId/brief'
@@ -349,12 +359,12 @@ export interface FileRouteTypes {
     | '/progress'
     | '/shift'
     | '/workout-templates'
-    | '/workouts'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/workout-session/$workoutId'
     | '/workouts/history'
     | '/workouts/program'
+    | '/workouts'
     | '/workouts/history/$sessionId'
     | '/workouts/session/$sessionId'
     | '/workouts/session/$sessionId/brief'
@@ -387,6 +397,7 @@ export interface FileRouteTypes {
     | '/_authenticated/workout-session/$workoutId'
     | '/_authenticated/workouts/history'
     | '/_authenticated/workouts/program'
+    | '/_authenticated/workouts/'
     | '/_authenticated/workouts/history/$sessionId'
     | '/_authenticated/workouts/session/$sessionId'
     | '/_authenticated/workouts/session/$sessionId/brief'
@@ -547,6 +558,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/workouts/': {
+      id: '/_authenticated/workouts/'
+      path: '/'
+      fullPath: '/workouts/'
+      preLoaderRoute: typeof AuthenticatedWorkoutsIndexRouteImport
+      parentRoute: typeof AuthenticatedWorkoutsRoute
+    }
     '/_authenticated/workouts/program': {
       id: '/_authenticated/workouts/program'
       path: '/program'
@@ -659,6 +677,7 @@ const AuthenticatedWorkoutsSessionSessionIdRouteWithChildren =
 interface AuthenticatedWorkoutsRouteChildren {
   AuthenticatedWorkoutsHistoryRoute: typeof AuthenticatedWorkoutsHistoryRouteWithChildren
   AuthenticatedWorkoutsProgramRoute: typeof AuthenticatedWorkoutsProgramRoute
+  AuthenticatedWorkoutsIndexRoute: typeof AuthenticatedWorkoutsIndexRoute
   AuthenticatedWorkoutsSessionSessionIdRoute: typeof AuthenticatedWorkoutsSessionSessionIdRouteWithChildren
 }
 
@@ -666,6 +685,7 @@ const AuthenticatedWorkoutsRouteChildren: AuthenticatedWorkoutsRouteChildren = {
   AuthenticatedWorkoutsHistoryRoute:
     AuthenticatedWorkoutsHistoryRouteWithChildren,
   AuthenticatedWorkoutsProgramRoute: AuthenticatedWorkoutsProgramRoute,
+  AuthenticatedWorkoutsIndexRoute: AuthenticatedWorkoutsIndexRoute,
   AuthenticatedWorkoutsSessionSessionIdRoute:
     AuthenticatedWorkoutsSessionSessionIdRouteWithChildren,
 }

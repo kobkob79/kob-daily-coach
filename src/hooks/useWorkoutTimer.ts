@@ -1,9 +1,8 @@
 /**
  * useWorkoutTimer — persistent total-workout timer.
  *
- * Stores `{ sessionId, startedAt }` in localStorage so elapsed time is
- * recomputed from wall-clock. Survives navigation, reload, backgrounding,
- * lock screen. Cleared only when the session is finalized or discarded.
+ * Uses workout_sessions.started_at as the source of truth. localStorage is
+ * only a cache for the current session id + database start timestamp.
  */
 import { useCallback, useEffect, useState } from "react";
 
@@ -30,7 +29,16 @@ function write(v: Stored | null) {
   else localStorage.setItem(KEY, JSON.stringify(v));
 }
 
-export function useWorkoutTimer(sessionId: string) {
+export function clearWorkoutTimer(sessionId?: string) {
+  const cur = read();
+  if (!sessionId || cur?.sessionId === sessionId) write(null);
+}
+
+export function useWorkoutTimer(
+  sessionId: string,
+  startedAtIso?: string | null,
+  isActive = true,
+) {
   const [stored, setStored] = useState<Stored | null>(() => {
     const cur = read();
     if (cur && cur.sessionId === sessionId) return cur;
@@ -38,17 +46,21 @@ export function useWorkoutTimer(sessionId: string) {
   });
   const [now, setNow] = useState<number>(() => Date.now());
 
-  // Auto-start on mount if not tracking this session
   useEffect(() => {
-    const cur = read();
-    if (!cur || cur.sessionId !== sessionId) {
-      const v: Stored = { sessionId, startedAt: Date.now() };
-      write(v);
-      setStored(v);
-    } else {
-      setStored(cur);
+    if (!isActive || !startedAtIso) {
+      clearWorkoutTimer(sessionId);
+      setStored(null);
+      return;
     }
-  }, [sessionId]);
+    const startedAt = new Date(startedAtIso).getTime();
+    if (!Number.isFinite(startedAt)) {
+      setStored(null);
+      return;
+    }
+    const v: Stored = { sessionId, startedAt };
+    write(v);
+    setStored(v);
+  }, [sessionId, startedAtIso, isActive]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -59,10 +71,10 @@ export function useWorkoutTimer(sessionId: string) {
 
   const stop = useCallback(() => {
     const cur = read();
-    write(null);
+    clearWorkoutTimer(sessionId);
     setStored(null);
     return cur ? Math.floor((Date.now() - cur.startedAt) / 1000) : 0;
-  }, []);
+  }, [sessionId]);
 
   return { elapsedSec, stop, isRunning: !!stored };
 }

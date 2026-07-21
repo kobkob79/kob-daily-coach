@@ -1,8 +1,7 @@
 /**
  * Workout Templates — reusable routines (Full Body A/B, Push, Pull, Legs...).
  * Users create, edit, duplicate, delete templates and reorder exercises.
- * "Start Workout" wizard: pick a template → creates a workouts row and
- * navigates to the single-exercise session UI.
+ * "Start Workout": starts or resumes the session-based workout flow.
  */
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -21,8 +20,8 @@ import { Plus, Trash2, Copy, Play, ChevronUp, ChevronDown, ChevronRight } from "
 import { toast } from "sonner";
 import { z } from "zod";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
-import { today } from "@/lib/date";
 import { t } from "@/lib/i18n";
+import { ActiveSessionConflictError, startOrResumeSessionForTemplate } from "@/lib/workout-session";
 
 const searchSchema = z.object({
   start: fallback(z.number().int(), 0).default(0),
@@ -228,8 +227,6 @@ function StartButton({
 }) {
   const startMut = useMutation({
     mutationFn: async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) throw new Error("Not signed in");
       const { data: tpl } = await supabase
         .from("workout_templates").select("name").eq("id", templateId).single();
       const { count } = await supabase
@@ -237,21 +234,18 @@ function StartButton({
         .select("*", { count: "exact", head: true })
         .eq("template_id", templateId);
       if (!count) throw new Error(t("session.noTemplate"));
-      const { data, error } = await supabase
-        .from("workouts")
-        .insert({ user_id: u.user.id, date: today(), name: tpl?.name ?? "אימון" })
-        .select("id").single();
-      if (error) throw error;
-      return data.id as string;
+      return startOrResumeSessionForTemplate(templateId, tpl?.name ?? "אימון");
     },
-    onSuccess: (workoutId) => {
+    onSuccess: ({ sessionId }) => {
       navigate({
-        to: "/workout-session/$workoutId",
-        params: { workoutId },
-        search: { template: templateId } as never,
+        to: "/workouts/session/$sessionId",
+        params: { sessionId },
       });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      console.error("[workout-templates] start failed", e);
+      toast.error(e instanceof ActiveSessionConflictError ? "יש לך אימון פעיל" : "לא הצלחנו להתחיל את האימון");
+    },
   });
   return (
     <Button size="sm" onClick={() => startMut.mutate()} disabled={startMut.isPending}>

@@ -9,7 +9,7 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 
-export type SessionStatus = "in_progress" | "completed" | "discarded";
+export type SessionStatus = "in_progress" | "completed" | "discarded" | "abandoned" | "cancelled";
 export type PainLevel = "none" | "mild" | "significant";
 
 export interface SessionRow {
@@ -27,7 +27,33 @@ export interface SessionRow {
   pain: PainLevel | null;
   notes: string | null;
   edited_at: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
+
+export interface SessionHealth {
+  session: SessionRow | null;
+  sets: SessionSet[];
+  restorable: boolean;
+  repairable: boolean;
+  stale: boolean;
+  reason: string | null;
+  completedSetCount: number;
+  lastCompletedSetAt: string | null;
+  templateExerciseCount: number;
+  missingExerciseCount: number;
+}
+
+export class SessionRestoreError extends Error {
+  health: SessionHealth;
+  constructor(message: string, health: SessionHealth) {
+    super(message);
+    this.health = health;
+  }
+}
+
+const STALE_AFTER_MS = 6 * 60 * 60 * 1000;
+const RECENT_ACTIVITY_MS = 60 * 60 * 1000;
 
 export interface SessionSet {
   id: string;
@@ -150,6 +176,7 @@ export async function startOrResumeSessionForTemplate(
   templateId: string,
   templateName: string,
 ): Promise<{ sessionId: string; resumed: boolean }> {
+  await assertTemplateHasExercises(templateId);
   const active = await getActiveSession();
   if (active) {
     if (active.template_id === templateId) {
@@ -157,9 +184,21 @@ export async function startOrResumeSessionForTemplate(
     }
     throw new ActiveSessionConflictError(active);
   }
-  const sessionId = await createSessionFromTemplate(templateId, templateName);
+  let sessionId: string;
+  try {
+    sessionId = await createSessionFromTemplate(templateId, templateName);
+  } catch (error: any) {
+    if (error?.code === "23505") {
+      const current = await getActiveSession();
+      if (current?.template_id === templateId) return { sessionId: current.id, resumed: true };
+      if (current) throw new ActiveSessionConflictError(current);
+    }
+    throw error;
+  }
   try {
     await seedSessionFromTemplate(sessionId, templateId);
+    const health = await getSessionHealth(sessionId);
+    if (!health.restorable) throw new SessionRestoreError(health.reason ?? "SESSION_NOT_RESTORABLE", health);
   } catch (e) {
     // Roll back the empty session so the user isn't stuck with a dud.
     await discardSession(sessionId).catch(() => {});
@@ -204,9 +243,19 @@ export async function updateSession(
 ): Promise<void> {
   const { error } = await (supabase as any)
     .from("workout_sessions")
-    .update(patch)
+    .update({ ...patch, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw error;
+}
+
+async function touchSession(sessionId: string | null | undefined): Promise<void> {
+  if (!sessionId) return;
+  const { error } = await (supabase as any)
+    .from("workout_sessions")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("id", sessionId)
+    .eq("status", "in_progress");
+  if (error) console.warn("[workout-session] failed to touch session", error);
 }
 
 export async function finalizeSession(
@@ -273,23 +322,150 @@ export async function insertPlannedSet(input: {
     .select("*")
     .single();
   if (error) throw error;
+  await touchSession(input.sessionId);
   return data as SessionSet;
 }
 
 export async function updateSet(id: string, patch: Partial<SessionSet>): Promise<void> {
-  const { error } = await (supabase as any)
+  const { data, error } = await (supabase as any)
     .from("workout_sets")
     .update(patch)
-    .eq("id", id);
+    .eq("id", id)
+    .select("session_id")
+    .maybeSingle();
   if (error) throw error;
+  await touchSession((data as { session_id: string | null } | null)?.session_id);
 }
 
 export async function deleteSet(id: string): Promise<void> {
+  const { data: existing } = await (supabase as any)
+    .from("workout_sets")
+    .select("session_id")
+    .eq("id", id)
+    .maybeSingle();
   const { error } = await (supabase as any)
     .from("workout_sets")
     .delete()
     .eq("id", id);
   if (error) throw error;
+  await touchSession((existing as { session_id: string | null } | null)?.session_id);
+}
+
+async function assertTemplateHasExercises(templateId: string): Promise<void> {
+  const { count, error } = await (supabase as any)
+    .from("workout_template_exercises")
+    .select("id", { count: "exact", head: true })
+    .eq("template_id", templateId);
+  if (error) throw error;
+  if (!count) throw new Error("NO_TEMPLATE_EXERCISES");
+}
+
+function computeStale(session: SessionRow, completedSets: SessionSet[]): boolean {
+  const startedMs = new Date(session.started_at).getTime();
+  const updatedMs = session.updated_at ? new Date(session.updated_at).getTime() : startedMs;
+  const lastCompletedMs = Math.max(
+    0,
+    ...completedSets.map((s) => s.completed_at ? new Date(s.completed_at).getTime() : 0),
+  );
+  const now = Date.now();
+  return now - startedMs > STALE_AFTER_MS &&
+    now - updatedMs > RECENT_ACTIVITY_MS &&
+    (!lastCompletedMs || now - lastCompletedMs > RECENT_ACTIVITY_MS);
+}
+
+export async function getSessionHealth(sessionId: string): Promise<SessionHealth> {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) {
+    return {
+      session: null,
+      sets: [],
+      restorable: false,
+      repairable: false,
+      stale: false,
+      reason: "SIGNED_OUT",
+      completedSetCount: 0,
+      lastCompletedSetAt: null,
+      templateExerciseCount: 0,
+      missingExerciseCount: 0,
+    };
+  }
+
+  const session = await getSession(sessionId);
+  if (!session || session.user_id !== u.user.id) {
+    return {
+      session: null,
+      sets: [],
+      restorable: false,
+      repairable: false,
+      stale: false,
+      reason: "SESSION_NOT_FOUND",
+      completedSetCount: 0,
+      lastCompletedSetAt: null,
+      templateExerciseCount: 0,
+      missingExerciseCount: 0,
+    };
+  }
+
+  const sets = await getSessionSets(sessionId);
+  const completed = sets.filter((s) => s.completed_at);
+  const lastCompletedSetAt = completed
+    .map((s) => s.completed_at!)
+    .sort()
+    .at(-1) ?? null;
+  let templateExerciseCount = 0;
+  let missingExerciseCount = 0;
+  let repairable = false;
+  let restorable = false;
+  let reason: string | null = null;
+
+  if (sets.length > 0) {
+    const ids = Array.from(new Set(sets.map((s) => s.exercise_id)));
+    const { data: exercises, error } = await supabase
+      .from("exercises")
+      .select("id")
+      .in("id", ids);
+    if (error) throw error;
+    missingExerciseCount = ids.length - (exercises?.length ?? 0);
+    restorable = missingExerciseCount === 0;
+    reason = restorable ? null : "MISSING_EXERCISES";
+  } else if (session.template_id) {
+    const { data: rows, error } = await (supabase as any)
+      .from("workout_template_exercises")
+      .select("exercise_id, exercises!inner(id)")
+      .eq("template_id", session.template_id);
+    if (error) throw error;
+    templateExerciseCount = rows?.length ?? 0;
+    repairable = templateExerciseCount > 0;
+    restorable = repairable;
+    reason = repairable ? "SESSION_NEEDS_SEEDING" : "NO_TEMPLATE_EXERCISES";
+  } else {
+    reason = "NO_TEMPLATE_OR_SETS";
+  }
+
+  return {
+    session,
+    sets,
+    restorable,
+    repairable,
+    stale: session.status === "in_progress" && computeStale(session, completed),
+    reason,
+    completedSetCount: completed.length,
+    lastCompletedSetAt,
+    templateExerciseCount,
+    missingExerciseCount,
+  };
+}
+
+export async function ensureSessionRestored(sessionId: string): Promise<SessionHealth> {
+  let health = await getSessionHealth(sessionId);
+  if (health.repairable && health.session?.template_id && health.sets.length === 0) {
+    await seedSessionFromTemplate(sessionId, health.session.template_id);
+    health = await getSessionHealth(sessionId);
+  }
+  if (!health.restorable || health.sets.length === 0) {
+    throw new SessionRestoreError(health.reason ?? "SESSION_NOT_RESTORABLE", health);
+  }
+  return health;
 }
 
 /* --------------------------- Analytics --------------------------- */
