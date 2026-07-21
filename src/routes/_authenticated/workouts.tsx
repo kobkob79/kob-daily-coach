@@ -27,6 +27,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -46,7 +47,9 @@ import { toast } from "sonner";
 import { t } from "@/lib/i18n";
 import {
   ActiveSessionConflictError,
+  discardSession,
   getActiveSession,
+  getSessionHealth,
   getWeeklyPlan,
   listSessions,
   setPlanSlot,
@@ -55,6 +58,7 @@ import {
   type PlanSlot,
   type SessionRow,
 } from "@/lib/workout-session";
+import { clearWorkoutTimer } from "@/hooks/useWorkoutTimer";
 import { formatTotalTime } from "@/hooks/useWorkoutTimer";
 
 export const Route = createFileRoute("/_authenticated/workouts")({
@@ -77,6 +81,11 @@ function WorkoutHome() {
   const [conflict, setConflict] = useState<{
     active: SessionRow;
     pending: { templateId: string; name: string };
+  } | null>(null);
+  const [recovery, setRecovery] = useState<{
+    active: SessionRow;
+    mode: "stale" | "invalid";
+    message?: string;
   } | null>(null);
   const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null);
 
@@ -180,20 +189,62 @@ function WorkoutHome() {
     },
     onError: (err: unknown, slot) => {
       if (err instanceof ActiveSessionConflictError && slot.template_id) {
-        const tpl = templatesQ.data?.find((x) => x.id === slot.template_id);
-        setConflict({
-          active: err.active,
+        void openActiveSession(err.active, {
           pending: {
             templateId: slot.template_id,
-            name: slot.display_name ?? tpl?.name ?? "אימון",
+            name: slot.display_name ?? templatesQ.data?.find((x) => x.id === slot.template_id)?.name ?? "אימון",
           },
         });
         return;
       }
       console.error("[workouts] start failed", err);
-      toast.error("לא הצלחנו להתחיל את האימון — נסה שוב בעוד רגע");
+      toast.error(
+        err instanceof Error && err.message === "NO_TEMPLATE_EXERCISES"
+          ? "אין תרגילים באימון הזה — ערוך את התוכנית והוסף לפחות תרגיל אחד"
+          : "לא הצלחנו להתחיל את האימון\nנסה שוב בעוד רגע",
+      );
     },
   });
+
+  const abandonActive = useMutation({
+    mutationFn: async (sessionId: string) => discardSession(sessionId),
+    onSuccess: (_r, sessionId) => {
+      clearWorkoutTimer(sessionId);
+      setConflict(null);
+      setRecovery(null);
+      qc.invalidateQueries({ queryKey: ["active-session"] });
+      qc.invalidateQueries({ queryKey: ["sessions", "recent"] });
+    },
+    onError: (error) => {
+      console.error("[workouts] abandon active failed", error);
+      toast.error("לא הצלחנו לסיים את האימון התקוע");
+    },
+  });
+
+  const openActiveSession = async (
+    session: SessionRow,
+    options?: { pending?: { templateId: string; name: string }; force?: boolean },
+  ) => {
+    try {
+      const health = await getSessionHealth(session.id);
+      if (!health.restorable) {
+        setRecovery({ active: session, mode: "invalid" });
+        return;
+      }
+      if (health.stale && !options?.force) {
+        setRecovery({ active: health.session ?? session, mode: "stale" });
+        return;
+      }
+      if (options?.pending && session.template_id !== options.pending.templateId) {
+        setConflict({ active: session, pending: options.pending });
+        return;
+      }
+      navigate({ to: "/workouts/session/$sessionId", params: { sessionId: session.id } });
+    } catch (error) {
+      console.error("[workouts] active session validation failed", error);
+      setRecovery({ active: session, mode: "invalid", message: "לא הצלחנו לפתוח את האימון הפעיל" });
+    }
+  };
 
   const programName = planned.length ? "Full Body" : "ללא תוכנית";
   const heroImage = planned[0]?.template_id
@@ -221,7 +272,7 @@ function WorkoutHome() {
         </div>
       </header>
 
-      {active && <ActiveSessionCard session={active} />}
+      {active && <ActiveSessionCard session={active} onOpen={() => openActiveSession(active)} />}
 
       <Link
         to="/workouts/program"
@@ -283,6 +334,10 @@ function WorkoutHome() {
             const handleCardClick = () => {
               if (!slot?.template_id) {
                 setEditing(idx);
+                return;
+              }
+              if (active && slot?.template_id && active.template_id === slot.template_id) {
+                void openActiveSession(active);
                 return;
               }
               if (start.isPending) return;
@@ -373,6 +428,10 @@ function WorkoutHome() {
                         className="h-[54px] min-w-[96px] px-5 text-[20px] font-extrabold"
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (active && active.template_id === slot.template_id) {
+                            void openActiveSession(active);
+                            return;
+                          }
                           if (start.isPending) return;
                           start.mutate(slot);
                         }}
@@ -437,21 +496,53 @@ function WorkoutHome() {
             navigate({ to: "/workouts/session/$sessionId", params: { sessionId: id } });
           }}
           onFinishActive={() => {
-            const id = conflict.active.id;
-            setConflict(null);
-            navigate({
-              to: "/workouts/session/$sessionId/summary",
-              params: { sessionId: id },
-            });
+            abandonActive.mutate(conflict.active.id);
           }}
+        />
+      )}
+
+      {recovery && (
+        <RecoveryDialog
+          active={recovery.active}
+          mode={recovery.mode}
+          message={recovery.message}
+          onClose={() => setRecovery(null)}
+          onRetry={async () => {
+            const activeNow = await getActiveSession();
+            if (!activeNow) {
+              setRecovery(null);
+              await qc.invalidateQueries({ queryKey: ["active-session"] });
+              return;
+            }
+            try {
+              const health = await getSessionHealth(activeNow.id);
+              if (health.restorable && (!health.stale || recovery.mode === "stale")) {
+                setRecovery(null);
+                navigate({ to: "/workouts/session/$sessionId", params: { sessionId: activeNow.id } });
+              } else {
+                setRecovery({ active: activeNow, mode: health.stale ? "stale" : "invalid", message: "עדיין לא הצלחנו לשחזר את האימון" });
+              }
+            } catch (error) {
+              console.error("[workouts] recovery retry failed", error);
+              setRecovery((r) => r ? { ...r, message: "עדיין לא הצלחנו לשחזר את האימון" } : r);
+            }
+          }}
+          onContinue={() => {
+            const id = recovery.active.id;
+            setRecovery(null);
+            navigate({ to: "/workouts/session/$sessionId", params: { sessionId: id } });
+          }}
+          onAbandon={() => abandonActive.mutate(recovery.active.id)}
+          abandoning={abandonActive.isPending}
         />
       )}
     </div>
   );
 }
 
-function ActiveSessionCard({ session }: { session: SessionRow }) {
+function ActiveSessionCard({ session, onOpen }: { session: SessionRow; onOpen: () => void }) {
   const [now, setNow] = useState(() => Date.now());
+  const [pressed, setPressed] = useState(false);
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
@@ -461,9 +552,9 @@ function ActiveSessionCard({ session }: { session: SessionRow }) {
     Math.floor((now - new Date(session.started_at).getTime()) / 1000),
   );
   return (
-    <Link
-      to="/workouts/session/$sessionId"
-      params={{ sessionId: session.id }}
+    <button
+      type="button"
+      onClick={onOpen}
       className="block rounded-3xl border-2 border-primary bg-card p-4 shadow-glow transition active:scale-[0.99]"
       style={{ minHeight: 130 }}
     >
@@ -485,15 +576,19 @@ function ActiveSessionCard({ session }: { session: SessionRow }) {
         <Button
           size="lg"
           className="h-[52px] px-5 text-base font-extrabold"
-          onClick={(e) => e.stopPropagation()}
-          asChild
+          disabled={pressed}
+          onClick={(e) => {
+            e.stopPropagation();
+            setPressed(true);
+            onOpen();
+            window.setTimeout(() => setPressed(false), 900);
+          }}
         >
-          <span>
-            <Play className="ml-1 h-4 w-4" /> המשך אימון
-          </span>
+          {pressed ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : <Play className="ml-1 h-4 w-4" />}
+          המשך אימון
         </Button>
       </div>
-    </Link>
+    </button>
   );
 }
 
@@ -537,6 +632,62 @@ function ConflictDialog({
             <Button variant="ghost" className="h-12" onClick={onClose}>
               בטל
             </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RecoveryDialog({
+  active,
+  mode,
+  message,
+  onClose,
+  onRetry,
+  onContinue,
+  onAbandon,
+  abandoning,
+}: {
+  active: SessionRow;
+  mode: "stale" | "invalid";
+  message?: string;
+  onClose: () => void;
+  onRetry: () => void;
+  onContinue: () => void;
+  onAbandon: () => void;
+  abandoning: boolean;
+}) {
+  const elapsed = Math.max(0, Math.floor((Date.now() - new Date(active.started_at).getTime()) / 1000));
+  const startTime = new Date(active.started_at).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" });
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-sm" dir="rtl">
+        <DialogHeader>
+          <DialogTitle>{mode === "stale" ? "מצאנו אימון ישן שלא הסתיים" : "לא הצלחנו לשחזר את האימון הפעיל"}</DialogTitle>
+          {mode === "invalid" && (
+            <DialogDescription>
+              האימון נשמר כסשן פעיל, אך חלק מהנתונים הדרושים לפתיחתו חסרים.
+            </DialogDescription>
+          )}
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3 text-sm">
+            <p className="text-base font-bold">{active.name ?? "אימון"}</p>
+            <p className="mt-1 text-muted-foreground">התחלה: {startTime}</p>
+            <p className="font-mono text-primary tabular-nums">משך: {formatTotalTime(elapsed)}</p>
+          </div>
+          {message && <p className="text-sm text-destructive">{message}</p>}
+          <div className="flex flex-col gap-2">
+            {mode === "stale" ? (
+              <Button className="h-12 text-base font-bold" onClick={onContinue}>המשך אימון</Button>
+            ) : (
+              <Button className="h-12 text-base font-bold" onClick={onRetry}>נסה שוב</Button>
+            )}
+            <Button variant="outline" className="h-12 text-base font-bold" onClick={onAbandon} disabled={abandoning}>
+              {abandoning ? "מסיים…" : mode === "stale" ? "סיים אימון תקוע" : "סיים את האימון התקוע"}
+            </Button>
+            <Button variant="ghost" className="h-12" onClick={onClose}>בטל</Button>
           </div>
         </div>
       </DialogContent>

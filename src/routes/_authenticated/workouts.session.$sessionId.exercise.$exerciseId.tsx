@@ -51,9 +51,13 @@ function ExerciseDetailPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const rest = useRestTimer(sessionId);
-  const total = useWorkoutTimer(sessionId);
 
   const sessionQ = useQuery({ queryKey: ["session", sessionId], queryFn: () => getSession(sessionId) });
+  const total = useWorkoutTimer(
+    sessionId,
+    sessionQ.data?.started_at,
+    sessionQ.data?.status === "in_progress",
+  );
   const setsQ = useQuery({
     queryKey: ["session_sets", sessionId],
     queryFn: () => getSessionSets(sessionId),

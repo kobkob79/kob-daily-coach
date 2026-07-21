@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
+  clearWorkoutTimer,
   computeVolume,
   detectPRs,
   finalizeSession,
@@ -22,6 +23,7 @@ import {
   type PainLevel,
 } from "@/lib/workout-session";
 import { supabase } from "@/integrations/supabase/client";
+import { clearWorkoutTimer as clearTotalWorkoutTimer } from "@/hooks/useWorkoutTimer";
 
 export const Route = createFileRoute("/_authenticated/workouts/session/$sessionId/summary")({
   component: SummaryPage,
@@ -72,6 +74,7 @@ function SummaryPage() {
     mutationFn: async () =>
       finalizeSession(sessionId, { difficulty, energy, pain, notes }),
     onSuccess: () => {
+      clearTotalWorkoutTimer(sessionId);
       toast.success("האימון נשמר");
       navigate({ to: "/workouts/history" });
     },
