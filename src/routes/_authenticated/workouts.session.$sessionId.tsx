@@ -389,7 +389,7 @@ function SessionRecoveryScreen({
             onClick={() => abandon.mutate()}
             disabled={abandon.isPending}
           >
-            {abandon.isPending ? "מסיים…" : "סיים את האימון התקוע"}
+            {abandon.isPending ? "מסיים..." : "סיים את האימון התקוע"}
           </Button>
           <Button asChild variant="ghost" className="h-12">
             <Link to="/workouts">בטל</Link>
