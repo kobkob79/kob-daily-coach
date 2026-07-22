@@ -9,7 +9,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -21,13 +21,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { X, Check, Trophy, Plus, ChevronLeft, Flame, Loader2 } from "lucide-react";
+import { X, Check, Trophy, ChevronLeft, Flame, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   discardSession,
   ensureSessionRestored,
   getPriorPRs,
-  insertPlannedSet,
   type SessionSet,
 } from "@/lib/workout-session";
 import { useWorkoutTimer, formatTotalTime } from "@/hooks/useWorkoutTimer";
