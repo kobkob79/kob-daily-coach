@@ -70,41 +70,42 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto w-full max-w-2xl flex-1 px-4 pb-32 pt-4">
+      <main className={cn("relative z-10 mx-auto w-full max-w-2xl flex-1 px-4 pt-4", hideBottomNav ? "pb-4" : "pb-32")}>
         {children}
       </main>
 
-      <nav
-        className="fixed inset-x-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)]"
-        aria-label="Primary"
-      >
-        <div className="mx-auto max-w-2xl px-3 pb-3">
-          <div className="relative flex items-center justify-around rounded-[28px] border border-white/8 bg-card/75 px-2 py-2 shadow-soft backdrop-blur-2xl">
-            {leftNav.map((item) => (
-              <NavTab key={item.id} item={item} pathname={pathname} />
-            ))}
+      {!hideBottomNav && (
+        <nav
+          className="fixed inset-x-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)]"
+          aria-label="Primary"
+        >
+          <div className="mx-auto max-w-2xl px-3 pb-3">
+            <div className="relative flex items-center justify-around rounded-[28px] border border-border bg-card/85 px-2 py-2 shadow-soft backdrop-blur-2xl">
+              {leftNav.map((item) => (
+                <NavTab key={item.id} item={item} pathname={pathname} />
+              ))}
 
-            {/* Center AI trigger */}
-            <button
-              onClick={() => setAskOpen(true)}
-              aria-label="שאל את Viora"
-              className="group relative -mt-8 grid h-16 w-16 shrink-0 place-items-center"
-            >
-              <span
-                className="absolute inset-0 rounded-full bg-primary/50 animate-breathe"
-                aria-hidden
-              />
-              <span className="relative grid h-16 w-16 place-items-center rounded-full border border-primary/30 bg-primary text-primary-foreground shadow-[0_16px_48px_-10px_oklch(0.93_0.24_125/0.7)] transition group-active:scale-95">
-                <Sparkles className="h-6 w-6" strokeWidth={2.2} />
-              </span>
-            </button>
+              <button
+                onClick={() => setAskOpen(true)}
+                aria-label="שאל את Viora"
+                className="group relative -mt-8 grid h-16 w-16 shrink-0 place-items-center"
+              >
+                <span
+                  className="absolute inset-0 rounded-full bg-primary/50 animate-breathe"
+                  aria-hidden
+                />
+                <span className="relative grid h-16 w-16 place-items-center rounded-full border border-primary/30 bg-primary text-primary-foreground shadow-[0_16px_48px_-10px_oklch(0.86_0.22_130/0.55)] transition group-active:scale-95">
+                  <Sparkles className="h-6 w-6" strokeWidth={2.2} />
+                </span>
+              </button>
 
-            {rightNav.map((item) => (
-              <NavTab key={item.id} item={item} pathname={pathname} />
-            ))}
+              {rightNav.map((item) => (
+                <NavTab key={item.id} item={item} pathname={pathname} />
+              ))}
+            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
+      )}
 
       <AskVioraSheet open={askOpen} onOpenChange={setAskOpen} pathname={pathname} />
     </div>
