@@ -621,31 +621,47 @@ export async function seedSessionFromTemplate(
 ): Promise<void> {
   const existing = await getSessionSets(sessionId);
   if (existing.length > 0) return;
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) throw new Error("Not signed in");
   const { data: rows } = await (supabase as any)
     .from("workout_template_exercises")
     .select("exercise_id, position, target_sets, target_reps, target_weight_kg")
     .eq("template_id", templateId)
     .order("position");
   const tplRows = (rows ?? []) as TemplateExerciseRow[];
-  let pos = 0;
+  if (tplRows.length === 0) return;
   const DEFAULT_REST = 90;
+
+  // Fetch prior performances in parallel (once per unique exercise).
+  const uniqIds = Array.from(new Set(tplRows.map((r) => r.exercise_id)));
+  const histories = await Promise.all(uniqIds.map((id) => getLastPerformanceByExercise(id)));
+  const historyByEx = new Map(uniqIds.map((id, i) => [id, histories[i]]));
+
+  // Build every planned row up-front and insert in a single batch call.
+  const inserts: any[] = [];
+  let pos = 0;
   for (const r of tplRows) {
-    const history = await getLastPerformanceByExercise(r.exercise_id);
+    const history = historyByEx.get(r.exercise_id) ?? [];
     const targetSets = r.target_sets ?? 3;
     for (let n = 1; n <= targetSets; n++) {
       pos += 1;
       const past = history.find((h) => h.set_number === n);
-      await insertPlannedSet({
-        sessionId,
-        exerciseId: r.exercise_id,
+      inserts.push({
+        session_id: sessionId,
+        user_id: u.user.id,
+        exercise_id: r.exercise_id,
+        set_number: n,
         position: pos,
-        setNumber: n,
-        weightKg: past?.weight_kg ?? r.target_weight_kg ?? null,
+        weight_kg: past?.weight_kg ?? r.target_weight_kg ?? null,
         reps: past?.reps ?? r.target_reps ?? null,
-        plannedRestSec: past?.planned_rest_seconds ?? DEFAULT_REST,
+        planned_rest_seconds: past?.planned_rest_seconds ?? DEFAULT_REST,
       });
     }
   }
+  if (inserts.length === 0) return;
+  const { error } = await (supabase as any).from("workout_sets").insert(inserts);
+  if (error) throw error;
+  await touchSession(sessionId);
 }
 
 /**
