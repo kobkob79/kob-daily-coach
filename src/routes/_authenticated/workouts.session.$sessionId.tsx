@@ -286,9 +286,9 @@ function OverviewPage() {
         ))}
       </div>
 
-      {/* Fixed bottom bar */}
-      <div className="fixed inset-x-0 bottom-16 z-30 mx-auto max-w-md px-4">
-        <div className="glass-tile flex items-center justify-between gap-3 px-4 py-3">
+      {/* Sticky bottom action bar */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-2">
             <Flame className="h-4 w-4 text-primary" />
             <div>
@@ -300,15 +300,7 @@ function OverviewPage() {
               </p>
             </div>
           </div>
-          <Button
-            size="lg"
-            onClick={() =>
-              navigate({
-                to: "/workouts/session/$sessionId/summary",
-                params: { sessionId },
-              })
-            }
-          >
+          <Button size="lg" className="h-12 min-w-[140px] text-base" onClick={handleFinish}>
             סיים אימון
           </Button>
         </div>
@@ -324,26 +316,33 @@ function OverviewPage() {
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
             <AlertDialogCancel>המשך</AlertDialogCancel>
+            <AlertDialogAction onClick={handleFinish}>סיים ושמור</AlertDialogAction>
             <AlertDialogAction
-              onClick={() =>
-                navigate({
-                  to: "/workouts/session/$sessionId/summary",
-                  params: { sessionId },
-                })
-              }
-            >
-              סיים ושמור
-            </AlertDialogAction>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground"
-              onClick={async () => {
-                await discardSession(sessionId);
-                timer.stop();
-                qc.invalidateQueries({ queryKey: ["active-session"] });
-                navigate({ to: "/workouts" });
-              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDiscard}
             >
               זרוק
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={zeroWarnOpen} onOpenChange={setZeroWarnOpen}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>לא סימנת אף סט</AlertDialogTitle>
+            <AlertDialogDescription>
+              עדיין אפשר לסיים ולשמור את האימון, או לזרוק אותו.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <AlertDialogCancel>חזור לאימון</AlertDialogCancel>
+            <AlertDialogAction onClick={goToSummary}>סיים בכל זאת</AlertDialogAction>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDiscard}
+            >
+              זרוק אימון
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
