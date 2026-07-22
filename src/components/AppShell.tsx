@@ -14,6 +14,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const qc = useQueryClient();
   const [askOpen, setAskOpen] = useState(false);
+  const hideBottomNav = pathname.startsWith("/workouts/session/");
 
   const handleSignOut = async () => {
     await qc.cancelQueries();
