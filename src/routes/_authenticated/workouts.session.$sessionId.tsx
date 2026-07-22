@@ -43,6 +43,7 @@ function OverviewPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [exitOpen, setExitOpen] = useState(false);
+  const [zeroWarnOpen, setZeroWarnOpen] = useState(false);
 
   const restoreQ = useQuery({
     queryKey: ["session_restore", sessionId],
@@ -111,25 +112,35 @@ function OverviewPage() {
   const totalPlanned = sets.length;
   const progress = totalPlanned > 0 ? Math.round((totalDone / totalPlanned) * 100) : 0;
 
-  const addExerciseMut = useMutation({
-    mutationFn: async () => {
-      const { data } = await supabase.from("exercises").select("id").limit(1);
-      const eid = data?.[0]?.id;
-      if (!eid) throw new Error("אין תרגילים בספרייה");
-      const pos = (sets[sets.length - 1]?.position ?? 0) + 1;
-      await insertPlannedSet({
-        sessionId,
-        exerciseId: eid,
-        position: pos,
-        setNumber: 1,
-        weightKg: null,
-        reps: null,
-        plannedRestSec: 90,
-      });
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["session_restore", sessionId] }),
-    onError: (e: Error) => toast.error(e.message),
-  });
+  const goToSummary = useCallback(() => {
+    navigate({
+      to: "/workouts/session/$sessionId/summary",
+      params: { sessionId },
+    });
+  }, [navigate, sessionId]);
+
+  const handleFinish = useCallback(() => {
+    setExitOpen(false);
+    if (totalDone === 0) {
+      setZeroWarnOpen(true);
+      return;
+    }
+    goToSummary();
+  }, [totalDone, goToSummary]);
+
+  const handleDiscard = useCallback(async () => {
+    try {
+      await discardSession(sessionId);
+    } catch (e) {
+      console.error("[session] discard failed", e);
+      toast.error("לא הצלחנו לזרוק את האימון");
+      return;
+    }
+    setExitOpen(false);
+    setZeroWarnOpen(false);
+    qc.invalidateQueries({ queryKey: ["active-session"] });
+    navigate({ to: "/workouts" });
+  }, [sessionId, qc, navigate]);
 
   if (restoreQ.isLoading) {
     return (
@@ -156,10 +167,10 @@ function OverviewPage() {
   }
 
   return (
-    <div dir="rtl" className="mx-auto max-w-md space-y-5 pb-28 pt-2">
+    <div dir="rtl" className="space-y-5 pb-[140px] pt-2">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={() => setExitOpen(true)}>
+        <Button variant="ghost" size="icon" onClick={() => setExitOpen(true)} aria-label="סגור אימון">
           <X className="h-5 w-5" />
         </Button>
         <div className="text-center">
@@ -174,7 +185,7 @@ function OverviewPage() {
       </div>
 
       {/* Progress bar */}
-      <div className="h-1.5 overflow-hidden rounded-full bg-white/5">
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
         <div
           className="h-full rounded-full bg-primary shadow-glow transition-all"
           style={{ width: `${progress}%` }}
@@ -187,13 +198,6 @@ function OverviewPage() {
           <section key={muscle} className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-extrabold">{muscle}</h2>
-              <button
-                onClick={() => addExerciseMut.mutate()}
-                className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-primary transition hover:bg-primary/20"
-                aria-label="הוסף תרגיל"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
             </div>
             <div className="space-y-3">
               {list.map(({ exerciseId, sets: exSets, ex }) => {
