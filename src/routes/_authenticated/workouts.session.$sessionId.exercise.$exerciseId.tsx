@@ -262,7 +262,11 @@ function ExerciseDetailPage() {
       </div>
 
       {/* Fixed bottom stack: rest timer + total */}
-      <div className="fixed inset-x-0 bottom-16 z-30 mx-auto max-w-md space-y-2 px-4">
+      <div
+        className="fixed inset-x-0 z-30 mx-auto max-w-md space-y-2 px-4"
+        style={{ bottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
+      >
+
         {rest.active && (
           <RestBar
             phase={rest.phase}
