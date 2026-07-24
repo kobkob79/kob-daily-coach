@@ -226,24 +226,28 @@ function ExerciseDetailPage() {
           <span>חזרות</span>
           <span />
         </div>
-        {sets.map((s) => (
-          <SetRow
-            key={s.id}
-            set={s}
-            onComplete={() => completeMut.mutate(s)}
-            onUncomplete={() => uncompleteMut.mutate(s)}
-            onDelete={() => removeMut.mutate(s.id)}
-            onChange={(field, value) =>
-              patchMut.mutate({
-                id: s.id,
-                patch: { [field]: value } as Partial<SessionSet>,
-                propagate: s.completed_at
-                  ? undefined
-                  : { field, value, fromSetNumber: s.set_number },
-              })
-            }
-          />
-        ))}
+        {(() => {
+          const nextPendingId = sets.find((s) => !s.completed_at)?.id ?? null;
+          return sets.map((s) => (
+            <SetRow
+              key={s.id}
+              set={s}
+              isNext={s.id === nextPendingId}
+              onComplete={() => completeMut.mutate(s)}
+              onUncomplete={() => uncompleteMut.mutate(s)}
+              onDelete={() => removeMut.mutate(s.id)}
+              onChange={(field, value) =>
+                patchMut.mutate({
+                  id: s.id,
+                  patch: { [field]: value } as Partial<SessionSet>,
+                  propagate: s.completed_at
+                    ? undefined
+                    : { field, value, fromSetNumber: s.set_number },
+                })
+              }
+            />
+          ));
+        })()}
 
         <button
           onClick={() => addMut.mutate()}
