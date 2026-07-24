@@ -22,6 +22,7 @@ import {
   Minus,
   Flame,
   Trophy,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -175,6 +176,19 @@ function ExerciseDetailPage() {
     pending.forEach((s) => completeMut.mutate(s));
   };
 
+  const handleFinishExercise = () => {
+    const hasPendingSets = doneCount < sets.length;
+    if (
+      hasPendingSets &&
+      !window.confirm("נשארו סטים שלא הושלמו. לסיים את התרגיל בכל זאת?")
+    ) {
+      return;
+    }
+    rest.clear();
+    toast.success("התרגיל הושלם");
+    navigate({ to: "/workouts/session/$sessionId", params: { sessionId } });
+  };
+
   return (
     <div dir="rtl" className="mx-auto max-w-md space-y-4 pb-40 pt-2">
       {/* Header */}
@@ -269,6 +283,15 @@ function ExerciseDetailPage() {
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
       >
 
+        {doneCount > 0 && (
+          <button
+            onClick={handleFinishExercise}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-base font-bold text-white shadow-lg transition hover:bg-emerald-700 active:scale-[0.98]"
+          >
+            <CheckCircle2 className="h-5 w-5" />
+            סיימתי תרגיל
+          </button>
+        )}
         {rest.active && (
           <RestBar
             phase={rest.phase}
