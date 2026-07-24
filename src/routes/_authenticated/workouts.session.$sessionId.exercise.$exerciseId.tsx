@@ -22,6 +22,7 @@ import {
   Minus,
   Flame,
   Trophy,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
