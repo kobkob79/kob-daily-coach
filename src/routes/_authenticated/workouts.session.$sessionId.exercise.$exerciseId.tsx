@@ -283,6 +283,15 @@ function ExerciseDetailPage() {
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
       >
 
+        {doneCount > 0 && (
+          <button
+            onClick={handleFinishExercise}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-base font-bold text-white shadow-lg transition hover:bg-emerald-700 active:scale-[0.98]"
+          >
+            <CheckCircle2 className="h-5 w-5" />
+            סיימתי תרגיל
+          </button>
+        )}
         {rest.active && (
           <RestBar
             phase={rest.phase}
