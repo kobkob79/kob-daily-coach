@@ -17,11 +17,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   ChevronRight,
-  Check,
   Trash2,
   Plus,
   Minus,
-  X,
   Flame,
   Trophy,
 } from "lucide-react";
@@ -228,24 +226,28 @@ function ExerciseDetailPage() {
           <span>חזרות</span>
           <span />
         </div>
-        {sets.map((s) => (
-          <SetRow
-            key={s.id}
-            set={s}
-            onComplete={() => completeMut.mutate(s)}
-            onUncomplete={() => uncompleteMut.mutate(s)}
-            onDelete={() => removeMut.mutate(s.id)}
-            onChange={(field, value) =>
-              patchMut.mutate({
-                id: s.id,
-                patch: { [field]: value } as Partial<SessionSet>,
-                propagate: s.completed_at
-                  ? undefined
-                  : { field, value, fromSetNumber: s.set_number },
-              })
-            }
-          />
-        ))}
+        {(() => {
+          const nextPendingId = sets.find((s) => !s.completed_at)?.id ?? null;
+          return sets.map((s) => (
+            <SetRow
+              key={s.id}
+              set={s}
+              isNext={s.id === nextPendingId}
+              onComplete={() => completeMut.mutate(s)}
+              onUncomplete={() => uncompleteMut.mutate(s)}
+              onDelete={() => removeMut.mutate(s.id)}
+              onChange={(field, value) =>
+                patchMut.mutate({
+                  id: s.id,
+                  patch: { [field]: value } as Partial<SessionSet>,
+                  propagate: s.completed_at
+                    ? undefined
+                    : { field, value, fromSetNumber: s.set_number },
+                })
+              }
+            />
+          ));
+        })()}
 
         <button
           onClick={() => addMut.mutate()}
@@ -298,18 +300,21 @@ function ExerciseDetailPage() {
 
 function SetRow({
   set,
+  isNext,
   onComplete,
   onUncomplete,
   onDelete,
   onChange,
 }: {
   set: SessionSet;
+  isNext: boolean;
   onComplete: () => void;
   onUncomplete: () => void;
   onDelete: () => void;
   onChange: (field: "weight_kg" | "reps", value: number | null) => void;
 }) {
   const done = !!set.completed_at;
+  const future = !done && !isNext;
   const [w, setW] = useState<string>(set.weight_kg?.toString() ?? "");
   const [r, setR] = useState<string>(set.reps?.toString() ?? "");
   const initial = useRef({ w: set.weight_kg, r: set.reps });
@@ -329,21 +334,36 @@ function SetRow({
     onChange(field, value);
   };
 
+  const rowClass = done
+    ? "border-amber-500/30 bg-muted/40 opacity-90"
+    : isNext
+      ? "border-primary bg-primary/[0.06] shadow-glow"
+      : "border-border bg-card";
+
+  const numberClass = done
+    ? "bg-amber-500/15 text-amber-500"
+    : isNext
+      ? "bg-primary text-primary-foreground"
+      : "bg-muted";
+
+  const ctaClass = isNext
+    ? "bg-primary text-primary-foreground shadow-glow"
+    : "bg-muted text-foreground";
+
   return (
     <div
-      className={`grid grid-cols-[2rem_1fr_1fr_3rem] items-center gap-2 rounded-2xl border p-2 transition ${
-        done
-          ? "border-primary/40 bg-primary/[0.06]"
-          : "border-border bg-card"
-      }`}
+      className={`grid grid-cols-[2rem_1fr_1fr_3rem] items-center gap-2 rounded-2xl border p-2 transition ${rowClass}`}
     >
-      <span
-        className={`grid h-8 w-8 place-items-center rounded-full text-sm font-bold ${
-          done ? "bg-primary text-primary-foreground" : "bg-muted"
-        }`}
-      >
-        {set.set_number}
-      </span>
+      <div className="flex flex-col items-center gap-1">
+        <span
+          className={`grid h-8 w-8 place-items-center rounded-full text-sm font-bold ${numberClass}`}
+        >
+          {set.set_number}
+        </span>
+        {isNext && (
+          <span className="sr-only">הסט הבא</span>
+        )}
+      </div>
       <Input
         inputMode="decimal"
         type="number"
@@ -367,21 +387,13 @@ function SetRow({
         {done ? (
           <button
             onClick={onUncomplete}
-            className="grid h-10 w-10 place-items-center rounded-full bg-primary text-primary-foreground shadow-glow"
-            aria-label="בטל סט"
+            className="grid h-10 w-10 place-items-center rounded-full bg-amber-500/15 text-amber-500"
+            aria-label="פתח מחדש את הסט"
           >
-            <Check className="h-5 w-5" strokeWidth={3} />
+            <Trophy className="h-5 w-5" />
+            <span className="sr-only">הושלם</span>
           </button>
         ) : (
-          <button
-            onClick={onComplete}
-            className="grid h-10 w-10 place-items-center rounded-full border-2 border-primary/60 text-primary transition hover:bg-primary hover:text-primary-foreground"
-            aria-label="ביצעתי את הסט"
-          >
-            <Check className="h-5 w-5" strokeWidth={3} />
-          </button>
-        )}
-        {!done && (
           <button
             onClick={onDelete}
             className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:text-destructive"
@@ -395,9 +407,12 @@ function SetRow({
         <div className="col-span-4 flex justify-center">
           <button
             onClick={onComplete}
-            className="mt-1 w-full rounded-xl bg-primary py-2 text-sm font-bold text-primary-foreground shadow-glow active:scale-[0.98]"
+            className={`mt-1 w-full rounded-xl py-2 text-sm font-bold transition active:scale-[0.98] ${ctaClass} ${
+              future ? "opacity-80" : ""
+            }`}
+            aria-label={isNext ? "ביצעתי את הסט הבא" : "ביצעתי את הסט"}
           >
-            ביצעתי את הסט
+            {isNext ? "ביצעתי את הסט" : "סמן כבוצע"}
           </button>
         </div>
       )}
