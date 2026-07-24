@@ -132,8 +132,24 @@ export const generateDailyBrief = createServerFn({ method: "POST" })
     }
     const duration = Date.now() - started;
 
-    if (res.status === 402) throw new BriefNotConnectedError("אזלו זיכויי ה-AI.");
-    if (res.status === 429) throw new BriefNotConnectedError("יותר מדי בקשות ל-AI, נסה שוב.");
+    if (res.status === 402 || res.status === 429) {
+      const msg =
+        res.status === 402
+          ? "אזלו זיכויי ה-AI — הניתוח האישי יחזור ברגע שהזיכויים יתחדשו."
+          : "יותר מדי בקשות ל-AI כרגע — ננסה שוב בקרוב.";
+      return {
+        hero: msg,
+        statusLine: "Viora ממשיך לעקוב אחריך — נתוני הגוף עדיין מתעדכנים בזמן אמת.",
+        analysis: [],
+        supplementAnalysis: [],
+        wellDone: [],
+        improve: [],
+        mission: [],
+        learned: [],
+        calorieVerdict: "",
+        diagnostics: { model: MODEL, duration_ms: duration },
+      };
+    }
     if (!res.ok) {
       const body = await res.text().catch(() => "");
       throw new BriefNotConnectedError(`שגיאת ספק (${res.status}): ${body.slice(0, 180)}`);
