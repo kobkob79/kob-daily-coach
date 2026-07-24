@@ -176,6 +176,19 @@ function ExerciseDetailPage() {
     pending.forEach((s) => completeMut.mutate(s));
   };
 
+  const handleFinishExercise = () => {
+    const hasPendingSets = doneCount < sets.length;
+    if (
+      hasPendingSets &&
+      !window.confirm("נשארו סטים שלא הושלמו. לסיים את התרגיל בכל זאת?")
+    ) {
+      return;
+    }
+    rest.clear();
+    toast.success("התרגיל הושלם");
+    navigate({ to: "/workouts/session/$sessionId", params: { sessionId } });
+  };
+
   return (
     <div dir="rtl" className="mx-auto max-w-md space-y-4 pb-40 pt-2">
       {/* Header */}
