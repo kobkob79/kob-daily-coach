@@ -1,64 +1,79 @@
 /**
- * IntroVideo — first-launch fullscreen intro.
+ * IntroVideo — per-session intro screen using the existing project video.
  *
- * Behaviour:
- *   • Reads/writes completion state via ai_memory (key: first_launch_video_seen).
- *   • Muted, autoplay, playsinline. Static poster while loading.
- *   • Skip button always available; fades out on complete or skip.
- *   • If the video fails to load, or the user prefers reduced motion, we
- *     mark it seen immediately so the app never blocks.
- *   • Never re-plays automatically after a successful completion.
- *
- * The video file itself is expected to be uploaded to `/intro-video.mp4`
- * (public folder) — we do not ship one. If the file is missing the
- * component gracefully bails out.
+ * Uses the pre-existing asset at /videos/Viora-intro.mp4 (never uploads,
+ * renames, or duplicates it). Tracks completion in sessionStorage under
+ * `viora_intro_seen_v1` so the intro shows once per browser session and
+ * never blocks app entry: skip, video-end, playback error and slow-load
+ * timeout all route through the same safe finish path.
  */
 import { useEffect, useRef, useState } from "react";
-import { getMemory, setMemory } from "@/lib/ai-memory";
 import { cn } from "@/lib/utils";
 
-const KEY = "first_launch_video_seen" as never;
-const VIDEO_SRC = "/intro-video.mp4";
+const SESSION_KEY = "viora_intro_seen_v1";
+const VIDEO_SRC = "/videos/Viora-intro.mp4";
 const POSTER_SRC = "/logo.svg";
+const LOAD_TIMEOUT_MS = 6000;
 
 export function IntroVideo() {
   const [state, setState] = useState<"loading" | "playing" | "done">("loading");
   const [fadeOut, setFadeOut] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const finishedRef = useRef(false);
+  const skipBtnRef = useRef<HTMLButtonElement>(null);
 
-  // Decide whether to show at all
   useEffect(() => {
-    (async () => {
-      // Respect reduced-motion preference
-      const prefersReduced =
-        typeof window !== "undefined" &&
-        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-      const seen = await getMemory<boolean>(KEY);
-      if (seen || prefersReduced) {
-        setState("done");
-        return;
-      }
-      setState("playing");
-    })();
+    if (typeof window === "undefined") return;
+    const prefersReduced = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    let seen = false;
+    try {
+      seen = window.sessionStorage.getItem(SESSION_KEY) === "1";
+    } catch {
+      /* storage blocked — treat as unseen but still safe */
+    }
+    if (seen || prefersReduced) {
+      setState("done");
+      return;
+    }
+    setState("playing");
   }, []);
 
-  const finish = async () => {
-    setFadeOut(true);
+  const finish = () => {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
     try {
-      await setMemory(KEY, true);
+      window.sessionStorage.setItem(SESSION_KEY, "1");
     } catch {
       /* ignore */
     }
+    setFadeOut(true);
     setTimeout(() => setState("done"), 350);
   };
 
-  if (state === "done") return null;
-  if (state === "loading") return null; // silent — avoid any flash before decision
+  // Prevent background scroll while visible + slow-load safety timeout
+  useEffect(() => {
+    if (state !== "playing") return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    skipBtnRef.current?.focus();
+    const timer = window.setTimeout(() => {
+      // Fail-open if playback hasn't started in a reasonable window
+      if (!videoRef.current || videoRef.current.paused) finish();
+    }, LOAD_TIMEOUT_MS);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.clearTimeout(timer);
+    };
+  }, [state]);
+
+  if (state !== "playing") return null;
 
   return (
     <div
       className={cn(
-        "fixed inset-0 z-[100] grid place-items-center bg-background transition-opacity duration-300",
+        "fixed inset-0 z-[100] grid place-items-center bg-black transition-opacity duration-300",
         fadeOut ? "opacity-0" : "opacity-100",
       )}
       role="dialog"
@@ -67,7 +82,7 @@ export function IntroVideo() {
     >
       <video
         ref={videoRef}
-        className="h-full w-full object-cover"
+        className="h-full w-full object-contain"
         src={VIDEO_SRC}
         poster={POSTER_SRC}
         autoPlay
@@ -79,8 +94,11 @@ export function IntroVideo() {
       />
 
       <button
+        ref={skipBtnRef}
+        type="button"
         onClick={finish}
-        className="absolute top-[calc(env(safe-area-inset-top)+16px)] right-4 rounded-full border border-white/20 bg-black/50 px-4 py-1.5 text-[13px] font-semibold text-white backdrop-blur-md active:scale-95"
+        aria-label="דלג על סרטון הפתיחה"
+        className="absolute top-[calc(env(safe-area-inset-top)+16px)] right-4 rounded-full border border-white/20 bg-black/50 px-4 py-1.5 text-[13px] font-semibold text-white backdrop-blur-md outline-none focus-visible:ring-2 focus-visible:ring-white/70 active:scale-95"
       >
         דלג
       </button>
