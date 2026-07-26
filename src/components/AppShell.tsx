@@ -8,6 +8,7 @@ import { liveModules } from "@/lib/modules";
 import { t } from "@/lib/i18n";
 import { VioraLogo } from "@/components/brand/VioraLogo";
 import { AskVioraSheet } from "@/components/AskVioraSheet";
+import { ActiveWorkoutBar } from "@/components/ActiveWorkoutBar";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
