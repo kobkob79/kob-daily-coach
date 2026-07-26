@@ -8,6 +8,7 @@ import { liveModules } from "@/lib/modules";
 import { t } from "@/lib/i18n";
 import { VioraLogo } from "@/components/brand/VioraLogo";
 import { AskVioraSheet } from "@/components/AskVioraSheet";
+import { ActiveWorkoutBar } from "@/components/ActiveWorkoutBar";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -79,7 +80,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           className="fixed inset-x-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)]"
           aria-label="Primary"
         >
-          <div className="mx-auto max-w-2xl px-3 pb-3">
+          <div className="mx-auto max-w-2xl space-y-2 px-3 pb-3">
+            <ActiveWorkoutBar />
             <div className="relative flex items-center justify-around rounded-[28px] border border-border bg-card/85 px-2 py-2 shadow-soft backdrop-blur-2xl">
               {leftNav.map((item) => (
                 <NavTab key={item.id} item={item} pathname={pathname} />
