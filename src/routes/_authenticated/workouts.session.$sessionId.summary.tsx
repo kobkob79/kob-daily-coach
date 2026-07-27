@@ -74,6 +74,10 @@ function SummaryPage() {
       finalizeSession(sessionId, { difficulty, energy, pain, notes }),
     onSuccess: () => {
       clearTotalWorkoutTimer(sessionId);
+      // Weekly cards + global bar must flip status immediately.
+      qc.invalidateQueries({ queryKey: ["active-session"] });
+      qc.invalidateQueries({ queryKey: ["sessions", "recent"] });
+      qc.invalidateQueries({ queryKey: ["session", sessionId] });
       toast.success("האימון נשמר");
       navigate({ to: "/workouts/history" });
     },
