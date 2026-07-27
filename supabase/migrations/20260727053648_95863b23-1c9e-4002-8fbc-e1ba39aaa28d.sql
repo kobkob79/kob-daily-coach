@@ -1,0 +1,2 @@
+ALTER TABLE public.workout_sessions ADD COLUMN IF NOT EXISTS plan_weekday smallint;
+COMMENT ON COLUMN public.workout_sessions.plan_weekday IS 'Weekly plan occurrence (0=Sunday) this session was started from. Null for legacy sessions.';

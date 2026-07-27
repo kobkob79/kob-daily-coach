@@ -562,6 +562,7 @@ export type Database = {
           name: string | null
           notes: string | null
           pain: string | null
+          plan_weekday: number | null
           started_at: string
           status: string
           template_id: string | null
@@ -580,6 +581,7 @@ export type Database = {
           name?: string | null
           notes?: string | null
           pain?: string | null
+          plan_weekday?: number | null
           started_at?: string
           status?: string
           template_id?: string | null
@@ -598,6 +600,7 @@ export type Database = {
           name?: string | null
           notes?: string | null
           pain?: string | null
+          plan_weekday?: number | null
           started_at?: string
           status?: string
           template_id?: string | null
