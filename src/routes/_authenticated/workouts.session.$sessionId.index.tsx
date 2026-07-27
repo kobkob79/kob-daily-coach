@@ -129,6 +129,14 @@ function OverviewPage() {
     goToSummary();
   }, [totalDone, goToSummary]);
 
+  const handleTemporaryExit = useCallback(() => {
+    setExitOpen(false);
+    setZeroWarnOpen(false);
+    // Session stays in_progress; the global bar keeps it reachable.
+    qc.invalidateQueries({ queryKey: ["active-session"] });
+    navigate({ to: "/workouts" });
+  }, [qc, navigate]);
+
   const handleDiscard = useCallback(async () => {
     try {
       await discardSession(sessionId);
@@ -312,11 +320,18 @@ function OverviewPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>לצאת מהאימון?</AlertDialogTitle>
             <AlertDialogDescription>
-              הזמן ממשיך לרוץ ברקע. אפשר להמשיך, לסיים ולשמור, או לזרוק.
+              הזמן ממשיך לרוץ ברקע. אפשר להמשיך, לצאת זמנית ולחזור אחר כך,
+              לסיים ולשמור, או לזרוק את האימון.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
-            <AlertDialogCancel>המשך</AlertDialogCancel>
+            <AlertDialogCancel>המשך באימון</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              onClick={handleTemporaryExit}
+            >
+              יציאה זמנית
+            </AlertDialogAction>
             <AlertDialogAction onClick={handleFinish}>סיים ושמור</AlertDialogAction>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
