@@ -2,7 +2,7 @@
  * Session summary + feedback + save.
  */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,6 +31,7 @@ export const Route = createFileRoute("/_authenticated/workouts/session/$sessionI
 function SummaryPage() {
   const { sessionId } = Route.useParams();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [difficulty, setDifficulty] = useState(3);
   const [energy, setEnergy] = useState(3);
   const [pain, setPain] = useState<PainLevel>("none");
