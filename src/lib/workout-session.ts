@@ -16,6 +16,8 @@ export interface SessionRow {
   id: string;
   user_id: string;
   template_id: string | null;
+  /** Weekly-plan occurrence (0=Sunday) this session was started from. */
+  plan_weekday?: number | null;
   name: string | null;
   status: SessionStatus;
   started_at: string;
@@ -127,6 +129,7 @@ export async function setPlanSlot(
 export async function createSessionFromTemplate(
   templateId: string,
   templateName: string,
+  planWeekday?: number | null,
 ): Promise<string> {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error("Not signed in");
@@ -135,6 +138,7 @@ export async function createSessionFromTemplate(
     .insert({
       user_id: u.user.id,
       template_id: templateId,
+      plan_weekday: planWeekday ?? null,
       name: templateName,
       status: "in_progress",
     })
@@ -175,22 +179,26 @@ export class ActiveSessionConflictError extends Error {
 export async function startOrResumeSessionForTemplate(
   templateId: string,
   templateName: string,
+  planWeekday?: number | null,
 ): Promise<{ sessionId: string; resumed: boolean }> {
   await assertTemplateHasExercises(templateId);
+  // Resume only when the active session belongs to the SAME card occurrence.
+  // Same template on a different weekday card is a conflict, not a resume.
+  const sameOccurrence = (s: SessionRow) =>
+    s.template_id === templateId &&
+    (planWeekday == null || s.plan_weekday == null || s.plan_weekday === planWeekday);
   const active = await getActiveSession();
   if (active) {
-    if (active.template_id === templateId) {
-      return { sessionId: active.id, resumed: true };
-    }
+    if (sameOccurrence(active)) return { sessionId: active.id, resumed: true };
     throw new ActiveSessionConflictError(active);
   }
   let sessionId: string;
   try {
-    sessionId = await createSessionFromTemplate(templateId, templateName);
+    sessionId = await createSessionFromTemplate(templateId, templateName, planWeekday);
   } catch (error: any) {
     if (error?.code === "23505") {
       const current = await getActiveSession();
-      if (current?.template_id === templateId) return { sessionId: current.id, resumed: true };
+      if (current && sameOccurrence(current)) return { sessionId: current.id, resumed: true };
       if (current) throw new ActiveSessionConflictError(current);
     }
     throw error;

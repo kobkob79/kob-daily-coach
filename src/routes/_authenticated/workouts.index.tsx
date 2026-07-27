@@ -58,6 +58,11 @@ import {
   type PlanSlot,
   type SessionRow,
 } from "@/lib/workout-session";
+import {
+  matchSessionsToSlots,
+  startOfWeek,
+  type CardState,
+} from "@/lib/workout-occurrence";
 import { clearWorkoutTimer } from "@/hooks/useWorkoutTimer";
 import { formatTotalTime } from "@/hooks/useWorkoutTimer";
 
@@ -66,13 +71,6 @@ export const Route = createFileRoute("/_authenticated/workouts/")({
 });
 
 type Template = { id: string; name: string };
-
-function startOfWeek(d = new Date()): Date {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  x.setDate(x.getDate() - x.getDay());
-  return x;
-}
 
 function WorkoutHome() {
   const qc = useQueryClient();
@@ -88,7 +86,8 @@ function WorkoutHome() {
     completedSetCount?: number;
     message?: string;
   } | null>(null);
-  const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null);
+  const [pendingWeekday, setPendingWeekday] = useState<number | null>(null);
+  const [locked, setLocked] = useState<SessionRow | null>(null);
 
   const planQ = useQuery({ queryKey: ["weekly-plan"], queryFn: getWeeklyPlan });
   const templatesQ = useQuery({
@@ -140,31 +139,28 @@ function WorkoutHome() {
   }, [planQ.data]);
 
   const weekStart = startOfWeek();
-  const completedThisWeek = (sessionsQ.data ?? []).filter(
-    (s) =>
-      s.status === "completed" &&
-      s.finished_at &&
-      new Date(s.finished_at) >= weekStart,
-  );
   const planned = (planQ.data ?? []).filter((p) => p.template_id);
-  const doneIds = new Set(
-    completedThisWeek.map((s) => s.template_id).filter(Boolean) as string[],
-  );
-  const doneCount = Math.min(doneIds.size, planned.length);
+  const active = activeQ.data ?? null;
+
+  // Occurrence-level matching: a session belongs to exactly ONE weekday card.
+  const match = useMemo(() => {
+    const sessions = [...(sessionsQ.data ?? [])];
+    if (active && !sessions.some((s) => s.id === active.id)) sessions.unshift(active);
+    return matchSessionsToSlots(planQ.data ?? [], sessions, weekStart);
+  }, [planQ.data, sessionsQ.data, active, weekStart.getTime()]);
+
+  const doneCount = Math.min(match.completedByWeekday.size, planned.length);
   const progress =
     planned.length > 0 ? Math.round((doneCount / planned.length) * 100) : 0;
-
-  const active = activeQ.data ?? null;
-  const activeTemplateId = active?.template_id ?? null;
 
   const nextWeekday = useMemo(() => {
     for (let i = 0; i < 7; i++) {
       const d = (today + i) % 7;
       const slot = bySlot.get(d);
-      if (slot?.template_id && !doneIds.has(slot.template_id)) return d;
+      if (slot?.template_id && !match.completedByWeekday.has(d)) return d;
     }
     return null;
-  }, [today, bySlot, doneIds]);
+  }, [today, bySlot, match]);
 
   const start = useMutation({
     mutationFn: async (slot: PlanSlot) => {
@@ -174,13 +170,13 @@ function WorkoutHome() {
       return {
         templateId: slot.template_id,
         name,
-        result: await startOrResumeSessionForTemplate(slot.template_id, name),
+        result: await startOrResumeSessionForTemplate(slot.template_id, name, slot.weekday),
       };
     },
     onMutate: (slot) => {
-      setPendingTemplateId(slot.template_id ?? null);
+      setPendingWeekday(slot.weekday);
     },
-    onSettled: () => setPendingTemplateId(null),
+    onSettled: () => setPendingWeekday(null),
     onSuccess: ({ result }) => {
       qc.invalidateQueries({ queryKey: ["active-session"] });
       navigate({
@@ -321,24 +317,35 @@ function WorkoutHome() {
             const tpl = slot?.template_id
               ? templatesQ.data?.find((x) => x.id === slot.template_id)
               : null;
-            const done = slot?.template_id ? doneIds.has(slot.template_id) : false;
+            const state: CardState = !slot?.template_id
+              ? "planned"
+              : match.activeWeekday === idx
+                ? "active"
+                : match.completedByWeekday.has(idx)
+                  ? "completed"
+                  : active
+                    ? "locked"
+                    : "planned";
+            const done = state === "completed";
             const isNext = idx === nextWeekday;
             const isToday = idx === today;
             const image = slot?.template_id
               ? exImagesQ.data?.get(slot.template_id) ?? heroImage
               : null;
-            const isActiveHere =
-              !!activeTemplateId && slot?.template_id === activeTemplateId;
-            const isPending =
-              start.isPending && pendingTemplateId === slot?.template_id;
+            const isActiveHere = state === "active";
+            const isPending = start.isPending && pendingWeekday === idx;
 
             const handleCardClick = () => {
               if (!slot?.template_id) {
                 setEditing(idx);
                 return;
               }
-              if (active && slot?.template_id && active.template_id === slot.template_id) {
+              if (isActiveHere && active) {
                 void openActiveSession(active);
+                return;
+              }
+              if (active) {
+                setLocked(active);
                 return;
               }
               if (start.isPending) return;
@@ -366,7 +373,9 @@ function WorkoutHome() {
                 } ${
                   isActiveHere
                     ? "border-primary bg-card shadow-glow"
-                    : isNext
+                    : state === "locked"
+                      ? "border-border bg-card opacity-70"
+                      : isNext
                       ? "border-primary bg-card shadow-glow"
                       : done
                         ? "border-primary/30 bg-primary/[0.04]"
@@ -401,7 +410,7 @@ function WorkoutHome() {
                   >
                     יום {label}
                     {isToday ? " · היום" : ""}
-                    {isActiveHere ? " · פעיל" : isNext ? " · הבא" : ""}
+                    {isActiveHere ? " · פעיל" : state === "locked" ? "" : isNext ? " · הבא" : ""}
                   </p>
                   <p className="truncate text-base font-bold">
                     {tpl?.name ?? slot?.display_name ?? "יום חופש"}
@@ -429,12 +438,7 @@ function WorkoutHome() {
                         className="h-[54px] min-w-[96px] px-5 text-[20px] font-extrabold"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (active && active.template_id === slot.template_id) {
-                            void openActiveSession(active);
-                            return;
-                          }
-                          if (start.isPending) return;
-                          start.mutate(slot);
+                          handleCardClick();
                         }}
                         disabled={isPending}
                       >
@@ -483,6 +487,18 @@ function WorkoutHome() {
           onSaved={() => {
             setEditing(null);
             qc.invalidateQueries({ queryKey: ["weekly-plan"] });
+          }}
+        />
+      )}
+
+      {locked && (
+        <ActiveWorkoutLockDialog
+          active={locked}
+          onClose={() => setLocked(null)}
+          onResume={() => {
+            const s = locked;
+            setLocked(null);
+            void openActiveSession(s);
           }}
         />
       )}
@@ -598,6 +614,41 @@ function ActiveSessionCard({ session, onOpen }: { session: SessionRow; onOpen: (
         </Button>
       </div>
     </div>
+  );
+}
+
+function ActiveWorkoutLockDialog({
+  active,
+  onClose,
+  onResume,
+}: {
+  active: SessionRow;
+  onClose: () => void;
+  onResume: () => void;
+}) {
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-sm" dir="rtl">
+        <DialogHeader>
+          <DialogTitle>קיים אימון פעיל</DialogTitle>
+          <DialogDescription>
+            יש לך אימון שעדיין לא הסתיים. אפשר לחזור אליו או לסיים אותו לפני
+            התחלת אימון אחר.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3">
+          <p className="truncate text-base font-bold">{active.name ?? "אימון"}</p>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Button className="h-12 text-base font-bold" onClick={onResume}>
+            חזרה לאימון הפעיל
+          </Button>
+          <Button variant="ghost" className="h-12" onClick={onClose}>
+            ביטול
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
