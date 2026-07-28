@@ -368,29 +368,48 @@ function OverviewPage() {
         </div>
       </div>
 
-      <AlertDialog open={exitOpen} onOpenChange={setExitOpen}>
+      {/* Finish menu */}
+      <AlertDialog open={finishOpen} onOpenChange={setFinishOpen}>
         <AlertDialogContent dir="rtl">
           <AlertDialogHeader>
-            <AlertDialogTitle>לצאת מהאימון?</AlertDialogTitle>
+            <AlertDialogTitle>סיום אימון</AlertDialogTitle>
             <AlertDialogDescription>
-              הזמן ממשיך לרוץ ברקע. אפשר להמשיך, לצאת זמנית ולחזור אחר כך,
-              לסיים ולשמור, או לזרוק את האימון.
+              אפשר להמשיך באימון, לסיים ולשמור אותו, או לבטל אותו.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
             <AlertDialogCancel>המשך באימון</AlertDialogCancel>
+            <AlertDialogAction onClick={handleFinish}>סיום ושמירת האימון</AlertDialogAction>
             <AlertDialogAction
-              className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
-              onClick={handleTemporaryExit}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                setFinishOpen(false);
+                setCancelOpen(true);
+              }}
             >
-              יציאה זמנית
+              ביטול האימון
             </AlertDialogAction>
-            <AlertDialogAction onClick={handleFinish}>סיים ושמור</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel confirmation */}
+      <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>לבטל את האימון?</AlertDialogTitle>
+            <AlertDialogDescription>
+              האימון הפעיל ייסגר ולא ניתן יהיה להמשיך אותו.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <AlertDialogCancel>חזרה לאימון</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleDiscard}
             >
-              זרוק
+              בטל את האימון
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -401,21 +420,26 @@ function OverviewPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>לא סימנת אף סט</AlertDialogTitle>
             <AlertDialogDescription>
-              עדיין אפשר לסיים ולשמור את האימון, או לזרוק אותו.
+              עדיין אפשר לסיים ולשמור את האימון, או לבטל אותו.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
-            <AlertDialogCancel>חזור לאימון</AlertDialogCancel>
+            <AlertDialogCancel>חזרה לאימון</AlertDialogCancel>
             <AlertDialogAction onClick={goToSummary}>סיים בכל זאת</AlertDialogAction>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={handleDiscard}
+              onClick={(e) => {
+                e.preventDefault();
+                setZeroWarnOpen(false);
+                setCancelOpen(true);
+              }}
             >
-              זרוק אימון
+              ביטול האימון
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
     </div>
   );
 }
