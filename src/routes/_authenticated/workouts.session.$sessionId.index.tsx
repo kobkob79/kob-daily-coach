@@ -374,9 +374,10 @@ function OverviewPage() {
               </p>
             </div>
           </div>
-          <Button size="lg" className="h-12 min-w-[140px] text-base" onClick={handleFinish}>
+          <Button size="lg" className="h-12 min-w-[140px] text-base" onClick={() => setFinishOpen(true)}>
             סיים אימון
           </Button>
+
         </div>
       </div>
 
