@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { X, Check, Trophy, ChevronLeft, Flame, Loader2 } from "lucide-react";
+import { Check, Trophy, ChevronLeft, ChevronRight, Flame, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   discardSession,
