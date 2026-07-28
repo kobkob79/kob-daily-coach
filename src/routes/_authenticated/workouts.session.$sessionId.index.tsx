@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { X, Check, Trophy, ChevronLeft, Flame, Loader2 } from "lucide-react";
+import { Check, Trophy, ChevronLeft, ChevronRight, Flame, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   discardSession,
@@ -42,8 +42,10 @@ function OverviewPage() {
   const { sessionId } = Route.useParams();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const [exitOpen, setExitOpen] = useState(false);
+  const [finishOpen, setFinishOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
   const [zeroWarnOpen, setZeroWarnOpen] = useState(false);
+
 
   const restoreQ = useQuery({
     queryKey: ["session_restore", sessionId],
@@ -111,8 +113,44 @@ function OverviewPage() {
   const totalPlanned = sets.length;
   const progress = totalPlanned > 0 ? Math.round((totalDone / totalPlanned) * 100) : 0;
 
+  // Occurrence order comes from set position; current exercise = first one
+  // (by position) that still has an open set.
+  const orderedExerciseIds = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const s of [...sets].sort(
+      (a, b) => (a.position ?? 0) - (b.position ?? 0) || a.set_number - b.set_number,
+    )) {
+      if (!seen.has(s.exercise_id)) {
+        seen.add(s.exercise_id);
+        out.push(s.exercise_id);
+      }
+    }
+    return out;
+  }, [sets]);
+
+  const currentExerciseId = useMemo(() => {
+    for (const id of orderedExerciseIds) {
+      const exSets = sets.filter((s) => s.exercise_id === id);
+      if (exSets.some((s) => !s.completed_at)) return id;
+    }
+    return null;
+  }, [orderedExerciseIds, sets]);
+
+  const exercisesDone = orderedExerciseIds.filter((id) => {
+    const exSets = sets.filter((s) => s.exercise_id === id);
+    return exSets.length > 0 && exSets.every((s) => s.completed_at);
+  }).length;
+
+  const volumeDone = Math.round(
+    sets
+      .filter((s) => s.completed_at)
+      .reduce((sum, s) => sum + (s.weight_kg ?? 0) * (s.reps ?? 0), 0),
+  );
+
   const goToSummary = useCallback(() => {
-    setExitOpen(false);
+    setFinishOpen(false);
+    setCancelOpen(false);
     setZeroWarnOpen(false);
     navigate({
       to: "/workouts/session/$sessionId/summary",
@@ -121,7 +159,7 @@ function OverviewPage() {
   }, [navigate, sessionId]);
 
   const handleFinish = useCallback(() => {
-    setExitOpen(false);
+    setFinishOpen(false);
     if (totalDone === 0) {
       setZeroWarnOpen(true);
       return;
@@ -130,8 +168,6 @@ function OverviewPage() {
   }, [totalDone, goToSummary]);
 
   const handleTemporaryExit = useCallback(() => {
-    setExitOpen(false);
-    setZeroWarnOpen(false);
     // Session stays in_progress; the global bar keeps it reachable.
     qc.invalidateQueries({ queryKey: ["active-session"] });
     navigate({ to: "/workouts" });
@@ -142,14 +178,16 @@ function OverviewPage() {
       await discardSession(sessionId);
     } catch (e) {
       console.error("[session] discard failed", e);
-      toast.error("לא הצלחנו לזרוק את האימון");
+      toast.error("לא הצלחנו לבטל את האימון");
       return;
     }
-    setExitOpen(false);
+    setFinishOpen(false);
+    setCancelOpen(false);
     setZeroWarnOpen(false);
     qc.invalidateQueries({ queryKey: ["active-session"] });
     navigate({ to: "/workouts" });
   }, [sessionId, qc, navigate]);
+
 
   if (restoreQ.isLoading) {
     return (
@@ -178,28 +216,43 @@ function OverviewPage() {
   return (
     <div dir="rtl" className="space-y-5 pb-[140px] pt-2">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={() => setExitOpen(true)} aria-label="סגור אימון">
-          <X className="h-5 w-5" />
-        </Button>
-        <div className="text-center">
-          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-            {session.name}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {totalDone}/{totalPlanned} סטים · {progress}%
-          </p>
+      <div className="space-y-3">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleTemporaryExit}
+            aria-label="יציאה זמנית מהאימון"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+          <h1 className="truncate text-center text-base font-extrabold">{session.name}</h1>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="font-semibold text-primary"
+            onClick={() => setFinishOpen(true)}
+          >
+            סיום
+          </Button>
         </div>
-        <div className="w-9" />
+
+        <div className="grid grid-cols-4 gap-2 text-center">
+          <HeaderStat label="זמן" value={formatTotalTime(timer.elapsedSec)} mono />
+          <HeaderStat label="סטים" value={`${totalDone}/${totalPlanned}`} />
+          <HeaderStat label="תרגילים" value={`${exercisesDone}/${orderedExerciseIds.length}`} />
+          <HeaderStat label="נפח" value={volumeDone > 0 ? `${volumeDone} ק״ג` : "—"} />
+        </div>
+
+        {/* Progress bar */}
+        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-primary shadow-glow transition-all"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
       </div>
 
-      {/* Progress bar */}
-      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full bg-primary shadow-glow transition-all"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
 
       {/* Groups */}
       <div className="space-y-6">
@@ -213,6 +266,7 @@ function OverviewPage() {
                 const done = exSets.filter((s) => s.completed_at).length;
                 const total = exSets.length;
                 const isDone = done === total && total > 0;
+                const isCurrent = exerciseId === currentExerciseId;
                 const inProgress = done > 0 && !isDone;
                 const bestWeight = Math.max(
                   0,
@@ -229,14 +283,17 @@ function OverviewPage() {
                     key={exerciseId}
                     to="/workouts/session/$sessionId/exercise/$exerciseId"
                     params={{ sessionId, exerciseId }}
-                    className={`relative flex gap-3 overflow-hidden rounded-3xl border p-3 transition ${
-                      isDone
-                        ? "border-primary/40 bg-primary/[0.04] opacity-90"
-                        : inProgress
-                          ? "border-primary bg-card shadow-glow"
-                          : "border-border bg-card"
+                    className={`relative flex gap-3 overflow-hidden rounded-3xl border transition ${
+                      isCurrent
+                        ? "border-primary bg-card p-3 shadow-glow"
+                        : isDone
+                          ? "border-border/60 bg-muted/20 p-2.5 opacity-80"
+                          : inProgress
+                            ? "border-primary/50 bg-card p-3"
+                            : "border-border bg-card p-2.5"
                     }`}
                   >
+
                     <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-muted">
                       {ex?.image_path ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -260,7 +317,15 @@ function OverviewPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="truncate text-base font-bold">{ex?.name ?? "—"}</p>
+                        <p className="truncate text-base font-bold">
+                          {isCurrent && (
+                            <span className="ml-2 rounded-full bg-primary/15 px-2 py-0.5 align-middle text-[10px] font-bold text-primary">
+                              עכשיו
+                            </span>
+                          )}
+                          {ex?.name ?? "—"}
+                        </p>
+
                         {isPR && <Trophy className="h-4 w-4 shrink-0 text-primary" />}
                       </div>
                       <p
@@ -309,35 +374,55 @@ function OverviewPage() {
               </p>
             </div>
           </div>
-          <Button size="lg" className="h-12 min-w-[140px] text-base" onClick={handleFinish}>
+          <Button size="lg" className="h-12 min-w-[140px] text-base" onClick={() => setFinishOpen(true)}>
             סיים אימון
           </Button>
+
         </div>
       </div>
 
-      <AlertDialog open={exitOpen} onOpenChange={setExitOpen}>
+      {/* Finish menu */}
+      <AlertDialog open={finishOpen} onOpenChange={setFinishOpen}>
         <AlertDialogContent dir="rtl">
           <AlertDialogHeader>
-            <AlertDialogTitle>לצאת מהאימון?</AlertDialogTitle>
+            <AlertDialogTitle>סיום אימון</AlertDialogTitle>
             <AlertDialogDescription>
-              הזמן ממשיך לרוץ ברקע. אפשר להמשיך, לצאת זמנית ולחזור אחר כך,
-              לסיים ולשמור, או לזרוק את האימון.
+              אפשר להמשיך באימון, לסיים ולשמור אותו, או לבטל אותו.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
             <AlertDialogCancel>המשך באימון</AlertDialogCancel>
+            <AlertDialogAction onClick={handleFinish}>סיום ושמירת האימון</AlertDialogAction>
             <AlertDialogAction
-              className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
-              onClick={handleTemporaryExit}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                setFinishOpen(false);
+                setCancelOpen(true);
+              }}
             >
-              יציאה זמנית
+              ביטול האימון
             </AlertDialogAction>
-            <AlertDialogAction onClick={handleFinish}>סיים ושמור</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel confirmation */}
+      <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>לבטל את האימון?</AlertDialogTitle>
+            <AlertDialogDescription>
+              האימון הפעיל ייסגר ולא ניתן יהיה להמשיך אותו.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <AlertDialogCancel>חזרה לאימון</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleDiscard}
             >
-              זרוק
+              בטל את האימון
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -348,21 +433,26 @@ function OverviewPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>לא סימנת אף סט</AlertDialogTitle>
             <AlertDialogDescription>
-              עדיין אפשר לסיים ולשמור את האימון, או לזרוק אותו.
+              עדיין אפשר לסיים ולשמור את האימון, או לבטל אותו.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
-            <AlertDialogCancel>חזור לאימון</AlertDialogCancel>
+            <AlertDialogCancel>חזרה לאימון</AlertDialogCancel>
             <AlertDialogAction onClick={goToSummary}>סיים בכל זאת</AlertDialogAction>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={handleDiscard}
+              onClick={(e) => {
+                e.preventDefault();
+                setZeroWarnOpen(false);
+                setCancelOpen(true);
+              }}
             >
-              זרוק אימון
+              ביטול האימון
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
     </div>
   );
 }
@@ -414,6 +504,29 @@ function SessionRecoveryScreen({
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ---------------- Header stat ---------------- */
+
+function HeaderStat({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card/60 px-1.5 py-1.5">
+      <p className="text-[10px] text-muted-foreground">{label}</p>
+      <p
+        className={`truncate text-sm font-bold tabular-nums ${mono ? "font-mono" : ""}`}
+      >
+        {value}
+      </p>
     </div>
   );
 }

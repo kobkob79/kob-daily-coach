@@ -1,20 +1,31 @@
 /**
  * Exercise detail — per-set rows for the active session.
  *
- * - Any row is editable when not yet completed; auto-propagates weight/reps
- *   changes to following unfinished sets (debounced, save on blur).
- * - Tapping ✓ marks the set complete and starts the rest timer.
- * - Tapping a completed row again reverts it to editable.
- * - "+ הוסף סט" always visible; new sets copy the previous set.
- * - Deleting a set during an active workout is immediate (no confirm).
- * - The persistent total-workout timer sits at the bottom.
+ * - The next open set is lifted into a focused "active set" card at the top:
+ *   set X of Y, weight, reps and one primary action ("סיימתי סט").
+ * - Completed sets stay visible but quieter; they can be reopened.
+ * - Future sets are compact and keep their suggested values.
+ * - Completing a set starts the shared rest timer (sessionStorage-backed),
+ *   which now also previews the next set.
+ * - Nothing here writes to the DB on a tick; the workout timer is derived
+ *   from `started_at`.
  */
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   ChevronRight,
   Trash2,
@@ -50,6 +61,7 @@ function ExerciseDetailPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const rest = useRestTimer(sessionId);
+  const [finishOpen, setFinishOpen] = useState(false);
 
   const sessionQ = useQuery({ queryKey: ["session", sessionId], queryFn: () => getSession(sessionId) });
   const total = useWorkoutTimer(
@@ -83,7 +95,7 @@ function ExerciseDetailPage() {
     queryFn: () => getExercisePR(exerciseId),
   });
 
-  const allSets = setsQ.data ?? [];
+  const allSets = useMemo(() => setsQ.data ?? [], [setsQ.data]);
   const sets = useMemo(
     () =>
       allSets
@@ -91,6 +103,44 @@ function ExerciseDetailPage() {
         .sort((a, b) => a.set_number - b.set_number),
     [allSets, exerciseId],
   );
+
+  // Order of exercises in the session comes from set position.
+  const orderedExerciseIds = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const s of [...allSets].sort(
+      (a, b) => (a.position ?? 0) - (b.position ?? 0) || a.set_number - b.set_number,
+    )) {
+      if (!seen.has(s.exercise_id)) {
+        seen.add(s.exercise_id);
+        out.push(s.exercise_id);
+      }
+    }
+    return out;
+  }, [allSets]);
+
+  const nextExerciseId = useMemo(() => {
+    const i = orderedExerciseIds.indexOf(exerciseId);
+    if (i < 0) return null;
+    for (const id of orderedExerciseIds.slice(i + 1)) {
+      const exSets = allSets.filter((s) => s.exercise_id === id);
+      if (exSets.some((s) => !s.completed_at)) return id;
+    }
+    return null;
+  }, [orderedExerciseIds, exerciseId, allSets]);
+
+  const nextExQ = useQuery({
+    enabled: !!nextExerciseId,
+    queryKey: ["exercise_name", nextExerciseId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("exercises")
+        .select("id,name")
+        .eq("id", nextExerciseId!)
+        .maybeSingle();
+      return (data?.name as string | undefined) ?? null;
+    },
+  });
 
   const completeMut = useMutation({
     mutationFn: async (s: SessionSet) => {
@@ -103,6 +153,7 @@ function ExerciseDetailPage() {
     },
     onSuccess: (_r, s) => {
       qc.invalidateQueries({ queryKey: ["session_sets", sessionId] });
+      qc.invalidateQueries({ queryKey: ["active-session-current"] });
       rest.start({
         plannedSec: s.planned_rest_seconds ?? DEFAULT_REST,
         exerciseId: s.exercise_id,
@@ -164,46 +215,57 @@ function ExerciseDetailPage() {
   });
 
   const doneCount = sets.filter((s) => s.completed_at).length;
+  const remaining = sets.length - doneCount;
+  const activeSet = sets.find((s) => !s.completed_at) ?? null;
+  const exerciseVolume = Math.round(
+    sets
+      .filter((s) => s.completed_at)
+      .reduce((sum, s) => sum + (s.weight_kg ?? 0) * (s.reps ?? 0), 0),
+  );
   const bestWeight = Math.max(
     0,
     ...sets.filter((s) => s.completed_at).map((s) => s.weight_kg ?? 0),
   );
   const isPR = bestWeight > 0 && bestWeight > (prQ.data ?? 0);
 
-  const completeAll = () => {
-    const pending = sets.filter((s) => !s.completed_at);
-    if (pending.length === 0) return;
-    pending.forEach((s) => completeMut.mutate(s));
+  const backToOverview = () =>
+    navigate({ to: "/workouts/session/$sessionId", params: { sessionId } });
+
+  const finishExercise = () => {
+    rest.clear();
+    setFinishOpen(false);
+    toast.success("התרגיל הושלם");
+    backToOverview();
+  };
+
+  const goToNextExercise = () => {
+    rest.clear();
+    if (!nextExerciseId) {
+      backToOverview();
+      return;
+    }
+    navigate({
+      to: "/workouts/session/$sessionId/exercise/$exerciseId",
+      params: { sessionId, exerciseId: nextExerciseId },
+    });
   };
 
   const handleFinishExercise = () => {
-    const hasPendingSets = doneCount < sets.length;
-    if (
-      hasPendingSets &&
-      !window.confirm("נשארו סטים שלא הושלמו. לסיים את התרגיל בכל זאת?")
-    ) {
+    if (remaining > 0) {
+      setFinishOpen(true);
       return;
     }
-    rest.clear();
-    toast.success("התרגיל הושלם");
-    navigate({ to: "/workouts/session/$sessionId", params: { sessionId } });
+    finishExercise();
   };
 
   return (
-    <div dir="rtl" className="mx-auto max-w-md space-y-4 pb-40 pt-2">
+    <div dir="rtl" className="mx-auto max-w-md space-y-4 pb-48 pt-2">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() =>
-            navigate({ to: "/workouts/session/$sessionId", params: { sessionId } })
-          }
-          aria-label="חזור"
-        >
-          <ChevronRight className="h-5 w-5 rtl:rotate-180" />
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+        <Button variant="ghost" size="icon" onClick={backToOverview} aria-label="חזרה לסקירת האימון">
+          <ChevronRight className="h-5 w-5" />
         </Button>
-        <p className="text-xs text-muted-foreground">
+        <p className="truncate text-center text-xs text-muted-foreground">
           {doneCount}/{sets.length} סטים
         </p>
         <div className="w-9" />
@@ -232,6 +294,50 @@ function ExerciseDetailPage() {
         </div>
       </div>
 
+      {/* Active set focus / exercise completed */}
+      {activeSet ? (
+        <ActiveSetCard
+          key={activeSet.id}
+          set={activeSet}
+          totalSets={sets.length}
+          onChange={(field, value) =>
+            patchMut.mutate({
+              id: activeSet.id,
+              patch: { [field]: value } as Partial<SessionSet>,
+              propagate: { field, value, fromSetNumber: activeSet.set_number },
+            })
+          }
+          onComplete={() => completeMut.mutate(activeSet)}
+          disabled={completeMut.isPending}
+        />
+      ) : (
+        <div className="rounded-3xl border border-primary bg-primary/[0.06] p-4 shadow-glow">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-primary" />
+            <p className="text-base font-extrabold">התרגיל הושלם</p>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {doneCount} סטים
+            {exerciseVolume > 0 ? ` · נפח ${exerciseVolume} ק״ג` : ""}
+          </p>
+          {nextExerciseId && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              הבא: <span className="font-bold text-foreground">{nextExQ.data ?? "…"}</span>
+            </p>
+          )}
+          <div className="mt-3 grid gap-2">
+            {nextExerciseId && (
+              <Button className="h-12 font-bold" onClick={goToNextExercise}>
+                לתרגיל הבא
+              </Button>
+            )}
+            <Button variant="outline" className="h-12 font-bold" onClick={backToOverview}>
+              חזרה לסקירת האימון
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Set rows */}
       <div className="space-y-2">
         <div className="grid grid-cols-[2rem_1fr_1fr_3rem] items-center gap-2 px-2 text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -240,28 +346,25 @@ function ExerciseDetailPage() {
           <span>חזרות</span>
           <span />
         </div>
-        {(() => {
-          const nextPendingId = sets.find((s) => !s.completed_at)?.id ?? null;
-          return sets.map((s) => (
-            <SetRow
-              key={s.id}
-              set={s}
-              isNext={s.id === nextPendingId}
-              onComplete={() => completeMut.mutate(s)}
-              onUncomplete={() => uncompleteMut.mutate(s)}
-              onDelete={() => removeMut.mutate(s.id)}
-              onChange={(field, value) =>
-                patchMut.mutate({
-                  id: s.id,
-                  patch: { [field]: value } as Partial<SessionSet>,
-                  propagate: s.completed_at
-                    ? undefined
-                    : { field, value, fromSetNumber: s.set_number },
-                })
-              }
-            />
-          ));
-        })()}
+        {sets.map((s) => (
+          <SetRow
+            key={s.id}
+            set={s}
+            isActive={s.id === activeSet?.id}
+            onComplete={() => completeMut.mutate(s)}
+            onUncomplete={() => uncompleteMut.mutate(s)}
+            onDelete={() => removeMut.mutate(s.id)}
+            onChange={(field, value) =>
+              patchMut.mutate({
+                id: s.id,
+                patch: { [field]: value } as Partial<SessionSet>,
+                propagate: s.completed_at
+                  ? undefined
+                  : { field, value, fromSetNumber: s.set_number },
+              })
+            }
+          />
+        ))}
 
         <button
           onClick={() => addMut.mutate()}
@@ -269,38 +372,35 @@ function ExerciseDetailPage() {
         >
           <Plus className="h-4 w-4" /> הוסף סט
         </button>
-
-        {doneCount < sets.length && (
-          <Button variant="ghost" className="w-full" onClick={completeAll}>
-            ביצעתי הכל
-          </Button>
-        )}
       </div>
 
-      {/* Fixed bottom stack: rest timer + total */}
+      {/* Fixed bottom stack: rest timer + finish exercise + total */}
       <div
         className="fixed inset-x-0 z-30 mx-auto max-w-md space-y-2 px-4"
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
       >
-
-        {doneCount > 0 && (
-          <button
-            onClick={handleFinishExercise}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-base font-bold text-white shadow-lg transition hover:bg-emerald-700 active:scale-[0.98]"
-          >
-            <CheckCircle2 className="h-5 w-5" />
-            סיימתי תרגיל
-          </button>
-        )}
         {rest.active && (
-          <RestBar
+          <RestPanel
             phase={rest.phase}
             remainingSec={rest.remainingSec}
             overtimeSec={rest.overtimeSec}
+            nextSetNumber={activeSet?.set_number ?? null}
+            totalSets={sets.length}
+            nextWeight={activeSet?.weight_kg ?? null}
+            nextReps={activeSet?.reps ?? null}
             onAdd={() => rest.addSeconds(15)}
             onSub={() => rest.addSeconds(-15)}
             onSkip={() => rest.clear()}
           />
+        )}
+        {doneCount > 0 && activeSet && (
+          <button
+            onClick={handleFinishExercise}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-primary/40 bg-card/90 text-base font-bold text-foreground backdrop-blur-xl transition active:scale-[0.98]"
+          >
+            <CheckCircle2 className="h-5 w-5 text-primary" />
+            סיימתי תרגיל
+          </button>
         )}
         <div className="glass-tile flex items-center justify-between px-4 py-2">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -313,8 +413,101 @@ function ExerciseDetailPage() {
         </div>
       </div>
 
+      <AlertDialog open={finishOpen} onOpenChange={setFinishOpen}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>נותרו {remaining} סטים בתרגיל</AlertDialogTitle>
+            <AlertDialogDescription>
+              הסטים שלא בוצעו לא ייספרו כבוצעו.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <AlertDialogCancel>חזור לתרגיל</AlertDialogCancel>
+            <AlertDialogAction onClick={finishExercise}>
+              סיים את התרגיל עם הסטים שבוצעו
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Prevent unused-var warning in some builds */}
       <span className="hidden">{sessionQ.data?.id}</span>
+    </div>
+  );
+}
+
+/* ---------------- Active set card ---------------- */
+
+function ActiveSetCard({
+  set,
+  totalSets,
+  onChange,
+  onComplete,
+  disabled,
+}: {
+  set: SessionSet;
+  totalSets: number;
+  onChange: (field: "weight_kg" | "reps", value: number | null) => void;
+  onComplete: () => void;
+  disabled?: boolean;
+}) {
+  const [w, setW] = useState<string>(set.weight_kg?.toString() ?? "");
+  const [r, setR] = useState<string>(set.reps?.toString() ?? "");
+  const initial = useRef({ w: set.weight_kg, r: set.reps });
+
+  useEffect(() => {
+    setW(set.weight_kg?.toString() ?? "");
+    setR(set.reps?.toString() ?? "");
+    initial.current = { w: set.weight_kg, r: set.reps };
+  }, [set.weight_kg, set.reps, set.id]);
+
+  const commit = (field: "weight_kg" | "reps", raw: string) => {
+    const value = raw === "" ? null : Number(raw);
+    if (Number.isNaN(value as number)) return;
+    if (field === "weight_kg" && value === initial.current.w) return;
+    if (field === "reps" && value === initial.current.r) return;
+    initial.current = field === "weight_kg" ? { ...initial.current, w: value } : { ...initial.current, r: value };
+    onChange(field, value);
+  };
+
+  return (
+    <div className="rounded-3xl border border-primary bg-primary/[0.06] p-4 shadow-glow">
+      <p className="text-[11px] font-bold uppercase tracking-wider text-primary">
+        סט {set.set_number} מתוך {totalSets}
+      </p>
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <label className="space-y-1">
+          <span className="text-[11px] text-muted-foreground">משקל (ק״ג)</span>
+          <Input
+            inputMode="decimal"
+            type="number"
+            step="0.5"
+            value={w}
+            onChange={(e) => setW(e.target.value)}
+            onBlur={() => commit("weight_kg", w)}
+            className="h-14 text-center text-2xl font-extrabold tabular-nums"
+          />
+        </label>
+        <label className="space-y-1">
+          <span className="text-[11px] text-muted-foreground">חזרות</span>
+          <Input
+            inputMode="numeric"
+            type="number"
+            value={r}
+            onChange={(e) => setR(e.target.value)}
+            onBlur={() => commit("reps", r)}
+            className="h-14 text-center text-2xl font-extrabold tabular-nums"
+          />
+        </label>
+      </div>
+      <Button
+        className="mt-3 h-14 w-full text-lg font-extrabold"
+        onClick={onComplete}
+        disabled={disabled}
+      >
+        <CheckCircle2 className="ml-1 h-5 w-5" />
+        סיימתי סט
+      </Button>
     </div>
   );
 }
@@ -323,21 +516,20 @@ function ExerciseDetailPage() {
 
 function SetRow({
   set,
-  isNext,
+  isActive,
   onComplete,
   onUncomplete,
   onDelete,
   onChange,
 }: {
   set: SessionSet;
-  isNext: boolean;
+  isActive: boolean;
   onComplete: () => void;
   onUncomplete: () => void;
   onDelete: () => void;
   onChange: (field: "weight_kg" | "reps", value: number | null) => void;
 }) {
   const done = !!set.completed_at;
-  const future = !done && !isNext;
   const [w, setW] = useState<string>(set.weight_kg?.toString() ?? "");
   const [r, setR] = useState<string>(set.reps?.toString() ?? "");
   const initial = useRef({ w: set.weight_kg, r: set.reps });
@@ -358,35 +550,26 @@ function SetRow({
   };
 
   const rowClass = done
-    ? "border-amber-500/30 bg-muted/40 opacity-90"
-    : isNext
-      ? "border-primary bg-primary/[0.06] shadow-glow"
+    ? "border-primary/30 bg-muted/30"
+    : isActive
+      ? "border-primary/60 bg-primary/[0.04]"
       : "border-border bg-card";
 
   const numberClass = done
-    ? "bg-amber-500/15 text-amber-500"
-    : isNext
+    ? "bg-primary/15 text-primary"
+    : isActive
       ? "bg-primary text-primary-foreground"
       : "bg-muted";
-
-  const ctaClass = isNext
-    ? "bg-primary text-primary-foreground shadow-glow"
-    : "bg-muted text-foreground";
 
   return (
     <div
       className={`grid grid-cols-[2rem_1fr_1fr_3rem] items-center gap-2 rounded-2xl border p-2 transition ${rowClass}`}
     >
-      <div className="flex flex-col items-center gap-1">
-        <span
-          className={`grid h-8 w-8 place-items-center rounded-full text-sm font-bold ${numberClass}`}
-        >
-          {set.set_number}
-        </span>
-        {isNext && (
-          <span className="sr-only">הסט הבא</span>
-        )}
-      </div>
+      <span
+        className={`grid h-8 w-8 place-items-center rounded-full text-sm font-bold ${numberClass}`}
+      >
+        {set.set_number}
+      </span>
       <Input
         inputMode="decimal"
         type="number"
@@ -395,7 +578,7 @@ function SetRow({
         disabled={done}
         onChange={(e) => setW(e.target.value)}
         onBlur={() => commit("weight_kg", w)}
-        className="h-11 text-center text-lg font-bold tabular-nums"
+        className="h-11 min-w-0 text-center text-base font-bold tabular-nums"
       />
       <Input
         inputMode="numeric"
@@ -404,19 +587,19 @@ function SetRow({
         disabled={done}
         onChange={(e) => setR(e.target.value)}
         onBlur={() => commit("reps", r)}
-        className="h-11 text-center text-lg font-bold tabular-nums"
+        className="h-11 min-w-0 text-center text-base font-bold tabular-nums"
       />
       <div className="flex items-center justify-end gap-1">
         {done ? (
           <button
             onClick={onUncomplete}
-            className="grid h-10 w-10 place-items-center rounded-full bg-amber-500/15 text-amber-500"
-            aria-label="פתח מחדש את הסט"
+            className="grid h-10 w-10 place-items-center rounded-full bg-primary/15 text-primary"
+            aria-label="פתח מחדש את הסט (הושלם)"
+            title="הושלם — פתח מחדש"
           >
-            <Trophy className="h-5 w-5" />
-            <span className="sr-only">הושלם</span>
+            <CheckCircle2 className="h-5 w-5" />
           </button>
-        ) : (
+        ) : isActive ? (
           <button
             onClick={onDelete}
             className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:text-destructive"
@@ -424,31 +607,40 @@ function SetRow({
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
+        ) : (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={onComplete}
+              className="grid h-8 w-8 place-items-center rounded-full bg-muted text-foreground"
+              aria-label="סמן סט כבוצע"
+              title="סמן כבוצע"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={onDelete}
+              className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:text-destructive"
+              aria-label="מחק סט"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
         )}
       </div>
-      {!done && (
-        <div className="col-span-4 flex justify-center">
-          <button
-            onClick={onComplete}
-            className={`mt-1 w-full rounded-xl py-2 text-sm font-bold transition active:scale-[0.98] ${ctaClass} ${
-              future ? "opacity-80" : ""
-            }`}
-            aria-label={isNext ? "ביצעתי את הסט הבא" : "ביצעתי את הסט"}
-          >
-            {isNext ? "ביצעתי את הסט" : "סמן כבוצע"}
-          </button>
-        </div>
-      )}
     </div>
   );
 }
 
-/* ---------------- Rest bar ---------------- */
+/* ---------------- Rest panel ---------------- */
 
-function RestBar({
+function RestPanel({
   phase,
   remainingSec,
   overtimeSec,
+  nextSetNumber,
+  totalSets,
+  nextWeight,
+  nextReps,
   onAdd,
   onSub,
   onSkip,
@@ -456,45 +648,61 @@ function RestBar({
   phase: "idle" | "running" | "overtime";
   remainingSec: number;
   overtimeSec: number;
+  nextSetNumber: number | null;
+  totalSets: number;
+  nextWeight: number | null;
+  nextReps: number | null;
   onAdd: () => void;
   onSub: () => void;
   onSkip: () => void;
 }) {
   const over = phase === "overtime";
   return (
-    <div
-      className={`glass-tile flex items-center justify-between gap-2 px-3 py-2 ${
-        over ? "border-destructive/50 text-destructive" : "text-foreground"
-      }`}
-    >
-      <button
-        onClick={onSub}
-        className="grid h-9 w-9 place-items-center rounded-full bg-muted"
-        aria-label="פחות 15 שניות"
-      >
-        <Minus className="h-4 w-4" />
-      </button>
-      <div className="text-center">
-        <p className="text-[10px] uppercase tracking-wider opacity-70">
-          {over ? "מעבר לזמן" : "מנוחה"}
-        </p>
-        <p className="font-mono text-2xl font-extrabold tabular-nums">
+    <div className="glass-tile space-y-2 px-4 py-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-primary">
+            {over ? "מוכן לסט הבא" : "מנוחה"}
+          </p>
+          {nextSetNumber != null && (
+            <p className="truncate text-xs text-muted-foreground">
+              הבא: סט {nextSetNumber} מתוך {totalSets}
+              {nextWeight != null || nextReps != null
+                ? ` · ${nextWeight ?? "—"} ק״ג × ${nextReps ?? "—"}`
+                : ""}
+            </p>
+          )}
+        </div>
+        <p
+          className={`font-mono text-3xl font-extrabold tabular-nums ${
+            over ? "text-primary" : "text-foreground"
+          }`}
+        >
           {over ? `+${formatClock(overtimeSec)}` : formatClock(remainingSec)}
         </p>
       </div>
-      <button
-        onClick={onAdd}
-        className="grid h-9 w-9 place-items-center rounded-full bg-muted"
-        aria-label="עוד 15 שניות"
-      >
-        <Plus className="h-4 w-4" />
-      </button>
-      <button
-        onClick={onSkip}
-        className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary"
-      >
-        דלג
-      </button>
+      <div className="grid grid-cols-3 gap-2">
+        <button
+          onClick={onSub}
+          className="flex h-10 items-center justify-center gap-1 rounded-xl bg-muted text-sm font-semibold"
+          aria-label="הפחת 15 שניות"
+        >
+          <Minus className="h-4 w-4" /> 15
+        </button>
+        <button
+          onClick={onSkip}
+          className="h-10 rounded-xl bg-primary/15 text-sm font-bold text-primary"
+        >
+          דלג
+        </button>
+        <button
+          onClick={onAdd}
+          className="flex h-10 items-center justify-center gap-1 rounded-xl bg-muted text-sm font-semibold"
+          aria-label="הוסף 15 שניות"
+        >
+          <Plus className="h-4 w-4" /> 15
+        </button>
+      </div>
     </div>
   );
 }
