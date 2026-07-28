@@ -266,6 +266,7 @@ function OverviewPage() {
                 const done = exSets.filter((s) => s.completed_at).length;
                 const total = exSets.length;
                 const isDone = done === total && total > 0;
+                const isCurrent = exerciseId === currentExerciseId;
                 const inProgress = done > 0 && !isDone;
                 const bestWeight = Math.max(
                   0,
@@ -282,14 +283,17 @@ function OverviewPage() {
                     key={exerciseId}
                     to="/workouts/session/$sessionId/exercise/$exerciseId"
                     params={{ sessionId, exerciseId }}
-                    className={`relative flex gap-3 overflow-hidden rounded-3xl border p-3 transition ${
-                      isDone
-                        ? "border-primary/40 bg-primary/[0.04] opacity-90"
-                        : inProgress
-                          ? "border-primary bg-card shadow-glow"
-                          : "border-border bg-card"
+                    className={`relative flex gap-3 overflow-hidden rounded-3xl border transition ${
+                      isCurrent
+                        ? "border-primary bg-card p-3 shadow-glow"
+                        : isDone
+                          ? "border-border/60 bg-muted/20 p-2.5 opacity-80"
+                          : inProgress
+                            ? "border-primary/50 bg-card p-3"
+                            : "border-border bg-card p-2.5"
                     }`}
                   >
+
                     <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-muted">
                       {ex?.image_path ? (
                         // eslint-disable-next-line @next/next/no-img-element
