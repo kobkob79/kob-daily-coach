@@ -42,8 +42,10 @@ function OverviewPage() {
   const { sessionId } = Route.useParams();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const [exitOpen, setExitOpen] = useState(false);
+  const [finishOpen, setFinishOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
   const [zeroWarnOpen, setZeroWarnOpen] = useState(false);
+
 
   const restoreQ = useQuery({
     queryKey: ["session_restore", sessionId],
