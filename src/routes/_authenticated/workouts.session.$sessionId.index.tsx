@@ -113,8 +113,44 @@ function OverviewPage() {
   const totalPlanned = sets.length;
   const progress = totalPlanned > 0 ? Math.round((totalDone / totalPlanned) * 100) : 0;
 
+  // Occurrence order comes from set position; current exercise = first one
+  // (by position) that still has an open set.
+  const orderedExerciseIds = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const s of [...sets].sort(
+      (a, b) => (a.position ?? 0) - (b.position ?? 0) || a.set_number - b.set_number,
+    )) {
+      if (!seen.has(s.exercise_id)) {
+        seen.add(s.exercise_id);
+        out.push(s.exercise_id);
+      }
+    }
+    return out;
+  }, [sets]);
+
+  const currentExerciseId = useMemo(() => {
+    for (const id of orderedExerciseIds) {
+      const exSets = sets.filter((s) => s.exercise_id === id);
+      if (exSets.some((s) => !s.completed_at)) return id;
+    }
+    return null;
+  }, [orderedExerciseIds, sets]);
+
+  const exercisesDone = orderedExerciseIds.filter((id) => {
+    const exSets = sets.filter((s) => s.exercise_id === id);
+    return exSets.length > 0 && exSets.every((s) => s.completed_at);
+  }).length;
+
+  const volumeDone = Math.round(
+    sets
+      .filter((s) => s.completed_at)
+      .reduce((sum, s) => sum + (s.weight_kg ?? 0) * (s.reps ?? 0), 0),
+  );
+
   const goToSummary = useCallback(() => {
-    setExitOpen(false);
+    setFinishOpen(false);
+    setCancelOpen(false);
     setZeroWarnOpen(false);
     navigate({
       to: "/workouts/session/$sessionId/summary",
@@ -123,7 +159,7 @@ function OverviewPage() {
   }, [navigate, sessionId]);
 
   const handleFinish = useCallback(() => {
-    setExitOpen(false);
+    setFinishOpen(false);
     if (totalDone === 0) {
       setZeroWarnOpen(true);
       return;
@@ -132,8 +168,6 @@ function OverviewPage() {
   }, [totalDone, goToSummary]);
 
   const handleTemporaryExit = useCallback(() => {
-    setExitOpen(false);
-    setZeroWarnOpen(false);
     // Session stays in_progress; the global bar keeps it reachable.
     qc.invalidateQueries({ queryKey: ["active-session"] });
     navigate({ to: "/workouts" });
@@ -144,14 +178,16 @@ function OverviewPage() {
       await discardSession(sessionId);
     } catch (e) {
       console.error("[session] discard failed", e);
-      toast.error("לא הצלחנו לזרוק את האימון");
+      toast.error("לא הצלחנו לבטל את האימון");
       return;
     }
-    setExitOpen(false);
+    setFinishOpen(false);
+    setCancelOpen(false);
     setZeroWarnOpen(false);
     qc.invalidateQueries({ queryKey: ["active-session"] });
     navigate({ to: "/workouts" });
   }, [sessionId, qc, navigate]);
+
 
   if (restoreQ.isLoading) {
     return (
