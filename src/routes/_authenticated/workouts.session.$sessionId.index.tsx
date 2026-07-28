@@ -507,3 +507,26 @@ function SessionRecoveryScreen({
     </div>
   );
 }
+
+/* ---------------- Header stat ---------------- */
+
+function HeaderStat({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card/60 px-1.5 py-1.5">
+      <p className="text-[10px] text-muted-foreground">{label}</p>
+      <p
+        className={`truncate text-sm font-bold tabular-nums ${mono ? "font-mono" : ""}`}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
