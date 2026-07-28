@@ -317,7 +317,15 @@ function OverviewPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="truncate text-base font-bold">{ex?.name ?? "—"}</p>
+                        <p className="truncate text-base font-bold">
+                          {isCurrent && (
+                            <span className="ml-2 rounded-full bg-primary/15 px-2 py-0.5 align-middle text-[10px] font-bold text-primary">
+                              עכשיו
+                            </span>
+                          )}
+                          {ex?.name ?? "—"}
+                        </p>
+
                         {isPR && <Trophy className="h-4 w-4 shrink-0 text-primary" />}
                       </div>
                       <p
