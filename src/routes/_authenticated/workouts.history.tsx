@@ -13,6 +13,9 @@ export const Route = createFileRoute("/_authenticated/workouts/history")({
 
 function HistoryPage() {
   const q = useQuery({ queryKey: ["sessions_history"], queryFn: () => listSessions(100) });
+  // History shows performed workouts only — planning and active sessions
+  // live in the Workout Hub / Weekly Planner.
+  const completed = (q.data ?? []).filter((s) => s.status === "completed");
 
   return (
     <div dir="rtl" className="space-y-4">
@@ -27,13 +30,17 @@ function HistoryPage() {
       </div>
 
       <div className="space-y-2">
-        {(q.data ?? []).length === 0 && (
-          <p className="text-center text-sm text-muted-foreground">אין אימונים עדיין.</p>
+        {completed.length === 0 && (
+          <p className="text-center text-sm text-muted-foreground">אין אימונים שהושלמו עדיין.</p>
         )}
-        {q.data?.map((s) => (
+        {completed.map((s) => (
           <HistoryCard key={s.id} s={s} />
         ))}
       </div>
+    </div>
+  );
+}
+
     </div>
   );
 }
