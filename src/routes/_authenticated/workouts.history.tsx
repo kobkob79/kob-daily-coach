@@ -41,9 +41,7 @@ function HistoryPage() {
   );
 }
 
-    </div>
-  );
-}
+
 
 function HistoryCard({ s }: { s: SessionRow }) {
   const date = new Date(s.started_at);
