@@ -109,12 +109,7 @@ export function AssignDayDialog({
             >
               סמן כיום מנוחה
             </Button>
-            <Button
-              variant="ghost"
-              className="h-11"
-              onClick={() => clear.mutate()}
-              disabled={busy}
-            >
+            <Button variant="ghost" className="h-11" onClick={() => clear.mutate()} disabled={busy}>
               הסר שיוך
             </Button>
           </div>

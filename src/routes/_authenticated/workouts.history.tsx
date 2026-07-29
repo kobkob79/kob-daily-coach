@@ -41,8 +41,6 @@ function HistoryPage() {
   );
 }
 
-
-
 function HistoryCard({ s }: { s: SessionRow }) {
   const date = new Date(s.started_at);
   const dateStr = date.toLocaleDateString("he-IL", {
@@ -54,11 +52,7 @@ function HistoryCard({ s }: { s: SessionRow }) {
   const durMin = s.duration_seconds ? Math.round(s.duration_seconds / 60) : null;
 
   return (
-    <Link
-      to="/workouts/history/$sessionId"
-      params={{ sessionId: s.id }}
-      className="block"
-    >
+    <Link to="/workouts/history/$sessionId" params={{ sessionId: s.id }} className="block">
       <div className="surface-card flex items-center justify-between p-4">
         <div>
           <p className="text-sm font-semibold">{s.name ?? "אימון"}</p>

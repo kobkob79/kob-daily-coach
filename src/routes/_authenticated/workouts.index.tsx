@@ -495,10 +495,7 @@ function ActiveSessionCard({ session, onOpen }: { session: SessionRow; onOpen: (
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, []);
-  const elapsed = Math.max(
-    0,
-    Math.floor((now - new Date(session.started_at).getTime()) / 1000),
-  );
+  const elapsed = Math.max(0, Math.floor((now - new Date(session.started_at).getTime()) / 1000));
   return (
     <div
       role="button"
@@ -571,9 +568,7 @@ function ConflictDialog({
       <DialogContent className="max-w-sm" dir="rtl">
         <DialogHeader>
           <DialogTitle>יש לך אימון פעיל</DialogTitle>
-          <DialogDescription>
-            אפשר להתחיל אימון חדש רק אחרי שהאימון הפעיל יסתיים.
-          </DialogDescription>
+          <DialogDescription>אפשר להתחיל אימון חדש רק אחרי שהאימון הפעיל יסתיים.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3">
