@@ -59,16 +59,22 @@ export function matchSessionsToSlots(
   const claim = (session: SessionRow): number | null => {
     const tpl = session.template_id;
     if (!tpl) return null;
-    // 1. explicit occurrence link
+    // 1. explicit occurrence link — the session was started from that card,
+    //    so it owns it even if the card's template was changed afterwards.
     const pw = session.plan_weekday;
-    if (pw != null && !claimed.has(pw)) {
-      const slot = occ.find((s) => s.weekday === pw && s.template_id === tpl);
+    if (pw != null) {
+      if (claimed.has(pw)) return null;
+      const slot = occ.find((s) => s.weekday === pw);
       if (slot) {
         claimed.add(pw);
         return pw;
       }
+      return null;
     }
-    // 2. legacy: same template, started on that weekday
+    // 2. legacy (plan_weekday IS NULL): only the card of the very weekday the
+    //    session was performed on, and only for the same template. A legacy
+    //    session must never claim an unrelated day — doing so used to blank
+    //    out the whole Hub.
     const day = new Date(session.started_at).getDay();
     const sameDay = occ.find(
       (s) => s.weekday === day && s.template_id === tpl && !claimed.has(s.weekday),
@@ -77,14 +83,9 @@ export function matchSessionsToSlots(
       claimed.add(sameDay.weekday);
       return sameDay.weekday;
     }
-    // 3. legacy: first free slot with that template
-    const anySlot = occ.find((s) => s.template_id === tpl && !claimed.has(s.weekday));
-    if (anySlot) {
-      claimed.add(anySlot.weekday);
-      return anySlot.weekday;
-    }
     return null;
   };
+
 
   // The in_progress session claims first so it always wins its own card.
   const active = sessions.find((s) => s.status === "in_progress") ?? null;
