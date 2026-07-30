@@ -18,6 +18,18 @@ export const Route = createFileRoute("/_authenticated/workouts/program")({
   component: PlannerPage,
 });
 
+/** Date of `weekday` inside the current week (Sunday-based), for DD.MM display. */
+function dateForWeekday(weekday: number): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - d.getDay() + weekday);
+  return d;
+}
+
+function formatDate(d: Date): string {
+  return d.toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" });
+}
+
 function PlannerPage() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<number | null>(null);
@@ -60,31 +72,65 @@ function PlannerPage() {
           const tpl = slot?.template_id
             ? templatesQ.data?.find((x) => x.id === slot.template_id)
             : null;
-          const isRest = !slot?.template_id && slot?.display_name === REST_DAY_LABEL;
+          const isAssigned = !!slot?.template_id;
+          const isRest = !isAssigned && slot?.display_name === REST_DAY_LABEL;
           const isToday = idx === today;
+          const date = dateForWeekday(idx);
+
+          // Each state has its own surface + badge so it reads without icons.
+          const stateClass = isAssigned
+            ? "border-primary/50 bg-primary/10"
+            : isRest
+              ? "border-border bg-muted/40"
+              : "border-dashed border-border bg-card";
+
           return (
             <button
               key={idx}
               type="button"
               onClick={() => setEditing(idx)}
-              className={`flex w-full items-center gap-3 rounded-2xl border p-4 text-right transition active:scale-[0.99] ${
-                isToday ? "border-primary bg-card shadow-glow" : "border-border bg-card"
+              className={`flex w-full items-center gap-3 rounded-2xl border p-4 text-right transition active:scale-[0.99] ${stateClass} ${
+                isToday ? "ring-2 ring-primary shadow-glow" : ""
               }`}
             >
-              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-muted text-sm font-bold text-muted-foreground">
-                {label}
+              <div
+                className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl text-sm font-bold leading-tight ${
+                  isAssigned ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                }`}
+              >
+                <span>{label}</span>
+                <span className="text-[10px] font-medium tabular-nums opacity-80">
+                  {formatDate(date)}
+                </span>
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                  יום {label}
-                  {isToday ? " · היום" : ""}
+                <p className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <span>יום {label}</span>
+                  {isToday && (
+                    <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+                      היום
+                    </span>
+                  )}
                 </p>
-                <p className="truncate text-base font-bold">
-                  {tpl?.name ?? slot?.display_name ?? "לא שויך אימון"}
+                <p
+                  className={`truncate text-base font-bold ${
+                    isAssigned ? "" : "text-muted-foreground"
+                  }`}
+                >
+                  {tpl?.name ?? slot?.display_name ?? "יום פנוי"}
+                </p>
+                <p className="mt-0.5 text-[11px] font-semibold">
+                  {isAssigned ? (
+                    <span className="text-primary">אימון משויך</span>
+                  ) : isRest ? (
+                    <span className="text-muted-foreground">יום מנוחה</span>
+                  ) : (
+                    <span className="text-muted-foreground">ללא שיוך · הקש להוספה</span>
+                  )}
                 </p>
               </div>
-              {slot?.template_id ? (
-                <span className="flex items-center gap-2 text-muted-foreground">
+              {isAssigned ? (
+                <span className="flex items-center gap-2 text-primary">
                   <Dumbbell className="h-4 w-4" />
                   <Pencil className="h-4 w-4" />
                 </span>
