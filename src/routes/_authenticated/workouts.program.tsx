@@ -95,9 +95,7 @@ function PlannerPage() {
             >
               <div
                 className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl text-sm font-bold leading-tight ${
-                  isAssigned
-                    ? "bg-primary/20 text-primary"
-                    : "bg-muted text-muted-foreground"
+                  isAssigned ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
                 }`}
               >
                 <span>{label}</span>
@@ -145,7 +143,6 @@ function PlannerPage() {
           );
         })}
       </div>
-
 
       {editing !== null && (
         <AssignDayDialog

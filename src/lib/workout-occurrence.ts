@@ -48,9 +48,7 @@ export function matchSessionsToSlots(
   sessions: SessionRow[],
   weekStart = startOfWeek(),
 ): OccurrenceMatch {
-  const occ = slots
-    .filter((s) => !!s.template_id)
-    .sort((a, b) => a.weekday - b.weekday);
+  const occ = slots.filter((s) => !!s.template_id).sort((a, b) => a.weekday - b.weekday);
 
   const claimed = new Set<number>();
   const completedByWeekday = new Map<number, SessionRow>();
@@ -86,22 +84,15 @@ export function matchSessionsToSlots(
     return null;
   };
 
-
   // The in_progress session claims first so it always wins its own card.
   const active = sessions.find((s) => s.status === "in_progress") ?? null;
   if (active) activeWeekday = claim(active);
 
   const completed = sessions
     .filter(
-      (s) =>
-        s.status === "completed" &&
-        !!s.finished_at &&
-        new Date(s.finished_at) >= weekStart,
+      (s) => s.status === "completed" && !!s.finished_at && new Date(s.finished_at) >= weekStart,
     )
-    .sort(
-      (a, b) =>
-        new Date(a.started_at).getTime() - new Date(b.started_at).getTime(),
-    );
+    .sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime());
 
   for (const s of completed) {
     const weekday = claim(s);
