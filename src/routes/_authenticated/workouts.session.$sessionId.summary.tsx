@@ -80,7 +80,8 @@ function SummaryPage() {
       qc.invalidateQueries({ queryKey: ["sessions", "recent"] });
       qc.invalidateQueries({ queryKey: ["session", sessionId] });
       toast.success("האימון נשמר");
-      navigate({ to: "/workouts/history" });
+      navigate({ to: "/workouts/session/$sessionId/debrief", params: { sessionId } });
+
     },
     onError: (e: Error) => toast.error(e.message),
   });
