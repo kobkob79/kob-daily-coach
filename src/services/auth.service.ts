@@ -1,6 +1,6 @@
 /** Authentication service — the only place auth calls are made. */
 import { lovable } from "@/integrations/lovable";
-import { supabase, unwrap, ServiceError } from "./base";
+import { supabase, ServiceError } from "./base";
 
 export const authService = {
   async signUpWithEmail(email: string, password: string, redirectTo = "/") {
