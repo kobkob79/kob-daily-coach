@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +39,23 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const handleGoogle = async () => {
+    setGoogleLoading(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) throw result.error;
+      if (result.redirected) return;
+      goNext();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("auth.failed"));
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const goNext = () => {
     // `next` may be a nested app URL (e.g. the OAuth consent path); use a
@@ -124,6 +142,24 @@ function AuthPage() {
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {mode === "signin" ? t("auth.signin") : t("auth.signup")}
           </Button>
+
+          <div className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-[11px] text-muted-foreground">או</span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            disabled={googleLoading}
+            onClick={handleGoogle}
+          >
+            {googleLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            התחברות עם Google
+          </Button>
+
           <button
             type="button"
             onClick={() => setMode(mode === "signin" ? "signup" : "signin")}

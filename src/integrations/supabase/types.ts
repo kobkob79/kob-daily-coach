@@ -41,6 +41,81 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_recommendations: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          message: string
+          priority: number
+          reasoning: string | null
+          related: Json
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          message: string
+          priority?: number
+          reasoning?: string | null
+          related?: Json
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          message?: string
+          priority?: number
+          reasoning?: string | null
+          related?: Json
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      body_measurements: {
+        Row: {
+          area: string
+          created_at: string
+          id: string
+          measured_on: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+          value_cm: number
+        }
+        Insert: {
+          area: string
+          created_at?: string
+          id?: string
+          measured_on?: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+          value_cm: number
+        }
+        Update: {
+          area?: string
+          created_at?: string
+          id?: string
+          measured_on?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+          value_cm?: number
+        }
+        Relationships: []
+      }
       body_photos: {
         Row: {
           created_at: string
@@ -206,6 +281,48 @@ export type Database = {
           name?: string
           owner_id?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      goals: {
+        Row: {
+          created_at: string
+          goal_type: string
+          id: string
+          notes: string | null
+          status: string
+          target_date: string | null
+          target_unit: string | null
+          target_value: number | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          goal_type?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          target_date?: string | null
+          target_unit?: string | null
+          target_value?: number | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          goal_type?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          target_date?: string | null
+          target_unit?: string | null
+          target_value?: number | null
+          title?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -509,6 +626,36 @@ export type Database = {
           notes?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      weights_history: {
+        Row: {
+          created_at: string
+          id: string
+          measured_on: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+          weight_kg: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          measured_on?: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+          weight_kg: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          measured_on?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+          weight_kg?: number
         }
         Relationships: []
       }
