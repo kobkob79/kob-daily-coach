@@ -38,6 +38,25 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const handleGoogle = async () => {
+    setGoogleLoading(true);
+    try {
+      // Store the intended destination; the broker returns to the app origin.
+      sessionStorage.setItem("viora_post_auth_next", next);
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) throw result.error;
+      if (result.redirected) return;
+      goNext();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("auth.failed"));
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const goNext = () => {
     // `next` may be a nested app URL (e.g. the OAuth consent path); use a
