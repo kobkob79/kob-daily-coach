@@ -44,8 +44,6 @@ function AuthPage() {
   const handleGoogle = async () => {
     setGoogleLoading(true);
     try {
-      // Store the intended destination; the broker returns to the app origin.
-      sessionStorage.setItem("viora_post_auth_next", next);
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
       });
