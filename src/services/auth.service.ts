@@ -43,10 +43,14 @@ export const authService = {
   },
 
   async getUser() {
-    return unwrap(await supabase.auth.getUser()).user;
+    const { data, error } = await supabase.auth.getUser();
+    if (error) throw new ServiceError(error.message, error);
+    return data.user;
   },
 
   async getSession() {
-    return unwrap(await supabase.auth.getSession()).session;
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw new ServiceError(error.message, error);
+    return data.session;
   },
 };
