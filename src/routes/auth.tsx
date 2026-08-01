@@ -124,6 +124,24 @@ function AuthPage() {
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {mode === "signin" ? t("auth.signin") : t("auth.signup")}
           </Button>
+
+          <div className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-[11px] text-muted-foreground">או</span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            disabled={googleLoading}
+            onClick={handleGoogle}
+          >
+            {googleLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            התחברות עם Google
+          </Button>
+
           <button
             type="button"
             onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
