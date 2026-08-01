@@ -20,8 +20,12 @@ export class ServiceError extends Error {
 }
 
 /** Unwraps a Supabase result, throwing a normalized error on failure. */
-export function unwrap<T>(result: { data: T; error: { message: string } | null }): T {
+export function unwrap<T>(result: {
+  data: T | null;
+  error: { message: string } | null;
+}): T {
   if (result.error) throw new ServiceError(result.error.message, result.error);
+  if (result.data === null) throw new ServiceError("No data returned");
   return result.data;
 }
 
