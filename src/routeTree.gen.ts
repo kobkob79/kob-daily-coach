@@ -19,6 +19,7 @@ import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedProgressRouteImport } from './routes/_authenticated/progress'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedNutritionRouteImport } from './routes/_authenticated/nutrition'
+import { Route as AuthenticatedMediaRouteImport } from './routes/_authenticated/media'
 import { Route as AuthenticatedMealsRouteImport } from './routes/_authenticated/meals'
 import { Route as AuthenticatedJournalRouteImport } from './routes/_authenticated/journal'
 import { Route as AuthenticatedHydrationRouteImport } from './routes/_authenticated/hydration'
@@ -91,6 +92,11 @@ const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
 const AuthenticatedNutritionRoute = AuthenticatedNutritionRouteImport.update({
   id: '/nutrition',
   path: '/nutrition',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMediaRoute = AuthenticatedMediaRouteImport.update({
+  id: '/media',
+  path: '/media',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedMealsRoute = AuthenticatedMealsRouteImport.update({
@@ -237,6 +243,7 @@ export interface FileRoutesByFullPath {
   '/hydration': typeof AuthenticatedHydrationRoute
   '/journal': typeof AuthenticatedJournalRoute
   '/meals': typeof AuthenticatedMealsRoute
+  '/media': typeof AuthenticatedMediaRoute
   '/nutrition': typeof AuthenticatedNutritionRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/progress': typeof AuthenticatedProgressRoute
@@ -271,6 +278,7 @@ export interface FileRoutesByTo {
   '/hydration': typeof AuthenticatedHydrationRoute
   '/journal': typeof AuthenticatedJournalRoute
   '/meals': typeof AuthenticatedMealsRoute
+  '/media': typeof AuthenticatedMediaRoute
   '/nutrition': typeof AuthenticatedNutritionRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/progress': typeof AuthenticatedProgressRoute
@@ -305,6 +313,7 @@ export interface FileRoutesById {
   '/_authenticated/hydration': typeof AuthenticatedHydrationRoute
   '/_authenticated/journal': typeof AuthenticatedJournalRoute
   '/_authenticated/meals': typeof AuthenticatedMealsRoute
+  '/_authenticated/media': typeof AuthenticatedMediaRoute
   '/_authenticated/nutrition': typeof AuthenticatedNutritionRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/progress': typeof AuthenticatedProgressRoute
@@ -341,6 +350,7 @@ export interface FileRouteTypes {
     | '/hydration'
     | '/journal'
     | '/meals'
+    | '/media'
     | '/nutrition'
     | '/profile'
     | '/progress'
@@ -375,6 +385,7 @@ export interface FileRouteTypes {
     | '/hydration'
     | '/journal'
     | '/meals'
+    | '/media'
     | '/nutrition'
     | '/profile'
     | '/progress'
@@ -408,6 +419,7 @@ export interface FileRouteTypes {
     | '/_authenticated/hydration'
     | '/_authenticated/journal'
     | '/_authenticated/meals'
+    | '/_authenticated/media'
     | '/_authenticated/nutrition'
     | '/_authenticated/profile'
     | '/_authenticated/progress'
@@ -510,6 +522,13 @@ declare module '@tanstack/react-router' {
       path: '/nutrition'
       fullPath: '/nutrition'
       preLoaderRoute: typeof AuthenticatedNutritionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/media': {
+      id: '/_authenticated/media'
+      path: '/media'
+      fullPath: '/media'
+      preLoaderRoute: typeof AuthenticatedMediaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/meals': {
@@ -748,6 +767,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedHydrationRoute: typeof AuthenticatedHydrationRoute
   AuthenticatedJournalRoute: typeof AuthenticatedJournalRoute
   AuthenticatedMealsRoute: typeof AuthenticatedMealsRoute
+  AuthenticatedMediaRoute: typeof AuthenticatedMediaRoute
   AuthenticatedNutritionRoute: typeof AuthenticatedNutritionRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedProgressRoute: typeof AuthenticatedProgressRoute
@@ -766,6 +786,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHydrationRoute: AuthenticatedHydrationRoute,
   AuthenticatedJournalRoute: AuthenticatedJournalRoute,
   AuthenticatedMealsRoute: AuthenticatedMealsRoute,
+  AuthenticatedMediaRoute: AuthenticatedMediaRoute,
   AuthenticatedNutritionRoute: AuthenticatedNutritionRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedProgressRoute: AuthenticatedProgressRoute,
