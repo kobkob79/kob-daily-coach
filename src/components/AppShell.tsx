@@ -17,6 +17,32 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [askOpen, setAskOpen] = useState(false);
   const hideBottomNav = pathname.startsWith("/workouts/session/");
 
+  // The bottom nav is fixed, so its real height (which changes when the
+  // active-workout strip appears, and with the device safe-area inset) must
+  // become bottom padding on <main>. A hardcoded pb-32 guessed wrong and let
+  // content scroll underneath the bar.
+  const navRef = useRef<HTMLElement | null>(null);
+  const [navHeight, setNavHeight] = useState(0);
+
+  useEffect(() => {
+    if (hideBottomNav) {
+      setNavHeight(0);
+      return;
+    }
+    const el = navRef.current;
+    if (!el) return;
+    const measure = () => setNavHeight(el.getBoundingClientRect().height);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [hideBottomNav, pathname]);
+
+
   const handleSignOut = async () => {
     await qc.cancelQueries();
     qc.clear();
