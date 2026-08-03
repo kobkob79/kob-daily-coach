@@ -13,10 +13,27 @@ import {
 } from "@/lib/workout-session";
 import type { CoachDebriefContext, DebriefExercise } from "@/lib/coach-debrief.functions";
 
+/** Epley estimate, rounded to 0.5 kg. */
+function e1rm(weightKg: number, reps: number | null): number | null {
+  if (!weightKg || !reps || reps <= 0) return null;
+  return Math.round(weightKg * (1 + reps / 30) * 2) / 2;
+}
+
 function avg(nums: number[]): number | null {
   const clean = nums.filter((n) => Number.isFinite(n) && n > 0);
   if (!clean.length) return null;
   return Math.round(clean.reduce((a, b) => a + b, 0) / clean.length);
+}
+
+/** Completed sessions finished within the last `days` days. */
+function countSince(
+  sessions: { finished_at?: string | null }[],
+  days: number,
+): number {
+  const cutoff = Date.now() - days * 86400000;
+  return sessions.filter(
+    (s) => s.finished_at && new Date(s.finished_at).getTime() >= cutoff,
+  ).length;
 }
 
 export async function buildDebriefContext(
@@ -71,6 +88,10 @@ export async function buildDebriefContext(
       plannedRestSeconds: avg(ordered.map((s) => s.planned_rest_seconds ?? 0)),
       repsDropped:
         doneReps.length >= 2 && doneReps[doneReps.length - 1] < doneReps[0] - 1,
+      e1rmKg: e1rm(topWeight, topSet?.reps ?? null),
+      prevE1rmKg: prev ? Math.round(prev * 1.03) : null,
+      weightDeltaKg:
+        topWeight > 0 && prev > 0 ? Math.round((topWeight - prev) * 10) / 10 : null,
     });
   }
 
@@ -90,6 +111,14 @@ export async function buildDebriefContext(
         0,
         Math.floor((startedMs - new Date(prevSession.finished_at).getTime()) / 86400000),
       )
+    : null;
+
+  const recentVolumes = others
+    .slice(0, 4)
+    .map((s) => s.total_volume_kg ?? 0)
+    .filter((v) => v > 0);
+  const avgVolume = recentVolumes.length
+    ? Math.round(recentVolumes.reduce((a, b) => a + b, 0) / recentVolumes.length)
     : null;
 
   const todayWeekday = new Date().getDay();
@@ -114,6 +143,16 @@ export async function buildDebriefContext(
     ),
     totalVolumeKg: totalVolume,
     prevVolumeKg: prevSession?.total_volume_kg ?? null,
+    workoutsLast7Days: countSince(others, 7),
+    workoutsLast30Days: countSince(others, 30),
+    avgVolumeLast4WorkoutsKg: avgVolume,
+    volumeTrendPct:
+      avgVolume && avgVolume > 0
+        ? Math.round(((totalVolume - avgVolume) / avgVolume) * 100)
+        : null,
+    completionRatePct: sets.length
+      ? Math.round((completedSets / sets.length) * 100)
+      : 0,
     plannedSets: sets.length,
     completedSets,
     skippedSets: Math.max(0, sets.length - completedSets),
