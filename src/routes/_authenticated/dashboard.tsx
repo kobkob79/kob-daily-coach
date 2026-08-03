@@ -545,9 +545,13 @@ function Dashboard() {
       {showOnboarding && (
         <LifeProfileOnboarding
           initial={lifeQ.data ?? null}
-          onComplete={() => queryClient.invalidateQueries({ queryKey: ["life-profile"] })}
+          onComplete={() => {
+            setOnboardingDone(true);
+            queryClient.invalidateQueries({ queryKey: ["life-profile"] });
+          }}
         />
       )}
+
       {showIntake && !showOnboarding && (
         <MorningIntake
           bioDay={bioDay}
