@@ -48,7 +48,7 @@ import {
 import { useRestTimer } from "@/hooks/useRestTimer";
 import { useWorkoutTimer, formatTotalTime } from "@/hooks/useWorkoutTimer";
 import { ExerciseHero } from "@/components/workouts/ExerciseHero";
-import { PreviousVsCurrent, formatPerformance } from "@/components/workouts/PreviousVsCurrent";
+import { formatPerformance } from "@/components/workouts/PreviousVsCurrent";
 import { RestTimerWidget } from "@/components/workouts/RestTimerWidget";
 import {
   PRCelebration,
@@ -442,24 +442,55 @@ function ExerciseDetailPage() {
         footer={headerMeta}
       />
 
-      {/* Active set focus / exercise completed */}
+      {/* Set table — the single source of truth for the active set */}
+      <div className="space-y-1.5">
+        <div className="grid grid-cols-[2rem_1fr_1fr_3rem] items-center gap-2 px-2 text-[9px] uppercase tracking-wider text-muted-foreground">
+          <span>#</span>
+          <span>משקל (ק״ג)</span>
+          <span>חזרות</span>
+          <span />
+        </div>
+
+        {sets.map((s) => (
+          <SetRow
+            key={s.id}
+            containerRef={s.id === activeSet?.id ? activeCardRef : undefined}
+            set={s}
+            isActive={s.id === activeSet?.id}
+            previous={previousBySetNumber.get(s.set_number) ?? null}
+            onComplete={() => completeMut.mutate(s)}
+            onUncomplete={() => uncompleteMut.mutate(s)}
+            onDelete={() => removeMut.mutate(s.id)}
+            onChange={(field, value) =>
+              patchMut.mutate({
+                id: s.id,
+                patch: { [field]: value } as Partial<SessionSet>,
+                propagate: s.completed_at
+                  ? undefined
+                  : { field, value, fromSetNumber: s.set_number },
+              })
+            }
+          />
+        ))}
+
+        <button
+          onClick={() => addMut.mutate()}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-2 text-xs font-medium text-muted-foreground transition hover:border-primary hover:text-primary"
+        >
+          <Plus className="h-3.5 w-3.5" /> הוסף סט
+        </button>
+      </div>
+
+      {/* Primary action: finish the active set, directly below the table */}
       {activeSet ? (
-        <ActiveSetCard
-          key={activeSet.id}
-          containerRef={activeCardRef}
-          set={activeSet}
-          totalSets={sets.length}
-          previous={previousBySetNumber.get(activeSet.set_number) ?? null}
-          onChange={(field, value) =>
-            patchMut.mutate({
-              id: activeSet.id,
-              patch: { [field]: value } as Partial<SessionSet>,
-              propagate: { field, value, fromSetNumber: activeSet.set_number },
-            })
-          }
-          onComplete={() => completeMut.mutate(activeSet)}
+        <Button
+          className="h-12 w-full text-base font-extrabold shadow-glow-accent"
+          onClick={() => completeMut.mutate(activeSet)}
           disabled={completeMut.isPending}
-        />
+        >
+          <CheckCircle2 className="ml-1 h-5 w-5" />
+          סיימתי סט {activeSet.set_number}
+        </Button>
       ) : (
         <div className="rounded-2xl border border-primary bg-primary/[0.06] p-3 shadow-glow">
           <div className="flex items-center gap-2">
@@ -488,44 +519,6 @@ function ExerciseDetailPage() {
         </div>
       )}
 
-      {/* Set list */}
-      <div className="space-y-1.5">
-        <div className="grid grid-cols-[2rem_1fr_1fr_3rem] items-center gap-2 px-2 text-[9px] uppercase tracking-wider text-muted-foreground">
-          <span>#</span>
-          <span>משקל (ק״ג)</span>
-          <span>חזרות</span>
-          <span />
-        </div>
-
-        {sets.map((s) => (
-          <SetRow
-            key={s.id}
-            set={s}
-            isActive={s.id === activeSet?.id}
-            previous={previousBySetNumber.get(s.set_number) ?? null}
-            onComplete={() => completeMut.mutate(s)}
-            onUncomplete={() => uncompleteMut.mutate(s)}
-            onDelete={() => removeMut.mutate(s.id)}
-            onChange={(field, value) =>
-              patchMut.mutate({
-                id: s.id,
-                patch: { [field]: value } as Partial<SessionSet>,
-                propagate: s.completed_at
-                  ? undefined
-                  : { field, value, fromSetNumber: s.set_number },
-              })
-            }
-          />
-        ))}
-
-        <button
-          onClick={() => addMut.mutate()}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-2 text-xs font-medium text-muted-foreground transition hover:border-primary hover:text-primary"
-        >
-          <Plus className="h-3.5 w-3.5" /> הוסף סט
-        </button>
-
-      </div>
 
       {/* Floating stack: rest timer → finish exercise → workout clock */}
       <div
@@ -595,111 +588,10 @@ function ExerciseDetailPage() {
   );
 }
 
-/* ---------------- Active set card ---------------- */
-
-function ActiveSetCard({
-  containerRef,
-  set,
-  totalSets,
-  previous,
-  onChange,
-  onComplete,
-  disabled,
-}: {
-  containerRef: React.RefObject<HTMLDivElement | null>;
-  set: SessionSet;
-  totalSets: number;
-  previous: { weightKg: number | null; reps: number | null } | null;
-  onChange: (field: "weight_kg" | "reps", value: number | null) => void;
-  onComplete: () => void;
-  disabled?: boolean;
-}) {
-  const [w, setW] = useState<string>(set.weight_kg?.toString() ?? "");
-  const [r, setR] = useState<string>(set.reps?.toString() ?? "");
-  const initial = useRef({ w: set.weight_kg, r: set.reps });
-
-  useEffect(() => {
-    setW(set.weight_kg?.toString() ?? "");
-    setR(set.reps?.toString() ?? "");
-    initial.current = { w: set.weight_kg, r: set.reps };
-  }, [set.weight_kg, set.reps, set.id]);
-
-  const commit = (field: "weight_kg" | "reps", raw: string) => {
-    const value = raw === "" ? null : Number(raw);
-    if (Number.isNaN(value as number)) return;
-    if (field === "weight_kg" && value === initial.current.w) return;
-    if (field === "reps" && value === initial.current.r) return;
-    initial.current =
-      field === "weight_kg"
-        ? { ...initial.current, w: value }
-        : { ...initial.current, r: value };
-    onChange(field, value);
-  };
-
-  return (
-    <div
-      ref={containerRef}
-      className="animate-slide-up scroll-mt-20 rounded-2xl border-2 border-accent bg-accent/[0.08] p-3 shadow-glow-accent ring-1 ring-accent/30 transition-all duration-300"
-    >
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-accent">
-          סט {set.set_number} מתוך {totalSets}
-        </p>
-        <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[9px] font-bold text-accent">
-          הסט הנוכחי
-        </span>
-      </div>
-
-      <PreviousVsCurrent
-        className="mt-2"
-        previous={previous}
-        current={{
-          weightKg: w === "" ? null : Number(w),
-          reps: r === "" ? null : Number(r),
-        }}
-      />
-
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        <label className="space-y-0.5">
-          <span className="text-[10px] text-muted-foreground">משקל (ק״ג)</span>
-          <Input
-            inputMode="decimal"
-            type="number"
-            step="0.5"
-            value={w}
-            onChange={(e) => setW(e.target.value)}
-            onBlur={() => commit("weight_kg", w)}
-            className="h-12 text-center text-2xl font-extrabold tabular-nums"
-          />
-        </label>
-        <label className="space-y-0.5">
-          <span className="text-[10px] text-muted-foreground">חזרות</span>
-          <Input
-            inputMode="numeric"
-            type="number"
-            value={r}
-            onChange={(e) => setR(e.target.value)}
-            onBlur={() => commit("reps", r)}
-            className="h-12 text-center text-2xl font-extrabold tabular-nums"
-          />
-        </label>
-      </div>
-      <Button
-        className="mt-2 h-12 w-full text-base font-extrabold"
-        onClick={onComplete}
-        disabled={disabled}
-      >
-        <CheckCircle2 className="ml-1 h-5 w-5" />
-        סיימתי סט
-      </Button>
-    </div>
-  );
-
-}
-
 /* ---------------- SetRow ---------------- */
 
 function SetRow({
+  containerRef,
   set,
   isActive,
   previous,
@@ -708,6 +600,7 @@ function SetRow({
   onDelete,
   onChange,
 }: {
+  containerRef?: React.RefObject<HTMLDivElement | null>;
   set: SessionSet;
   isActive: boolean;
   previous: { weightKg: number | null; reps: number | null } | null;
@@ -755,9 +648,11 @@ function SetRow({
 
   return (
     <div
-      className={`rounded-xl border p-1.5 transition-all duration-300 ${rowClass} ${
+      ref={containerRef}
+      className={`scroll-mt-24 rounded-xl border p-1.5 transition-all duration-300 ${rowClass} ${
         isActive ? "scale-[1.01]" : ""
       }`}
+
     >
       <div className="grid grid-cols-[2rem_1fr_1fr_3rem] items-center gap-2">
         <span
