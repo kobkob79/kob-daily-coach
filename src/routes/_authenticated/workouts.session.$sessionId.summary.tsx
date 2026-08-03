@@ -94,7 +94,7 @@ function SummaryPage() {
       <div className="surface-card animate-slide-up relative grid place-items-center gap-2 overflow-hidden p-6 text-center">
         <div className="pointer-events-none absolute inset-0 bg-[image:var(--gradient-hero)] opacity-40" />
         <span className="animate-breathe relative grid h-20 w-20 place-items-center rounded-full bg-success/15">
-          <CheckCircle2 className="animate-scale-in h-12 w-12 text-success" />
+          <CheckCircle2 className="animate-stagger h-12 w-12 text-success" />
         </span>
         <h1 className="animate-fade-in relative text-2xl font-extrabold">האימון הושלם</h1>
         <p className="relative text-sm text-muted-foreground">{q.data?.session?.name}</p>
