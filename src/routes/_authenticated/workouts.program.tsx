@@ -38,7 +38,11 @@ function PlannerPage() {
   const templatesQ = useQuery({
     queryKey: ["workout_templates_min"],
     queryFn: async () => {
-      const { data } = await supabase.from("workout_templates").select("id,name").order("name");
+      const { data, error } = await supabase
+        .from("workout_templates")
+        .select("id,name")
+        .order("name");
+      if (error) throw error;
       return (data ?? []) as { id: string; name: string }[];
     },
   });
