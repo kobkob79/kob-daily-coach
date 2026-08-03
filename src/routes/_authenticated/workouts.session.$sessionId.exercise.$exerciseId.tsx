@@ -72,6 +72,19 @@ function ExerciseDetailPage() {
   const [finishOpen, setFinishOpen] = useState(false);
   const [pr, setPr] = useState<PRCelebrationData | null>(null);
   const activeCardRef = useRef<HTMLDivElement | null>(null);
+  /** Measured height of the floating stack, so content never hides beneath it. */
+  const floatingRef = useRef<HTMLDivElement | null>(null);
+  const [floatingHeight, setFloatingHeight] = useState(120);
+
+  useEffect(() => {
+    const el = floatingRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setFloatingHeight(el.offsetHeight));
+    ro.observe(el);
+    setFloatingHeight(el.offsetHeight);
+    return () => ro.disconnect();
+  }, []);
+
 
   const sessionQ = useQuery({
     queryKey: ["session", sessionId],
