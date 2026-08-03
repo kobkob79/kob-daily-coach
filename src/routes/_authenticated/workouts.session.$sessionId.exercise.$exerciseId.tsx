@@ -315,7 +315,14 @@ function ExerciseDetailPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["session_sets", sessionId] }),
   });
 
+  /**
+   * The workout is a live draft: sets stay editable while the session is
+   * in progress and lock only once the workout itself is finished.
+   */
+  const locked = !!sessionQ.data && sessionQ.data.status !== "in_progress";
+
   const doneCount = sets.filter((s) => s.completed_at).length;
+
   const remaining = sets.length - doneCount;
   const activeSet = sets.find((s) => !s.completed_at) ?? null;
   const exerciseVolume = Math.round(
