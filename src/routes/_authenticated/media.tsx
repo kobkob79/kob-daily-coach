@@ -74,7 +74,10 @@ function Chip({
 }
 
 function MediaPage() {
-  const { character, category } = Route.useSearch();
+  const { character, category } = Route.useSearch() as {
+    character: CharacterKey;
+    category: MediaCategory;
+  };
   const navigate = useNavigate({ from: Route.fullPath });
 
   return (
@@ -101,7 +104,7 @@ function MediaPage() {
             key={c}
             active={c === character}
             label={CHARACTER_LABELS[c]}
-            onClick={() => navigate({ search: (prev) => ({ ...prev, character: c }) })}
+            onClick={() => navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, character: c }) })}
           />
         ))}
       </div>
@@ -112,7 +115,7 @@ function MediaPage() {
             key={cat}
             active={cat === category}
             label={CATEGORY_LABELS[cat]}
-            onClick={() => navigate({ search: (prev) => ({ ...prev, category: cat }) })}
+            onClick={() => navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, category: cat }) })}
           />
         ))}
       </div>
