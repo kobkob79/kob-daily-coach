@@ -48,7 +48,7 @@ import {
 import { useRestTimer } from "@/hooks/useRestTimer";
 import { useWorkoutTimer, formatTotalTime } from "@/hooks/useWorkoutTimer";
 import { ExerciseHero } from "@/components/workouts/ExerciseHero";
-import { PreviousVsCurrent } from "@/components/workouts/PreviousVsCurrent";
+import { PreviousVsCurrent, formatPerformance } from "@/components/workouts/PreviousVsCurrent";
 import { RestTimerWidget } from "@/components/workouts/RestTimerWidget";
 import {
   PRCelebration,
