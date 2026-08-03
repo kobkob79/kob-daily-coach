@@ -254,6 +254,8 @@ function ExerciseDetailPage() {
       id: string;
       patch: Partial<SessionSet>;
       propagate?: { field: "weight_kg" | "reps"; value: number | null; fromSetNumber: number };
+      /** The set as it looked before the edit — used for live PR recalculation. */
+      source?: SessionSet;
     }) => {
       await updateSet(id, patch);
       if (propagate) {
@@ -265,9 +267,30 @@ function ExerciseDetailPage() {
         }
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["session_sets", sessionId] }),
+    onSuccess: (_r, vars) => {
+      // Live recalculation: sets → volume/stats, PR stats, AI/summary surfaces.
+      qc.invalidateQueries({ queryKey: ["session_sets", sessionId] });
+      qc.invalidateQueries({ queryKey: ["active-session-current"] });
+      qc.invalidateQueries({ queryKey: ["exercise_pr_stats", exerciseId, sessionId] });
+      qc.invalidateQueries({ queryKey: ["session_summary", sessionId] });
+
+      // Editing a completed set may create a brand-new record → award it now.
+      const source = vars.source;
+      if (source?.completed_at) {
+        const edited = { ...source, ...vars.patch } as SessionSet;
+        const kinds = detectSetPRs(edited);
+        if (kinds.length > 0) {
+          setPr({
+            kinds,
+            detail: `${edited.weight_kg ?? "—"} ק״ג × ${edited.reps ?? "—"}`,
+            id: `${edited.id}-${Date.now()}`,
+          });
+        }
+      }
+    },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const addMut = useMutation({
     mutationFn: async () => {
