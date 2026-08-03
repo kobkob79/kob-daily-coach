@@ -257,13 +257,16 @@ function OverviewPage() {
 
 
       {/* Groups */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         {groups.map(([muscle, list]) => (
-          <section key={muscle} className="space-y-3">
+          <section key={muscle} className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-extrabold">{muscle}</h2>
+              <h2 className="text-sm font-extrabold uppercase tracking-wide text-muted-foreground">
+                {muscle}
+              </h2>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-1.5">
+
               {list.map(({ exerciseId, sets: exSets, ex }) => {
                 const done = exSets.filter((s) => s.completed_at).length;
                 const total = exSets.length;
