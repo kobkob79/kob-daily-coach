@@ -49,7 +49,7 @@ import { useRestTimer } from "@/hooks/useRestTimer";
 import { useWorkoutTimer, formatTotalTime } from "@/hooks/useWorkoutTimer";
 import { ExerciseHero } from "@/components/workouts/ExerciseHero";
 import { formatPerformance } from "@/components/workouts/PreviousVsCurrent";
-import { RestTimerWidget } from "@/components/workouts/RestTimerWidget";
+import { FloatingRestTimer } from "@/components/workouts/FloatingRestTimer";
 import {
   PRCelebration,
   type PRCelebrationData,
