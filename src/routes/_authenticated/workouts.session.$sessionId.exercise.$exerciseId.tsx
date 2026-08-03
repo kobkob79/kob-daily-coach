@@ -480,6 +480,7 @@ function ExerciseDetailPage() {
             containerRef={s.id === activeSet?.id ? activeCardRef : undefined}
             set={s}
             isActive={s.id === activeSet?.id}
+            locked={locked}
             previous={previousBySetNumber.get(s.set_number) ?? null}
             onComplete={() => completeMut.mutate(s)}
             onUncomplete={() => uncompleteMut.mutate(s)}
@@ -488,6 +489,7 @@ function ExerciseDetailPage() {
               patchMut.mutate({
                 id: s.id,
                 patch: { [field]: value } as Partial<SessionSet>,
+                source: s,
                 propagate: s.completed_at
                   ? undefined
                   : { field, value, fromSetNumber: s.set_number },
@@ -495,6 +497,7 @@ function ExerciseDetailPage() {
             }
           />
         ))}
+
 
         <button
           onClick={() => addMut.mutate()}
