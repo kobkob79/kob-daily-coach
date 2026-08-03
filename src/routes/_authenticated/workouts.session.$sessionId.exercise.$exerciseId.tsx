@@ -627,6 +627,7 @@ function SetRow({
   containerRef,
   set,
   isActive,
+  locked,
   previous,
   onComplete,
   onUncomplete,
@@ -636,6 +637,8 @@ function SetRow({
   containerRef?: React.RefObject<HTMLDivElement | null>;
   set: SessionSet;
   isActive: boolean;
+  /** True once the workout is finished — only then do sets become read-only. */
+  locked: boolean;
   previous: { weightKg: number | null; reps: number | null } | null;
   onComplete: () => void;
   onUncomplete: () => void;
@@ -643,6 +646,7 @@ function SetRow({
   onChange: (field: "weight_kg" | "reps", value: number | null) => void;
 }) {
   const done = !!set.completed_at;
+
   const [w, setW] = useState<string>(set.weight_kg?.toString() ?? "");
   const [r, setR] = useState<string>(set.reps?.toString() ?? "");
   const initial = useRef({ w: set.weight_kg, r: set.reps });
