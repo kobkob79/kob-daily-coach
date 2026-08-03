@@ -424,7 +424,11 @@ function Dashboard() {
     queryKey: ["life-profile"],
     queryFn: fetchLifeProfile,
   });
-  const showOnboarding = lifeQ.isSuccess && needsOnboarding(lifeQ.data);
+  // Local latch: once the wizard reports a successful completion write we
+  // dismiss immediately, without depending on the refetch result.
+  const [onboardingDone, setOnboardingDone] = useState(false);
+  const showOnboarding = !onboardingDone && lifeQ.isSuccess && needsOnboarding(lifeQ.data);
+
   const dayCtxQ = useDayContext(now);
   const chronicPainQ = useHasChronicPain();
 
