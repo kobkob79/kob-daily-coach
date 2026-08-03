@@ -10,7 +10,8 @@
 import { useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Dumbbell, Play, Plus, Sparkles, Star, X } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Dumbbell, Play, Plus, Sparkles, Star, Trophy, X } from "lucide-react";
 import { normalizeMuscleGroup } from "@/lib/muscle-groups";
 import {
   difficultyOf,
@@ -21,7 +22,16 @@ import {
   writeFavorites,
   type PickerExercise,
 } from "@/lib/exercise-meta";
+import {
+  TREND_META,
+  formatHebDate,
+  formatRest,
+  smartBadges,
+  type ExerciseStats,
+} from "@/lib/exercise-stats";
+import { useExerciseIntel } from "@/hooks/useExerciseIntel";
 import { cn } from "@/lib/utils";
+
 
 interface Props {
   exercise: PickerExercise | null;
@@ -40,8 +50,10 @@ export function ExerciseDetailsSheet({
 }: Props) {
   const [favorites, setFavorites] = useState<string[]>([]);
   useEffect(() => setFavorites(readFavorites()), [open]);
+  const intel = useExerciseIntel(exercise?.id, open);
 
   if (!exercise) return null;
+
 
   const ex = exercise;
   const primary = normalizeMuscleGroup(ex.muscle_group);
@@ -116,15 +128,31 @@ export function ExerciseDetailsSheet({
                 <p className="text-sm leading-relaxed">{whatItTrains(ex)}</p>
               </section>
 
+              {/* Personal intelligence */}
+              {intel.isLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-24 w-full rounded-2xl" />
+                  <Skeleton className="h-24 w-full rounded-2xl" />
+                </div>
+              ) : intel.data ? (
+                <PersonalIntel
+                  stats={intel.data.stats}
+                  routines={intel.data.routines}
+                  isFav={isFav}
+                />
+              ) : null}
+
               {/* Reserved AI coaching slot */}
               <section className="rounded-2xl border border-dashed border-border/60 p-3.5">
                 <p className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
-                  <Sparkles className="h-3.5 w-3.5" aria-hidden /> טיפים מהמאמן
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden /> Viora Coach
                 </p>
                 <p className="mt-1.5 text-xs text-muted-foreground">
-                  טיפים אישיים, טעויות נפוצות והנחיות בטיחות יופיעו כאן בקרוב.
+                  תובנות אישיות, טעויות נפוצות והמלצות אימון יופיעו כאן בקרוב.
                 </p>
               </section>
+
+
 
               {/* Related */}
               {related.length > 0 && (
@@ -177,6 +205,157 @@ export function ExerciseDetailsSheet({
     </Sheet>
   );
 }
+
+/**
+ * The personal dashboard: history, last performance, PRs, statistics,
+ * trend, routine usage and auto-generated badges — all derived, zero input.
+ */
+function PersonalIntel({
+  stats,
+  routines,
+  isFav,
+}: {
+  stats: ExerciseStats;
+  routines: string[];
+  isFav: boolean;
+}) {
+  const badges = smartBadges(stats, { isFavorite: isFav, routines });
+  const trend = TREND_META[stats.trend];
+  const never = stats.timesPerformed === 0;
+  const last = stats.lastPerformance;
+  const lastText =
+    last && (last.weightKg != null || last.reps != null)
+      ? last.weightKg != null && last.reps != null
+        ? `${last.weightKg} ק״ג × ${last.reps}`
+        : last.weightKg != null
+          ? `${last.weightKg} ק״ג`
+          : `${last.reps} חזרות`
+      : "—";
+
+  return (
+    <div className="space-y-3">
+      {badges.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {badges.map((b) => (
+            <Tag key={b.label} className={b.tone}>
+              <span aria-hidden>{b.emoji}</span> {b.label}
+            </Tag>
+          ))}
+        </div>
+      )}
+
+      <section className="surface-card space-y-2.5 rounded-2xl border border-border/60 p-3.5">
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+          ההיסטוריה שלי בתרגיל
+        </p>
+        {never ? (
+          <p className="text-sm text-muted-foreground">
+            עדיין לא ביצעת את התרגיל הזה — ברגע שתבצע, כל הנתונים האישיים יופיעו כאן.
+          </p>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-2">
+              <MetaCell label="ביצוע אחרון" value={formatHebDate(stats.lastPerformedAt)} />
+              <MetaCell label="מספר ביצועים" value={String(stats.timesPerformed)} />
+              <MetaCell label="ביצוע ראשון" value={formatHebDate(stats.firstPerformedAt)} />
+            </div>
+
+            <div className="rounded-xl border border-primary/30 bg-primary/10 p-3">
+              <p className="text-[10px] uppercase tracking-wider text-primary">האימון האחרון</p>
+              <p className="mt-0.5 text-lg font-bold tabular-nums">{lastText}</p>
+              <p className="text-[11px] text-muted-foreground">{formatHebDate(last?.at ?? null)}</p>
+            </div>
+
+            <Tag className={trend.tone}>
+              <span aria-hidden>{trend.icon}</span> מגמה: {trend.label}
+            </Tag>
+          </>
+        )}
+      </section>
+
+      {!never && (
+        <>
+          <section className="surface-card space-y-2 rounded-2xl border border-border/60 p-3.5">
+            <p className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
+              <Trophy className="h-3.5 w-3.5" aria-hidden /> שיאים אישיים
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <MetaCell
+                label="🏆 משקל מקסימלי"
+                value={stats.records.heaviestKg != null ? `${stats.records.heaviestKg} ק״ג` : "—"}
+              />
+              <MetaCell
+                label="🏆 מקסימום חזרות"
+                value={stats.records.mostReps != null ? String(stats.records.mostReps) : "—"}
+              />
+              <MetaCell
+                label="🏆 1RM משוער"
+                value={stats.records.best1RM != null ? `${stats.records.best1RM} ק״ג` : "—"}
+              />
+              <MetaCell
+                label="🏆 נפח שיא"
+                value={
+                  stats.records.bestSessionVolume != null
+                    ? `${stats.records.bestSessionVolume} ק״ג`
+                    : "—"
+                }
+              />
+            </div>
+          </section>
+
+          <section className="surface-card space-y-2 rounded-2xl border border-border/60 p-3.5">
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              סטטיסטיקה אישית
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <MetaCell
+                label="משקל ממוצע"
+                value={stats.averages.weightKg != null ? `${stats.averages.weightKg} ק״ג` : "—"}
+              />
+              <MetaCell
+                label="חזרות בממוצע"
+                value={stats.averages.reps != null ? String(stats.averages.reps) : "—"}
+              />
+              <MetaCell
+                label="נפח ממוצע"
+                value={
+                  stats.averages.sessionVolume != null
+                    ? `${stats.averages.sessionVolume} ק״ג`
+                    : "—"
+                }
+              />
+              <MetaCell label="מנוחה ממוצעת" value={formatRest(stats.averages.restSeconds)} />
+              <MetaCell
+                label="אחוז השלמה"
+                value={
+                  stats.completionRate != null
+                    ? `${Math.round(stats.completionRate * 100)}%`
+                    : "—"
+                }
+              />
+            </div>
+          </section>
+        </>
+      )}
+
+      {routines.length > 0 && (
+        <section className="surface-card space-y-1.5 rounded-2xl border border-border/60 p-3.5">
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            בשימוש בשגרות
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {routines.map((r) => (
+              <Tag key={r} className="bg-muted/40 text-muted-foreground">
+                {r}
+              </Tag>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
 
 /** Reserved 16:9 media area — premium placeholder until assets exist. */
 function HeroMedia() {
