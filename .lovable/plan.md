@@ -1,51 +1,34 @@
-## Verified current state
+## Goal
 
-I checked the backend storage before planning:
+Turn the current Shiran-oriented media library into a generic, reusable character asset layer driven by Supabase Storage, and move the browsing UI to a hidden internal QA page instead of a permanent app route.
 
-- Buckets that exist: `body-photos`, `exercise-images`, `meal-photos`, `profile-photos`, `vision-captures`. There is **no `exercise-assets` bucket**.
-- Total objects across all buckets: 7, all under `<user-id>/...` paths. **No object matches `characters/shiran/identity/...`.**
+## What exists today (verified)
 
-So the uploads have not landed in this app's backend yet (different project, or bucket not created). The plan therefore creates the bucket and builds the full pipeline against it — the gallery will show its empty state until the files are uploaded, and every file that appears later shows up with zero code changes.
+- `src/lib/media-paths.ts` — already a registry: `characters/<characterId>/<category>`, with characters `shiran / maya / daniel / ortal` and categories `identity / marketing / exercise / video`. No hardcoded filenames.
+- `src/services/media.service.ts` — already bucket/prefix-agnostic, paginated listing + batch signed URLs + mimetype classification.
+- `src/components/media/MediaGallery.tsx` — reusable grid with Hebrew loading/empty/error states and a fullscreen viewer.
+- `src/routes/_authenticated/media.tsx` — a public-ish route with character/category chips, linked from the profile screen.
 
-## What gets built
+So the service layer is fine; the gap is (a) no reusable component for consuming a *single* asset inside ordinary screens, and (b) the gallery is a linked app route rather than a hidden dev tool.
 
-### 1. Storage bucket + read policies
-- Create private bucket `exercise-assets`.
-- RLS on `storage.objects`: `SELECT` for `authenticated` on `bucket_id = 'exercise-assets'` (read-only for the app; uploads stay admin/manual).
+## Changes
 
-### 2. Reusable media service (`src/services/media.service.ts`)
-Generic, no character or filename hardcoding:
-- `listMedia({ bucket, prefix, limit, offset, search })` → wraps `storage.from(bucket).list(prefix, { limit, offset, sortBy })`, filters out folder placeholders, classifies each entry as `image | video | other` from its mimetype/extension.
-- `signMedia(bucket, paths, expiresIn)` → batch `createSignedUrls` so private assets render.
-- Returns typed `MediaItem { path, name, kind, size, mimeType, updatedAt, url }`.
-- Pagination built in (page size 60, cursor via offset) so thousands of assets stay fast; signing happens per page only.
-- Exported from `src/services/index.ts`.
+1. **Reusable asset component + hook**
+   - `src/components/media/CharacterAsset.tsx`: `<CharacterAsset characterId category name? index? className? alt? />` — resolves and renders one image/video from a character folder, with skeleton, error fallback and empty fallback. Any screen can drop this in.
+   - `src/hooks/useCharacterAssets.ts`: `useCharacterAssets({ characterId, category })` returning typed `MediaItem[]` via React Query (single query key, shared cache, signed-URL TTL respected). Both build on the existing service — no duplicate Storage logic.
+   - `MediaGallery` gets `characterId` + `category` props (instead of raw bucket/prefix at call sites) while keeping the generic prefix escape hatch.
 
-### 3. Asset path registry (`src/lib/media-paths.ts`)
-Single place describing namespaces, so new characters/categories are data, not code:
-```text
-CHARACTERS = ['shiran', 'maya', 'daniel', 'ortal']
-CATEGORIES = ['identity', 'marketing', 'exercise', 'video']
-mediaPrefix(character, category) -> `characters/${character}/${category}`
-```
+2. **Hidden internal QA/dev page**
+   - Move the browsing UI to `src/routes/_authenticated/dev.assets.tsx` (path `/dev/assets`), `noindex` meta, no entry in `AppShell` bottom nav.
+   - Keep the character/category chips, driven entirely by the registry so new characters/categories appear automatically.
+   - Reachable only from the existing hidden QA/Developer tools card (`src/components/qa/QAToolsCard.tsx`).
+   - Delete `src/routes/_authenticated/media.tsx` and remove the "ספריית הנכסים" link from `profile.tsx`.
 
-### 4. Reusable gallery component (`src/components/media/MediaGallery.tsx`)
-Props: `bucket`, `prefix`, `title`. Behaviour:
-- TanStack Query `useInfiniteQuery` keyed on `[bucket, prefix, page]`.
-- **Loading**: skeleton grid in the existing glass/bento style.
-- **Empty**: friendly Hebrew message ("עדיין אין נכסים בתיקייה הזאת").
-- **Error**: Hebrew error card with retry button.
-- Grid of lazy-loaded (`loading="lazy"`, `decoding="async"`) images with aspect-ratio boxes; video entries render a `<video>` with poster fallback; tap opens a full-screen viewer.
-- "טען עוד" button when more pages remain.
+3. **Registry cleanup**
+   - Rename the character constant to a generic `CHARACTER_IDS` / `CharacterId` and mark Shiran as the only currently-populated dataset (a `populated` flag, so QA chips can show which folders have content). No filenames anywhere.
 
-### 5. Route `/_authenticated/media`
-Hebrew RTL page "נכסים" using the existing AppShell styling (no redesign):
-- Character selector chips (Shiran / Maya / Daniel / Ortal) and category chips (identity / marketing / exercise / video), both driven by the registry and stored in URL search params.
-- Renders `<MediaGallery bucket="exercise-assets" prefix={mediaPrefix(character, category)} />`, defaulting to `shiran` + `identity`.
-- Reachable from the profile screen (a "נכסים" link) — not added to the bottom nav, so navigation stays unchanged.
-- Route-level `head()` with its own Hebrew title/description/OG tags.
+## Notes
 
-### Technical notes
-- All reads go through the browser Supabase client under RLS; no service-role usage, no mock data, no hardcoded filenames.
-- Signed URLs cached for 1h with query `staleTime` slightly below expiry so images don't break mid-session.
-- Same component + service will later serve marketing, exercise and video prefixes by passing a different `prefix`.
+- Shiran remains the initial dataset; Maya/Daniel/Ortal and future characters need only a registry entry plus uploads.
+- Bucket stays private; access continues through short-lived signed URLs and the authenticated-only SELECT policy.
+- No visual redesign, everything stays Hebrew RTL.
