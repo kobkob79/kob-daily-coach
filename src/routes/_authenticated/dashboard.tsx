@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { MorningIntake, type DayIntake, type DayTargets } from "@/components/dashboard/MorningIntake";
 import { getMemory } from "@/lib/ai-memory";
 import { supabase } from "@/integrations/supabase/client";
