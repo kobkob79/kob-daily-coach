@@ -38,23 +38,24 @@ export function PreviousVsCurrent({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 rounded-2xl border border-border/50 bg-muted/25 px-3 py-2",
+        "flex items-center gap-2 rounded-xl border border-border/50 bg-muted/25 px-2.5 py-1.5",
         className,
       )}
     >
       <div className="min-w-0 flex-1">
-        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">קודם</p>
-        <p className="truncate text-sm font-bold tabular-nums">
+        <p className="text-[9px] uppercase tracking-wider text-muted-foreground">קודם</p>
+        <p className="truncate text-xs font-bold tabular-nums">
           {prevText ?? <span className="text-muted-foreground">ניסיון ראשון</span>}
         </p>
       </div>
-      <ArrowLeft className="h-4 w-4 shrink-0 text-muted-foreground/70" />
+      <ArrowLeft className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
       <div className="min-w-0 flex-1 text-left">
-        <p className="text-[10px] uppercase tracking-wider text-accent">נוכחי</p>
-        <p className="truncate text-sm font-bold tabular-nums text-foreground">
+        <p className="text-[9px] uppercase tracking-wider text-accent">נוכחי</p>
+        <p className="truncate text-xs font-bold tabular-nums text-foreground">
           {curText ?? <span className="text-muted-foreground">—</span>}
         </p>
       </div>
+
     </div>
   );
 }
