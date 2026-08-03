@@ -313,6 +313,11 @@ export function LifeProfileOnboarding({ initial, onComplete }: Props) {
         </div>
 
         {/* Nav */}
+        {persistStep.isError && (
+          <p className="mt-3 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {(persistStep.error as Error)?.message || "השמירה נכשלה. נסה שוב."}
+          </p>
+        )}
         <div className="mt-4 flex items-center justify-between gap-3">
           {prevStep() ? (
             <button
@@ -335,6 +340,7 @@ export function LifeProfileOnboarding({ initial, onComplete }: Props) {
             <ChevronLeft className="mr-1 h-4 w-4 rtl:rotate-180" />
           </Button>
         </div>
+
       </div>
     </div>
   );
