@@ -17,10 +17,12 @@ import { cn } from "@/lib/utils";
 
 const COLLAPSE_KEY = "viora:rest:collapsed";
 
+/** Collapsed by default: the set list must stay readable while resting. */
 function readCollapsed(): boolean {
-  if (typeof window === "undefined") return false;
-  return window.sessionStorage.getItem(COLLAPSE_KEY) === "1";
+  if (typeof window === "undefined") return true;
+  return window.sessionStorage.getItem(COLLAPSE_KEY) !== "0";
 }
+
 
 export interface RestTimerWidgetProps {
   phase: "idle" | "running" | "overtime";
