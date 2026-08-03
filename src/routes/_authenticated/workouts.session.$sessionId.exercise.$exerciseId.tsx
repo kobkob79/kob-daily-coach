@@ -748,9 +748,11 @@ function SetRow({
 
   return (
     <div
-      className={`rounded-xl border p-1.5 transition-all duration-300 ${rowClass} ${
+      ref={containerRef}
+      className={`scroll-mt-24 rounded-xl border p-1.5 transition-all duration-300 ${rowClass} ${
         isActive ? "scale-[1.01]" : ""
       }`}
+
     >
       <div className="grid grid-cols-[2rem_1fr_1fr_3rem] items-center gap-2">
         <span
