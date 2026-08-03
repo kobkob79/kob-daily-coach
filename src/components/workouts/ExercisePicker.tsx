@@ -259,7 +259,7 @@ export function ExercisePicker({ open, onClose, onSelect, title = "בחר תרג
           </div>
         </div>
       </SheetContent>
-      </SheetContent>
+
 
       <ExerciseDetailsSheet
         open={!!details}
