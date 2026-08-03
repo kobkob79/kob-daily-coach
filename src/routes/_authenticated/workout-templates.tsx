@@ -22,6 +22,7 @@ import { z } from "zod";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { t } from "@/lib/i18n";
 import { ActiveSessionConflictError, startOrResumeSessionForTemplate } from "@/lib/workout-session";
+import { ExercisePicker } from "@/components/workouts/ExercisePicker";
 
 const searchSchema = z.object({
   start: fallback(z.number().int(), 0).default(0),
@@ -357,7 +358,7 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workout_template_exercises", templateId] }),
   });
 
-  const [pickId, setPickId] = useState<string>("");
+  const [pickerVisible, setPickerVisible] = useState<boolean>(false);
 
   return (
     <Dialog open onOpenChange={onClose}>
