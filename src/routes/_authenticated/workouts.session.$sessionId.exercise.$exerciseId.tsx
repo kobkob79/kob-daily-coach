@@ -390,11 +390,15 @@ function ExerciseDetailPage() {
       )}
 
       {activeSet && (
-        <PreviousVsCurrent
-          previous={previousBySetNumber.get(activeSet.set_number) ?? null}
-          current={{ weightKg: activeSet.weight_kg, reps: activeSet.reps }}
-        />
+        <p className="text-[11px] text-muted-foreground">
+          סט {activeSet.set_number} · קודם:{" "}
+          <span className="font-bold text-foreground">
+            {formatPerformance(previousBySetNumber.get(activeSet.set_number) ?? null) ??
+              "ניסיון ראשון"}
+          </span>
+        </p>
       )}
+
     </div>
   );
 
