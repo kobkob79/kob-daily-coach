@@ -103,6 +103,8 @@ export function ExercisePicker({ open, onClose, onSelect, title = "בחר תרג
   const [muscle, setMuscle] = useState<MuscleGroup | null>(null);
   const [equip, setEquip] = useState<EquipmentKey | null>(null);
   const [visible, setVisible] = useState(PAGE);
+  const [details, setDetails] = useState<PickerExercise | null>(null);
+
 
   const all = q.data ?? [];
 
