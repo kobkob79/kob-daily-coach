@@ -119,7 +119,7 @@ Should Have · P2 · S · Deps: WORKOUT-002, STATS-003 · Backlog · Dev
 
 **WORKOUT-011 — In-session exercise swap**
 Replace an exercise (equipment busy) with an AI-suggested same-muscle alternative.
-Should Have · P2 * M · Deps: LIBRARY-002, AI-003 · Backlog · Dev
+Should Have · P2 · M · Deps: LIBRARY-002, AI-003 · Backlog · Dev
 
 **WORKOUT-012 — RPE / RIR capture**
 Optional one-tap effort rating per set feeding load recommendations.
