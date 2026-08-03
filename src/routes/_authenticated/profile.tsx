@@ -18,7 +18,6 @@ import {
   Camera, Upload, Trash2, ChevronLeft, ImagePlus, User, Pencil, X,
   Utensils, Dumbbell, HeartPulse, Activity, Pill, Moon, CalendarClock,
   Sparkles, Target,
-  Images,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
