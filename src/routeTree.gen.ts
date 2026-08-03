@@ -24,15 +24,18 @@ import { Route as AuthenticatedJournalRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedHydrationRouteImport } from './routes/_authenticated/hydration'
 import { Route as AuthenticatedHealthRouteImport } from './routes/_authenticated/health'
 import { Route as AuthenticatedExportRouteImport } from './routes/_authenticated/export'
+import { Route as AuthenticatedDevRouteImport } from './routes/_authenticated/dev'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCaptureRouteImport } from './routes/_authenticated/capture'
 import { Route as AuthenticatedAskRouteImport } from './routes/_authenticated/ask'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AuthenticatedWorkoutsIndexRouteImport } from './routes/_authenticated/workouts.index'
+import { Route as AuthenticatedDevIndexRouteImport } from './routes/_authenticated/dev.index'
 import { Route as AuthenticatedWorkoutsProgramRouteImport } from './routes/_authenticated/workouts.program'
 import { Route as AuthenticatedWorkoutsHistoryRouteImport } from './routes/_authenticated/workouts.history'
 import { Route as AuthenticatedWorkoutSessionWorkoutIdRouteImport } from './routes/_authenticated/workout-session.$workoutId'
+import { Route as AuthenticatedDevCharactersRouteImport } from './routes/_authenticated/dev.characters'
 import { Route as AuthenticatedDevAssetsRouteImport } from './routes/_authenticated/dev.assets'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
@@ -119,6 +122,11 @@ const AuthenticatedExportRoute = AuthenticatedExportRouteImport.update({
   path: '/export',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDevRoute = AuthenticatedDevRouteImport.update({
+  id: '/dev',
+  path: '/dev',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -152,6 +160,11 @@ const AuthenticatedWorkoutsIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedWorkoutsRoute,
   } as any)
+const AuthenticatedDevIndexRoute = AuthenticatedDevIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedDevRoute,
+} as any)
 const AuthenticatedWorkoutsProgramRoute =
   AuthenticatedWorkoutsProgramRouteImport.update({
     id: '/program',
@@ -170,10 +183,16 @@ const AuthenticatedWorkoutSessionWorkoutIdRoute =
     path: '/workout-session/$workoutId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedDevCharactersRoute =
+  AuthenticatedDevCharactersRouteImport.update({
+    id: '/characters',
+    path: '/characters',
+    getParentRoute: () => AuthenticatedDevRoute,
+  } as any)
 const AuthenticatedDevAssetsRoute = AuthenticatedDevAssetsRouteImport.update({
-  id: '/dev/assets',
-  path: '/dev/assets',
-  getParentRoute: () => AuthenticatedRouteRoute,
+  id: '/assets',
+  path: '/assets',
+  getParentRoute: () => AuthenticatedDevRoute,
 } as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
@@ -238,6 +257,7 @@ export interface FileRoutesByFullPath {
   '/ask': typeof AuthenticatedAskRoute
   '/capture': typeof AuthenticatedCaptureRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/dev': typeof AuthenticatedDevRouteWithChildren
   '/export': typeof AuthenticatedExportRoute
   '/health': typeof AuthenticatedHealthRoute
   '/hydration': typeof AuthenticatedHydrationRoute
@@ -252,9 +272,11 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/dev/assets': typeof AuthenticatedDevAssetsRoute
+  '/dev/characters': typeof AuthenticatedDevCharactersRoute
   '/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
   '/workouts/history': typeof AuthenticatedWorkoutsHistoryRouteWithChildren
   '/workouts/program': typeof AuthenticatedWorkoutsProgramRoute
+  '/dev/': typeof AuthenticatedDevIndexRoute
   '/workouts/': typeof AuthenticatedWorkoutsIndexRoute
   '/workouts/history/$sessionId': typeof AuthenticatedWorkoutsHistorySessionIdRoute
   '/workouts/session/$sessionId': typeof AuthenticatedWorkoutsSessionSessionIdRouteWithChildren
@@ -286,9 +308,11 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/dev/assets': typeof AuthenticatedDevAssetsRoute
+  '/dev/characters': typeof AuthenticatedDevCharactersRoute
   '/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
   '/workouts/history': typeof AuthenticatedWorkoutsHistoryRouteWithChildren
   '/workouts/program': typeof AuthenticatedWorkoutsProgramRoute
+  '/dev': typeof AuthenticatedDevIndexRoute
   '/workouts': typeof AuthenticatedWorkoutsIndexRoute
   '/workouts/history/$sessionId': typeof AuthenticatedWorkoutsHistorySessionIdRoute
   '/workouts/session/$sessionId/brief': typeof AuthenticatedWorkoutsSessionSessionIdBriefRoute
@@ -308,6 +332,7 @@ export interface FileRoutesById {
   '/_authenticated/ask': typeof AuthenticatedAskRoute
   '/_authenticated/capture': typeof AuthenticatedCaptureRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/dev': typeof AuthenticatedDevRouteWithChildren
   '/_authenticated/export': typeof AuthenticatedExportRoute
   '/_authenticated/health': typeof AuthenticatedHealthRoute
   '/_authenticated/hydration': typeof AuthenticatedHydrationRoute
@@ -322,9 +347,11 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/dev/assets': typeof AuthenticatedDevAssetsRoute
+  '/_authenticated/dev/characters': typeof AuthenticatedDevCharactersRoute
   '/_authenticated/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
   '/_authenticated/workouts/history': typeof AuthenticatedWorkoutsHistoryRouteWithChildren
   '/_authenticated/workouts/program': typeof AuthenticatedWorkoutsProgramRoute
+  '/_authenticated/dev/': typeof AuthenticatedDevIndexRoute
   '/_authenticated/workouts/': typeof AuthenticatedWorkoutsIndexRoute
   '/_authenticated/workouts/history/$sessionId': typeof AuthenticatedWorkoutsHistorySessionIdRoute
   '/_authenticated/workouts/session/$sessionId': typeof AuthenticatedWorkoutsSessionSessionIdRouteWithChildren
@@ -345,6 +372,7 @@ export interface FileRouteTypes {
     | '/ask'
     | '/capture'
     | '/dashboard'
+    | '/dev'
     | '/export'
     | '/health'
     | '/hydration'
@@ -359,9 +387,11 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/dev/assets'
+    | '/dev/characters'
     | '/workout-session/$workoutId'
     | '/workouts/history'
     | '/workouts/program'
+    | '/dev/'
     | '/workouts/'
     | '/workouts/history/$sessionId'
     | '/workouts/session/$sessionId'
@@ -393,9 +423,11 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/dev/assets'
+    | '/dev/characters'
     | '/workout-session/$workoutId'
     | '/workouts/history'
     | '/workouts/program'
+    | '/dev'
     | '/workouts'
     | '/workouts/history/$sessionId'
     | '/workouts/session/$sessionId/brief'
@@ -414,6 +446,7 @@ export interface FileRouteTypes {
     | '/_authenticated/ask'
     | '/_authenticated/capture'
     | '/_authenticated/dashboard'
+    | '/_authenticated/dev'
     | '/_authenticated/export'
     | '/_authenticated/health'
     | '/_authenticated/hydration'
@@ -428,9 +461,11 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/dev/assets'
+    | '/_authenticated/dev/characters'
     | '/_authenticated/workout-session/$workoutId'
     | '/_authenticated/workouts/history'
     | '/_authenticated/workouts/program'
+    | '/_authenticated/dev/'
     | '/_authenticated/workouts/'
     | '/_authenticated/workouts/history/$sessionId'
     | '/_authenticated/workouts/session/$sessionId'
@@ -559,6 +594,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExportRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/dev': {
+      id: '/_authenticated/dev'
+      path: '/dev'
+      fullPath: '/dev'
+      preLoaderRoute: typeof AuthenticatedDevRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -601,6 +643,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWorkoutsIndexRouteImport
       parentRoute: typeof AuthenticatedWorkoutsRoute
     }
+    '/_authenticated/dev/': {
+      id: '/_authenticated/dev/'
+      path: '/'
+      fullPath: '/dev/'
+      preLoaderRoute: typeof AuthenticatedDevIndexRouteImport
+      parentRoute: typeof AuthenticatedDevRoute
+    }
     '/_authenticated/workouts/program': {
       id: '/_authenticated/workouts/program'
       path: '/program'
@@ -622,12 +671,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWorkoutSessionWorkoutIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/dev/characters': {
+      id: '/_authenticated/dev/characters'
+      path: '/characters'
+      fullPath: '/dev/characters'
+      preLoaderRoute: typeof AuthenticatedDevCharactersRouteImport
+      parentRoute: typeof AuthenticatedDevRoute
+    }
     '/_authenticated/dev/assets': {
       id: '/_authenticated/dev/assets'
-      path: '/dev/assets'
+      path: '/assets'
       fullPath: '/dev/assets'
       preLoaderRoute: typeof AuthenticatedDevAssetsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedDevRoute
     }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
@@ -694,6 +750,21 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AuthenticatedDevRouteChildren {
+  AuthenticatedDevAssetsRoute: typeof AuthenticatedDevAssetsRoute
+  AuthenticatedDevCharactersRoute: typeof AuthenticatedDevCharactersRoute
+  AuthenticatedDevIndexRoute: typeof AuthenticatedDevIndexRoute
+}
+
+const AuthenticatedDevRouteChildren: AuthenticatedDevRouteChildren = {
+  AuthenticatedDevAssetsRoute: AuthenticatedDevAssetsRoute,
+  AuthenticatedDevCharactersRoute: AuthenticatedDevCharactersRoute,
+  AuthenticatedDevIndexRoute: AuthenticatedDevIndexRoute,
+}
+
+const AuthenticatedDevRouteWithChildren =
+  AuthenticatedDevRoute._addFileChildren(AuthenticatedDevRouteChildren)
 
 interface AuthenticatedWorkoutsHistoryRouteChildren {
   AuthenticatedWorkoutsHistorySessionIdRoute: typeof AuthenticatedWorkoutsHistorySessionIdRoute
@@ -762,6 +833,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAskRoute: typeof AuthenticatedAskRoute
   AuthenticatedCaptureRoute: typeof AuthenticatedCaptureRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedDevRoute: typeof AuthenticatedDevRouteWithChildren
   AuthenticatedExportRoute: typeof AuthenticatedExportRoute
   AuthenticatedHealthRoute: typeof AuthenticatedHealthRoute
   AuthenticatedHydrationRoute: typeof AuthenticatedHydrationRoute
@@ -773,7 +845,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedShiftRoute: typeof AuthenticatedShiftRoute
   AuthenticatedWorkoutTemplatesRoute: typeof AuthenticatedWorkoutTemplatesRoute
   AuthenticatedWorkoutsRoute: typeof AuthenticatedWorkoutsRouteWithChildren
-  AuthenticatedDevAssetsRoute: typeof AuthenticatedDevAssetsRoute
   AuthenticatedWorkoutSessionWorkoutIdRoute: typeof AuthenticatedWorkoutSessionWorkoutIdRoute
 }
 
@@ -781,6 +852,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAskRoute: AuthenticatedAskRoute,
   AuthenticatedCaptureRoute: AuthenticatedCaptureRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedDevRoute: AuthenticatedDevRouteWithChildren,
   AuthenticatedExportRoute: AuthenticatedExportRoute,
   AuthenticatedHealthRoute: AuthenticatedHealthRoute,
   AuthenticatedHydrationRoute: AuthenticatedHydrationRoute,
@@ -792,7 +864,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedShiftRoute: AuthenticatedShiftRoute,
   AuthenticatedWorkoutTemplatesRoute: AuthenticatedWorkoutTemplatesRoute,
   AuthenticatedWorkoutsRoute: AuthenticatedWorkoutsRouteWithChildren,
-  AuthenticatedDevAssetsRoute: AuthenticatedDevAssetsRoute,
   AuthenticatedWorkoutSessionWorkoutIdRoute:
     AuthenticatedWorkoutSessionWorkoutIdRoute,
 }
