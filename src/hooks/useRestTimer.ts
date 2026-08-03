@@ -96,7 +96,25 @@ export interface RestTimerState {
 export function useRestTimer(sessionId: string): RestTimerState {
   const [stored, setStored] = useState<StoredTimer | null>(() => read(sessionId));
   const [now, setNow] = useState<number>(() => Date.now());
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(false);
   const vibrateRef = useRef(false);
+  const soundRef = useRef(false);
+
+  // Sound preference is client-only; read after mount to stay SSR-safe.
+  useEffect(() => {
+    const enabled = isRestSoundEnabled();
+    setSoundEnabled(enabled);
+    soundRef.current = enabled;
+  }, []);
+
+  const toggleSound = useCallback(() => {
+    setSoundEnabled((prev) => {
+      const next = !prev;
+      setRestSoundEnabled(next);
+      soundRef.current = next;
+      return next;
+    });
+  }, []);
 
   // Rehydrate when session changes
   useEffect(() => {
@@ -110,7 +128,7 @@ export function useRestTimer(sessionId: string): RestTimerState {
     return () => window.clearInterval(id);
   }, [stored]);
 
-  // Fire vibrate + notification once when reaching zero
+  // Fire vibrate + chime + notification once when reaching zero
   useEffect(() => {
     if (!stored) return;
     const elapsed = Math.floor((now - stored.startedAt) / 1000);
@@ -118,10 +136,10 @@ export function useRestTimer(sessionId: string): RestTimerState {
     if (remaining <= 0 && !vibrateRef.current) {
       vibrateRef.current = true;
       try {
-        const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        if (!reduced && typeof navigator !== "undefined" && "vibrate" in navigator) {
+        if (typeof navigator !== "undefined" && "vibrate" in navigator) {
           (navigator as Navigator).vibrate?.([200, 80, 200]);
         }
+        if (soundRef.current) playChime();
         if (typeof Notification !== "undefined" && Notification.permission === "granted") {
           new Notification("Viora", { body: "המנוחה הסתיימה — לסט הבא" });
         }
@@ -130,6 +148,7 @@ export function useRestTimer(sessionId: string): RestTimerState {
       }
     }
   }, [stored, now]);
+
 
   const elapsed = stored ? Math.max(0, Math.floor((now - stored.startedAt) / 1000)) : 0;
   const remaining = stored ? Math.max(0, stored.plannedSec - elapsed) : 0;
@@ -197,6 +216,8 @@ export function useRestTimer(sessionId: string): RestTimerState {
     overtimeSec: overtime,
     plannedSec: stored?.plannedSec ?? 0,
     phase: !stored ? "idle" : remaining > 0 ? "running" : "overtime",
+    soundEnabled,
+    toggleSound,
     start,
     addSeconds,
     stop,
