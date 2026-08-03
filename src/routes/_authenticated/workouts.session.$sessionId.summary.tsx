@@ -90,24 +90,43 @@ function SummaryPage() {
 
   return (
     <div dir="rtl" className="mx-auto max-w-md space-y-4 py-4">
-      <div className="surface-card grid place-items-center gap-2 p-6 text-center">
-        <CheckCircle2 className="h-12 w-12 text-success" />
-        <h1 className="text-2xl font-extrabold">כל הכבוד!</h1>
-        <p className="text-sm text-muted-foreground">{q.data?.session?.name}</p>
+      {/* Celebration hero — the workout completion moment */}
+      <div className="surface-card animate-slide-up relative grid place-items-center gap-2 overflow-hidden p-6 text-center">
+        <div className="pointer-events-none absolute inset-0 bg-[image:var(--gradient-hero)] opacity-40" />
+        <span className="animate-breathe relative grid h-20 w-20 place-items-center rounded-full bg-success/15">
+          <CheckCircle2 className="animate-scale-in h-12 w-12 text-success" />
+        </span>
+        <h1 className="animate-fade-in relative text-2xl font-extrabold">האימון הושלם</h1>
+        <p className="relative text-sm text-muted-foreground">{q.data?.session?.name}</p>
+        <p className="relative text-xs text-muted-foreground">
+          {q.data?.completedSets} סטים הושלמו
+        </p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2">
-        <Stat icon={<Clock className="h-4 w-4" />} label="משך" value={`${q.data?.durationMin}׳`} />
-        <Stat icon={<Flame className="h-4 w-4" />} label="נפח" value={`${q.data?.volume} ק״ג`} />
-        <Stat icon={<Trophy className="h-4 w-4" />} label="שיאים" value={String(q.data?.prNames.length ?? 0)} />
+        {[
+          <Stat key="d" icon={<Clock className="h-4 w-4" />} label="משך" value={`${q.data?.durationMin}׳`} />,
+          <Stat key="v" icon={<Flame className="h-4 w-4" />} label="נפח" value={`${q.data?.volume} ק״ג`} />,
+          <Stat key="p" icon={<Trophy className="h-4 w-4" />} label="שיאים" value={String(q.data?.prNames.length ?? 0)} />,
+        ].map((node, i) => (
+          <div key={i} className="animate-stagger" style={{ animationDelay: `${120 + i * 90}ms` }}>
+            {node}
+          </div>
+        ))}
       </div>
 
       {(q.data?.prNames.length ?? 0) > 0 && (
-        <div className="surface-card space-y-1 p-4">
-          <p className="text-xs uppercase tracking-wider text-primary">שיאים חדשים 🎯</p>
+        <div className="surface-card animate-slide-up space-y-1 border border-primary/50 p-4 shadow-glow">
+          <p className="animate-soft-pulse text-xs font-bold uppercase tracking-wider text-primary">
+            שיאים אישיים חדשים 🎯
+          </p>
           {q.data!.prNames.map((n, i) => (
-            <p key={i} className="text-sm font-medium">
+            <p
+              key={i}
+              className="animate-stagger text-sm font-bold"
+              style={{ animationDelay: `${200 + i * 110}ms` }}
+            >
               🏆 {n}
             </p>
           ))}
