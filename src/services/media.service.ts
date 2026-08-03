@@ -15,6 +15,8 @@ export interface MediaItem {
   path: string;
   /** File name only. */
   name: string;
+  /** Folder path relative to the queried prefix ("" when at its root). */
+  folder: string;
   kind: MediaKind;
   mimeType: string | null;
   size: number | null;
@@ -122,6 +124,7 @@ export async function listMedia({
       {
         path,
         name: row.name,
+        folder: "",
         kind: classifyMedia(row.name, meta.mimetype ?? null),
         mimeType: meta.mimetype ?? null,
         size: typeof meta.size === "number" ? meta.size : null,
@@ -136,8 +139,120 @@ export async function listMedia({
   return { items, nextOffset };
 }
 
+export interface ListMediaTreeOptions {
+  bucket: string;
+  /** Root folder prefix, without a trailing slash. */
+  prefix: string;
+  /** How deep to walk below `prefix`. */
+  maxDepth?: number;
+  /** Hard cap on returned files, protecting the UI from huge trees. */
+  maxFiles?: number;
+  signed?: boolean;
+}
+
+const TREE_LIST_LIMIT = 100;
+
+/**
+ * Walks `prefix` and all nested folders, returning every media file sorted
+ * alphabetically by its full path. Filenames and extensions are discovered
+ * from Storage — nothing is hardcoded.
+ */
+export async function listMediaTree({
+  bucket,
+  prefix,
+  maxDepth = 4,
+  maxFiles = 500,
+  signed = true,
+}: ListMediaTreeOptions): Promise<MediaItem[]> {
+  const root = prefix.replace(/^\/+|\/+$/g, "");
+
+  interface RawFile {
+    path: string;
+    name: string;
+    folder: string;
+    mimeType: string | null;
+    size: number | null;
+    updatedAt: string | null;
+  }
+
+  const files: RawFile[] = [];
+
+  const walk = async (folder: string, depth: number): Promise<void> => {
+    let offset = 0;
+    const subfolders: string[] = [];
+
+    // Page through the folder so folders with many objects are complete.
+    for (;;) {
+      const { data, error } = await supabase.storage.from(bucket).list(folder, {
+        limit: TREE_LIST_LIMIT,
+        offset,
+        sortBy: { column: "name", order: "asc" },
+      });
+      if (error) throw new ServiceError(error.message, error);
+      const rows = data ?? [];
+
+      for (const row of rows) {
+        if (row.name === ".emptyFolderPlaceholder") continue;
+        const path = folder ? `${folder}/${row.name}` : row.name;
+        if (!row.id) {
+          subfolders.push(path);
+          continue;
+        }
+        if (files.length >= maxFiles) continue;
+        const meta = (row.metadata ?? {}) as { mimetype?: string; size?: number };
+        files.push({
+          path,
+          name: row.name,
+          folder: path.slice(0, Math.max(0, path.length - row.name.length - 1)),
+          mimeType: meta.mimetype ?? null,
+          size: typeof meta.size === "number" ? meta.size : null,
+          updatedAt: row.updated_at ?? row.created_at ?? null,
+        });
+      }
+
+      if (rows.length < TREE_LIST_LIMIT) break;
+      offset += rows.length;
+    }
+
+    if (depth >= maxDepth) return;
+    for (const sub of subfolders) {
+      if (files.length >= maxFiles) return;
+      await walk(sub, depth + 1);
+    }
+  };
+
+  await walk(root, 0);
+
+  files.sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
+
+  const urls = signed
+    ? await signMedia(bucket, files.map((f) => f.path))
+    : new Map<string, string>();
+
+  return files.flatMap((f) => {
+    const url = urls.get(f.path);
+    if (signed && !url) return [];
+    return [
+      {
+        path: f.path,
+        name: f.name,
+        // Folder relative to the queried root, for display purposes.
+        folder: root && f.folder.startsWith(root)
+          ? f.folder.slice(root.length).replace(/^\/+/, "")
+          : f.folder,
+        kind: classifyMedia(f.name, f.mimeType),
+        mimeType: f.mimeType,
+        size: f.size,
+        updatedAt: f.updatedAt,
+        url: url ?? "",
+      } satisfies MediaItem,
+    ];
+  });
+}
+
 export const mediaService = {
   listMedia,
+  listMediaTree,
   signMedia,
   classifyMedia,
   PAGE_SIZE: MEDIA_PAGE_SIZE,
