@@ -50,8 +50,10 @@ export function ExerciseDetailsSheet({
 }: Props) {
   const [favorites, setFavorites] = useState<string[]>([]);
   useEffect(() => setFavorites(readFavorites()), [open]);
+  const intel = useExerciseIntel(exercise?.id, open);
 
   if (!exercise) return null;
+
 
   const ex = exercise;
   const primary = normalizeMuscleGroup(ex.muscle_group);
