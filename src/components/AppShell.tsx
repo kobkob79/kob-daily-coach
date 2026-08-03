@@ -99,7 +99,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main
         className="relative z-10 mx-auto w-full max-w-2xl flex-1 px-4 pt-4"
-        style={{ paddingBottom: hideBottomNav ? 16 : navHeight + 32 }}
+        style={{ paddingBottom: hideBottomNav ? 16 : navHeight + 16 }}
       >
         {children}
       </main>
