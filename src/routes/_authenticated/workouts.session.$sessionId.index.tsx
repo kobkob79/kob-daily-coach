@@ -214,30 +214,31 @@ function OverviewPage() {
   }
 
   return (
-    <div dir="rtl" className="space-y-5 pb-[140px] pt-2">
+    <div dir="rtl" className="space-y-3 pb-[120px] pt-1">
       {/* Header */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
+            className="h-8 w-8"
             onClick={handleTemporaryExit}
             aria-label="יציאה זמנית מהאימון"
           >
             <ChevronRight className="h-5 w-5" />
           </Button>
-          <h1 className="truncate text-center text-base font-extrabold">{session.name}</h1>
+          <h1 className="truncate text-center text-sm font-extrabold">{session.name}</h1>
           <Button
             variant="ghost"
             size="sm"
-            className="font-semibold text-primary"
+            className="h-8 font-semibold text-primary"
             onClick={() => setFinishOpen(true)}
           >
             סיום
           </Button>
         </div>
 
-        <div className="grid grid-cols-4 gap-2 text-center">
+        <div className="grid grid-cols-4 gap-1.5 text-center">
           <HeaderStat label="זמן" value={formatTotalTime(timer.elapsedSec)} mono />
           <HeaderStat label="סטים" value={`${totalDone}/${totalPlanned}`} />
           <HeaderStat label="תרגילים" value={`${exercisesDone}/${orderedExerciseIds.length}`} />
@@ -245,13 +246,14 @@ function OverviewPage() {
         </div>
 
         {/* Progress bar */}
-        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+        <div className="h-1 overflow-hidden rounded-full bg-muted">
           <div
             className="h-full rounded-full bg-primary shadow-glow transition-all"
             style={{ width: `${progress}%` }}
           />
         </div>
       </div>
+
 
 
       {/* Groups */}
