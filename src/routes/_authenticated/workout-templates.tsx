@@ -13,15 +13,13 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { Plus, Trash2, Copy, Play, ChevronUp, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { t } from "@/lib/i18n";
 import { ActiveSessionConflictError, startOrResumeSessionForTemplate } from "@/lib/workout-session";
+import { ExercisePicker } from "@/components/workouts/ExercisePicker";
 
 const searchSchema = z.object({
   start: fallback(z.number().int(), 0).default(0),
@@ -43,7 +41,7 @@ type TExercise = {
   target_weight_kg: number | null;
   exercises: { id: string; name: string; muscle_group: string | null } | null;
 };
-type ExerciseRow = { id: string; name: string; muscle_group: string | null };
+
 
 function TemplatesPage() {
   const qc = useQueryClient();
@@ -279,15 +277,6 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
       return (data ?? []) as unknown as TExercise[];
     },
   });
-  const exercisesQ = useQuery({
-    queryKey: ["exercises"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("exercises").select("id,name,muscle_group").order("name");
-      if (error) throw error;
-      return (data ?? []) as ExerciseRow[];
-    },
-  });
 
   const [name, setName] = useState<string>("");
   useMemo(() => {
@@ -357,7 +346,7 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workout_template_exercises", templateId] }),
   });
 
-  const [pickId, setPickId] = useState<string>("");
+  const [pickerVisible, setPickerVisible] = useState<boolean>(false);
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -456,30 +445,19 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
               ))}
             </div>
 
-            <div className="mt-3 flex gap-2">
-              <Select value={pickId} onValueChange={setPickId}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder={t("workouts.pickExercise")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {exercisesQ.data?.map((ex) => (
-                    <SelectItem key={ex.id} value={ex.id}>
-                      {ex.name}{ex.muscle_group ? ` · ${ex.muscle_group}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                onClick={() => {
-                  if (!pickId) return;
-                  addExercise.mutate(pickId);
-                  setPickId("");
-                }}
-              >
+            <div className="mt-3">
+              <Button className="w-full" onClick={() => setPickerVisible(true)}>
                 <Plus className="mr-1 h-4 w-4" />
                 {t("templates.addExercise")}
               </Button>
             </div>
+
+            <ExercisePicker
+              open={pickerVisible}
+              onClose={() => setPickerVisible(false)}
+              onSelect={(id) => addExercise.mutate(id)}
+            />
+
           </div>
         </div>
 
