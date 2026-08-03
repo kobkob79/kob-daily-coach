@@ -10,7 +10,8 @@
 import { useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Dumbbell, Play, Plus, Sparkles, Star, X } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Dumbbell, Play, Plus, Sparkles, Star, Trophy, X } from "lucide-react";
 import { normalizeMuscleGroup } from "@/lib/muscle-groups";
 import {
   difficultyOf,
@@ -21,7 +22,16 @@ import {
   writeFavorites,
   type PickerExercise,
 } from "@/lib/exercise-meta";
+import {
+  TREND_META,
+  formatHebDate,
+  formatRest,
+  smartBadges,
+  type ExerciseStats,
+} from "@/lib/exercise-stats";
+import { useExerciseIntel } from "@/hooks/useExerciseIntel";
 import { cn } from "@/lib/utils";
+
 
 interface Props {
   exercise: PickerExercise | null;
