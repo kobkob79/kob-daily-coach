@@ -82,6 +82,27 @@ function QAToolsBody() {
         }
       />
 
+      {/* Internal asset preview (dev only, no app navigation entry) */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-muted-foreground">נכסי דמויות</p>
+        <Link
+          to="/dev/assets"
+          search={{ character: "shiran", category: "identity" }}
+          className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card/60 px-4 py-3 transition hover:border-primary/40"
+        >
+          <span className="grid h-8 w-8 place-items-center rounded-xl bg-primary/12 text-primary">
+            <Images className="h-4 w-4" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">תצוגת נכסים (QA)</span>
+            <span className="block text-[11px] text-muted-foreground">
+              תצוגה מקדימה של כל הדמויות והקטגוריות מהאחסון
+            </span>
+          </span>
+        </Link>
+      </div>
+
+
       {/* Resets */}
       <div className="space-y-2">
         <p className="text-xs font-semibold text-muted-foreground">{t("qa.section.reset")}</p>
