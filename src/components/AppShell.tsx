@@ -1,6 +1,6 @@
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { Bell, User, LogOut, Sparkles } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -17,6 +17,32 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [askOpen, setAskOpen] = useState(false);
   const hideBottomNav = pathname.startsWith("/workouts/session/");
 
+  // The bottom nav is fixed, so its real height (which changes when the
+  // active-workout strip appears, and with the device safe-area inset) must
+  // become bottom padding on <main>. A hardcoded pb-32 guessed wrong and let
+  // content scroll underneath the bar.
+  const navRef = useRef<HTMLElement | null>(null);
+  const [navHeight, setNavHeight] = useState(0);
+
+  useEffect(() => {
+    if (hideBottomNav) {
+      setNavHeight(0);
+      return;
+    }
+    const el = navRef.current;
+    if (!el) return;
+    const measure = () => setNavHeight(el.getBoundingClientRect().height);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [hideBottomNav, pathname]);
+
+
   const handleSignOut = async () => {
     await qc.cancelQueries();
     qc.clear();
@@ -31,7 +57,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const rightNav = nav.slice(mid);
 
   return (
-    <div className="relative min-h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden">
+    <div className="relative min-h-[100dvh] bg-background text-foreground flex flex-col overflow-x-hidden">
       {/* Cinematic background — soft indigo + lime auras */}
       <div className="pointer-events-none fixed inset-0 z-0" aria-hidden>
         <div className="absolute -top-32 -left-24 h-[420px] w-[420px] rounded-full bg-[oklch(0.68_0.18_275/0.22)] blur-[120px]" />
@@ -71,15 +97,20 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className={cn("relative z-10 mx-auto w-full max-w-2xl flex-1 px-4 pt-4", hideBottomNav ? "pb-4" : "pb-32")}>
+      <main
+        className="relative z-10 mx-auto w-full max-w-2xl flex-1 px-4 pt-4"
+        style={{ paddingBottom: hideBottomNav ? 16 : navHeight + 32 }}
+      >
         {children}
       </main>
 
       {!hideBottomNav && (
         <nav
+          ref={navRef}
           className="fixed inset-x-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)]"
           aria-label="Primary"
         >
+
           <div className="mx-auto max-w-2xl space-y-2 px-3 pb-3">
             <ActiveWorkoutBar />
             <div className="relative flex items-center justify-around rounded-[28px] border border-border bg-card/85 px-2 py-2 shadow-soft backdrop-blur-2xl">
