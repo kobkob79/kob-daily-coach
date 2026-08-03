@@ -618,6 +618,65 @@ export async function getExercisePR(exerciseId: string): Promise<number> {
   return (data?.[0]?.weight_kg as number | null) ?? 0;
 }
 
+/** Epley estimated one-rep max. */
+export function estimate1RM(weightKg: number | null, reps: number | null): number {
+  const w = weightKg ?? 0;
+  const r = reps ?? 0;
+  if (w <= 0 || r <= 0) return 0;
+  return Math.round(w * (1 + r / 30) * 10) / 10;
+}
+
+export interface ExercisePRStats {
+  /** Heaviest completed set ever. */
+  weightKg: number;
+  /** Most reps in a single completed set. */
+  reps: number;
+  /** Best single-set volume (weight × reps). */
+  volumeKg: number;
+  /** Best estimated 1RM from a single set. */
+  e1rmKg: number;
+}
+
+export const EMPTY_PR_STATS: ExercisePRStats = {
+  weightKg: 0,
+  reps: 0,
+  volumeKg: 0,
+  e1rmKg: 0,
+};
+
+/**
+ * Per-set personal records for one exercise across the user's whole history.
+ * `excludeSessionId` keeps the *current* session out, so records set earlier
+ * today are what the athlete is measured against.
+ */
+export async function getExercisePRStats(
+  exerciseId: string,
+  excludeSessionId?: string,
+): Promise<ExercisePRStats> {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) return EMPTY_PR_STATS;
+  let q = (supabase as any)
+    .from("workout_sets")
+    .select("weight_kg, reps")
+    .eq("user_id", u.user.id)
+    .eq("exercise_id", exerciseId)
+    .not("completed_at", "is", null);
+  if (excludeSessionId) q = q.neq("session_id", excludeSessionId);
+  const { data } = await q;
+  const rows = (data ?? []) as { weight_kg: number | null; reps: number | null }[];
+  return rows.reduce<ExercisePRStats>((best, row) => {
+    const w = row.weight_kg ?? 0;
+    const r = row.reps ?? 0;
+    return {
+      weightKg: Math.max(best.weightKg, w),
+      reps: Math.max(best.reps, r),
+      volumeKg: Math.max(best.volumeKg, w * r),
+      e1rmKg: Math.max(best.e1rmKg, estimate1RM(w, r)),
+    };
+  }, EMPTY_PR_STATS);
+}
+
+
 /**
  * Seed a session with planned sets. For each template exercise, prefer the
  * user's last actual performance (weight/reps per set), else fall back to
