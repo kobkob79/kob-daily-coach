@@ -1,34 +1,60 @@
+# Viora Developer Console — Implementation Plan
+
 ## Goal
+Replace the one-off QA asset page with a permanent, dev-only Developer Console at `/dev` that hosts all future internal tools. First module: Character Assets, reading dynamically from Supabase Storage.
 
-Turn the current Shiran-oriented media library into a generic, reusable character asset layer driven by Supabase Storage, and move the browsing UI to a hidden internal QA page instead of a permanent app route.
+## 1. Access & visibility rules
+Three independent gates, all must pass:
 
-## What exists today (verified)
+1. **Build-time gate** — `import.meta.env.DEV` (plus an optional `VITE_ENABLE_DEV_CONSOLE` escape hatch for preview testing). In a production build the console modules are behind a lazy dynamic import that is never reached, so nothing meaningful ships to real users.
+2. **Route gate** — the console lives under the existing `_authenticated` layout, so signing in is still required.
+3. **Identity gate** — reuse `checkIsQAUser()` from `src/lib/qa.ts` (owner/tester email). Failing any gate renders a plain "Not available" screen, never a redirect loop.
 
-- `src/lib/media-paths.ts` — already a registry: `characters/<characterId>/<category>`, with characters `shiran / maya / daniel / ortal` and categories `identity / marketing / exercise / video`. No hardcoded filenames.
-- `src/services/media.service.ts` — already bucket/prefix-agnostic, paginated listing + batch signed URLs + mimetype classification.
-- `src/components/media/MediaGallery.tsx` — reusable grid with Hebrew loading/empty/error states and a fullscreen viewer.
-- `src/routes/_authenticated/media.tsx` — a public-ish route with character/category chips, linked from the profile screen.
+No entry appears in the bottom nav or profile. Entry point stays the QA tools card, which itself only renders for QA users.
 
-So the service layer is fine; the gap is (a) no reusable component for consuming a *single* asset inside ordinary screens, and (b) the gallery is a linked app route rather than a hidden dev tool.
+## 2. Route structure
+```text
+src/routes/_authenticated/dev.tsx            -> layout: gate + console chrome + <Outlet/>
+src/routes/_authenticated/dev.index.tsx      -> module launcher grid
+src/routes/_authenticated/dev.characters.tsx -> Character Assets module
+(future) dev.storage.tsx, dev.prompts.tsx, dev.qa.tsx, dev.ai.tsx, dev.db.tsx, dev.health.tsx
+```
+The existing `dev.assets.tsx` becomes `dev.characters.tsx`; the old path keeps working via a redirect route so the QA card link never breaks.
 
-## Changes
+All console routes declare `head()` with `robots: noindex, nofollow`.
 
-1. **Reusable asset component + hook**
-   - `src/components/media/CharacterAsset.tsx`: `<CharacterAsset characterId category name? index? className? alt? />` — resolves and renders one image/video from a character folder, with skeleton, error fallback and empty fallback. Any screen can drop this in.
-   - `src/hooks/useCharacterAssets.ts`: `useCharacterAssets({ characterId, category })` returning typed `MediaItem[]` via React Query (single query key, shared cache, signed-URL TTL respected). Both build on the existing service — no duplicate Storage logic.
-   - `MediaGallery` gets `characterId` + `category` props (instead of raw bucket/prefix at call sites) while keeping the generic prefix escape hatch.
+## 3. Module registry (the extensibility mechanism)
+`src/lib/dev-console.ts` exports a typed array of module descriptors:
 
-2. **Hidden internal QA/dev page**
-   - Move the browsing UI to `src/routes/_authenticated/dev.assets.tsx` (path `/dev/assets`), `noindex` meta, no entry in `AppShell` bottom nav.
-   - Keep the character/category chips, driven entirely by the registry so new characters/categories appear automatically.
-   - Reachable only from the existing hidden QA/Developer tools card (`src/components/qa/QAToolsCard.tsx`).
-   - Delete `src/routes/_authenticated/media.tsx` and remove the "ספריית הנכסים" link from `profile.tsx`.
+- `id`, Hebrew `title`, one-line `description`, lucide `icon`
+- `to` (route path) and `status`: `"ready" | "planned"`
+- optional `requires` flag (e.g. storage, AI gateway)
 
-3. **Registry cleanup**
-   - Rename the character constant to a generic `CHARACTER_IDS` / `CharacterId` and mark Shiran as the only currently-populated dataset (a `populated` flag, so QA chips can show which folders have content). No filenames anywhere.
+The launcher renders this array: ready modules are links, planned modules are dimmed non-clickable tiles. Adding a future tool = one registry entry + one route file. The ten listed modules are all seeded now, with only Character Assets marked `ready`.
 
-## Notes
+## 4. Console chrome (reuses existing design system only — no redesign)
+`src/components/dev/DevConsoleShell.tsx`: RTL header with "קונסולת מפתחים", a `DEV` badge in warning colors, back link, and a horizontal module switcher. Built from existing `PremiumCard` / `SectionHeader` / `Button` primitives so the luxury dark glass style is untouched.
 
-- Shiran remains the initial dataset; Maya/Daniel/Ortal and future characters need only a registry entry plus uploads.
-- Bucket stays private; access continues through short-lived signed URLs and the authenticated-only SELECT policy.
-- No visual redesign, everything stays Hebrew RTL.
+## 5. Character Assets module
+Reuses the media layer already built — no new storage logic:
+
+- Character chips from `CHARACTER_IDS` / `CHARACTER_LABELS`; characters without assets shown muted via `POPULATED_CHARACTERS`.
+- Category chips from `ASSET_CATEGORIES` (identity / marketing / exercise / video) with Hebrew labels.
+- Selection is held in URL search params (`character`, `category`, optional `q` search, optional `subfolder`) so states are shareable and refresh-safe.
+- Assets render through `MediaGallery` → `useCharacterAssets` → `listMediaTree`, which already: reads from Storage recursively, never hardcodes filenames, sorts alphabetically by full path, detects type from mimetype/extension, batch-signs URLs, and groups by nested folder.
+- States: skeleton grid while loading, Hebrew empty state naming the exact storage prefix, error card with a retry button, and per-tile skeleton/error placeholders.
+- Newly uploaded files appear automatically; a "רענן" button invalidates the query, and the query's staleTime stays inside the signed-URL lifetime.
+- Footer shows the resolved prefix `characters/<id>/<category>` plus asset count for debugging.
+
+## 6. Cleanup
+- `QAToolsCard` link points at the console root instead of the asset page; the asset link becomes one tile inside the console.
+- No changes to `media-paths.ts`, `media.service.ts`, `useCharacterAssets.ts`, or `MediaGallery.tsx` beyond prop pass-through — the media layer is already generic.
+
+## Technical notes
+- Files touched: new `src/lib/dev-console.ts`, new `src/components/dev/DevConsoleShell.tsx`, new `dev.tsx` + `dev.index.tsx`, rename `dev.assets.tsx` → `dev.characters.tsx` (+ redirect stub), small edit to `QAToolsCard.tsx`.
+- Heavy module bodies are `React.lazy`-imported from the route so production bundles don't carry console UI.
+- No database migration, no new bucket, no RLS change: `exercise-assets` and its authenticated-read policy already exist.
+- Hebrew RTL throughout; existing tokens only, zero visual-style changes.
+
+## Out of scope for this sprint
+The nine remaining modules ship as `planned` tiles only — no partial implementations.
