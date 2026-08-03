@@ -442,24 +442,55 @@ function ExerciseDetailPage() {
         footer={headerMeta}
       />
 
-      {/* Active set focus / exercise completed */}
+      {/* Set table — the single source of truth for the active set */}
+      <div className="space-y-1.5">
+        <div className="grid grid-cols-[2rem_1fr_1fr_3rem] items-center gap-2 px-2 text-[9px] uppercase tracking-wider text-muted-foreground">
+          <span>#</span>
+          <span>משקל (ק״ג)</span>
+          <span>חזרות</span>
+          <span />
+        </div>
+
+        {sets.map((s) => (
+          <SetRow
+            key={s.id}
+            containerRef={s.id === activeSet?.id ? activeCardRef : undefined}
+            set={s}
+            isActive={s.id === activeSet?.id}
+            previous={previousBySetNumber.get(s.set_number) ?? null}
+            onComplete={() => completeMut.mutate(s)}
+            onUncomplete={() => uncompleteMut.mutate(s)}
+            onDelete={() => removeMut.mutate(s.id)}
+            onChange={(field, value) =>
+              patchMut.mutate({
+                id: s.id,
+                patch: { [field]: value } as Partial<SessionSet>,
+                propagate: s.completed_at
+                  ? undefined
+                  : { field, value, fromSetNumber: s.set_number },
+              })
+            }
+          />
+        ))}
+
+        <button
+          onClick={() => addMut.mutate()}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-2 text-xs font-medium text-muted-foreground transition hover:border-primary hover:text-primary"
+        >
+          <Plus className="h-3.5 w-3.5" /> הוסף סט
+        </button>
+      </div>
+
+      {/* Primary action: finish the active set, directly below the table */}
       {activeSet ? (
-        <ActiveSetCard
-          key={activeSet.id}
-          containerRef={activeCardRef}
-          set={activeSet}
-          totalSets={sets.length}
-          previous={previousBySetNumber.get(activeSet.set_number) ?? null}
-          onChange={(field, value) =>
-            patchMut.mutate({
-              id: activeSet.id,
-              patch: { [field]: value } as Partial<SessionSet>,
-              propagate: { field, value, fromSetNumber: activeSet.set_number },
-            })
-          }
-          onComplete={() => completeMut.mutate(activeSet)}
+        <Button
+          className="h-12 w-full text-base font-extrabold shadow-glow-accent"
+          onClick={() => completeMut.mutate(activeSet)}
           disabled={completeMut.isPending}
-        />
+        >
+          <CheckCircle2 className="ml-1 h-5 w-5" />
+          סיימתי סט {activeSet.set_number}
+        </Button>
       ) : (
         <div className="rounded-2xl border border-primary bg-primary/[0.06] p-3 shadow-glow">
           <div className="flex items-center gap-2">
@@ -488,44 +519,6 @@ function ExerciseDetailPage() {
         </div>
       )}
 
-      {/* Set list */}
-      <div className="space-y-1.5">
-        <div className="grid grid-cols-[2rem_1fr_1fr_3rem] items-center gap-2 px-2 text-[9px] uppercase tracking-wider text-muted-foreground">
-          <span>#</span>
-          <span>משקל (ק״ג)</span>
-          <span>חזרות</span>
-          <span />
-        </div>
-
-        {sets.map((s) => (
-          <SetRow
-            key={s.id}
-            set={s}
-            isActive={s.id === activeSet?.id}
-            previous={previousBySetNumber.get(s.set_number) ?? null}
-            onComplete={() => completeMut.mutate(s)}
-            onUncomplete={() => uncompleteMut.mutate(s)}
-            onDelete={() => removeMut.mutate(s.id)}
-            onChange={(field, value) =>
-              patchMut.mutate({
-                id: s.id,
-                patch: { [field]: value } as Partial<SessionSet>,
-                propagate: s.completed_at
-                  ? undefined
-                  : { field, value, fromSetNumber: s.set_number },
-              })
-            }
-          />
-        ))}
-
-        <button
-          onClick={() => addMut.mutate()}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-2 text-xs font-medium text-muted-foreground transition hover:border-primary hover:text-primary"
-        >
-          <Plus className="h-3.5 w-3.5" /> הוסף סט
-        </button>
-
-      </div>
 
       {/* Floating stack: rest timer → finish exercise → workout clock */}
       <div
