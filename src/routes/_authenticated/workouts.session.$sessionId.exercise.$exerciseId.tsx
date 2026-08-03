@@ -254,6 +254,8 @@ function ExerciseDetailPage() {
       id: string;
       patch: Partial<SessionSet>;
       propagate?: { field: "weight_kg" | "reps"; value: number | null; fromSetNumber: number };
+      /** The set as it looked before the edit — used for live PR recalculation. */
+      source?: SessionSet;
     }) => {
       await updateSet(id, patch);
       if (propagate) {
@@ -265,9 +267,30 @@ function ExerciseDetailPage() {
         }
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["session_sets", sessionId] }),
+    onSuccess: (_r, vars) => {
+      // Live recalculation: sets → volume/stats, PR stats, AI/summary surfaces.
+      qc.invalidateQueries({ queryKey: ["session_sets", sessionId] });
+      qc.invalidateQueries({ queryKey: ["active-session-current"] });
+      qc.invalidateQueries({ queryKey: ["exercise_pr_stats", exerciseId, sessionId] });
+      qc.invalidateQueries({ queryKey: ["session_summary", sessionId] });
+
+      // Editing a completed set may create a brand-new record → award it now.
+      const source = vars.source;
+      if (source?.completed_at) {
+        const edited = { ...source, ...vars.patch } as SessionSet;
+        const kinds = detectSetPRs(edited);
+        if (kinds.length > 0) {
+          setPr({
+            kinds,
+            detail: `${edited.weight_kg ?? "—"} ק״ג × ${edited.reps ?? "—"}`,
+            id: `${edited.id}-${Date.now()}`,
+          });
+        }
+      }
+    },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const addMut = useMutation({
     mutationFn: async () => {
@@ -292,7 +315,14 @@ function ExerciseDetailPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["session_sets", sessionId] }),
   });
 
+  /**
+   * The workout is a live draft: sets stay editable while the session is
+   * in progress and lock only once the workout itself is finished.
+   */
+  const locked = !!sessionQ.data && sessionQ.data.status !== "in_progress";
+
   const doneCount = sets.filter((s) => s.completed_at).length;
+
   const remaining = sets.length - doneCount;
   const activeSet = sets.find((s) => !s.completed_at) ?? null;
   const exerciseVolume = Math.round(
@@ -457,6 +487,7 @@ function ExerciseDetailPage() {
             containerRef={s.id === activeSet?.id ? activeCardRef : undefined}
             set={s}
             isActive={s.id === activeSet?.id}
+            locked={locked}
             previous={previousBySetNumber.get(s.set_number) ?? null}
             onComplete={() => completeMut.mutate(s)}
             onUncomplete={() => uncompleteMut.mutate(s)}
@@ -465,6 +496,7 @@ function ExerciseDetailPage() {
               patchMut.mutate({
                 id: s.id,
                 patch: { [field]: value } as Partial<SessionSet>,
+                source: s,
                 propagate: s.completed_at
                   ? undefined
                   : { field, value, fromSetNumber: s.set_number },
@@ -472,6 +504,7 @@ function ExerciseDetailPage() {
             }
           />
         ))}
+
 
         <button
           onClick={() => addMut.mutate()}
@@ -594,6 +627,7 @@ function SetRow({
   containerRef,
   set,
   isActive,
+  locked,
   previous,
   onComplete,
   onUncomplete,
@@ -603,6 +637,8 @@ function SetRow({
   containerRef?: React.RefObject<HTMLDivElement | null>;
   set: SessionSet;
   isActive: boolean;
+  /** True once the workout is finished — only then do sets become read-only. */
+  locked: boolean;
   previous: { weightKg: number | null; reps: number | null } | null;
   onComplete: () => void;
   onUncomplete: () => void;
@@ -610,6 +646,7 @@ function SetRow({
   onChange: (field: "weight_kg" | "reps", value: number | null) => void;
 }) {
   const done = !!set.completed_at;
+
   const [w, setW] = useState<string>(set.weight_kg?.toString() ?? "");
   const [r, setR] = useState<string>(set.reps?.toString() ?? "");
   const initial = useRef({ w: set.weight_kg, r: set.reps });
@@ -665,7 +702,7 @@ function SetRow({
           type="number"
           step="0.5"
           value={w}
-          disabled={done}
+          disabled={locked}
           onChange={(e) => setW(e.target.value)}
           onBlur={() => commit("weight_kg", w)}
           className="h-9 min-w-0 text-center text-sm font-bold tabular-nums"
@@ -674,7 +711,7 @@ function SetRow({
           inputMode="numeric"
           type="number"
           value={r}
-          disabled={done}
+          disabled={locked}
           onChange={(e) => setR(e.target.value)}
           onBlur={() => commit("reps", r)}
           className="h-9 min-w-0 text-center text-sm font-bold tabular-nums"
@@ -683,13 +720,14 @@ function SetRow({
           {done ? (
             <button
               onClick={onUncomplete}
-              className="grid h-9 w-9 place-items-center rounded-full bg-primary/15 text-primary"
+              disabled={locked}
+              className="grid h-9 w-9 place-items-center rounded-full bg-primary/15 text-primary disabled:opacity-60"
               aria-label="פתח מחדש את הסט (הושלם)"
               title="הושלם — פתח מחדש"
             >
               <CheckCircle2 className="h-4 w-4" />
             </button>
-          ) : isActive ? (
+          ) : locked ? null : isActive ? (
             <button
               onClick={onDelete}
               className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:text-destructive"
@@ -718,9 +756,14 @@ function SetRow({
           )}
         </div>
       </div>
-      {!done && (
+      {!done ? (
         <p className="mt-0.5 px-1 text-[9px] text-muted-foreground">קודם: {prevText}</p>
-      )}
+      ) : !locked ? (
+        <p className="mt-0.5 px-1 text-[9px] text-muted-foreground">
+          הושלם · ניתן לעריכה עד סיום האימון
+        </p>
+      ) : null}
+
     </div>
   );
 }
