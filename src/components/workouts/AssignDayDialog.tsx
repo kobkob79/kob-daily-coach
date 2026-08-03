@@ -22,6 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { setPlanSlot, WEEKDAY_HE, type PlanSlot } from "@/lib/workout-session";
 
@@ -31,12 +33,18 @@ export function AssignDayDialog({
   weekday,
   current,
   templates,
+  isLoading = false,
+  isError = false,
+  onRetry,
   onClose,
   onSaved,
 }: {
   weekday: number;
   current: PlanSlot | null;
   templates: { id: string; name: string }[];
+  isLoading?: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -61,6 +69,7 @@ export function AssignDayDialog({
   });
 
   const busy = save.isPending || rest.isPending || clear.isPending;
+  const isEmpty = !isLoading && !isError && templates.length === 0;
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -72,27 +81,48 @@ export function AssignDayDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <Select value={templateId} onValueChange={setTemplateId}>
-            <SelectTrigger>
-              <SelectValue placeholder="בחר תבנית אימון" />
-            </SelectTrigger>
-            <SelectContent>
-              {templates.map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {templates.length === 0 && (
-            <p className="text-xs text-muted-foreground">
-              אין תבניות עדיין —{" "}
-              <Link to="/workout-templates" className="text-primary underline">
-                צור תבנית
-              </Link>
-              .
-            </p>
+          {isLoading && (
+            <div className="space-y-2" aria-busy>
+              <Skeleton className="h-10 w-full rounded-md" />
+              <Skeleton className="h-3 w-2/3 rounded-md" />
+            </div>
           )}
+
+          {isError && (
+            <div className="space-y-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3">
+              <p className="text-sm font-semibold">לא הצלחנו לטעון את תוכניות האימון.</p>
+              <Button variant="outline" size="sm" className="h-9" onClick={() => onRetry?.()}>
+                <RefreshCw className="ml-1 h-4 w-4" /> נסה שוב
+              </Button>
+            </div>
+          )}
+
+          {isEmpty && (
+            <div className="space-y-2 rounded-xl border border-dashed border-border bg-muted/30 p-4 text-center">
+              <p className="text-sm font-semibold">אין עדיין תוכניות אימון.</p>
+              <Button asChild size="sm" className="h-10 w-full font-bold">
+                <Link to="/workout-templates">
+                  <Plus className="ml-1 h-4 w-4" /> צור תוכנית חדשה
+                </Link>
+              </Button>
+            </div>
+          )}
+
+          {!isLoading && !isError && templates.length > 0 && (
+            <Select value={templateId} onValueChange={setTemplateId}>
+              <SelectTrigger>
+                <SelectValue placeholder="בחר תבנית אימון" />
+              </SelectTrigger>
+              <SelectContent>
+                {templates.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
           <div className="flex flex-col gap-2">
             <Button
               className="h-12 text-base font-bold"
