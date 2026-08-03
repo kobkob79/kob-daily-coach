@@ -22,6 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { setPlanSlot, WEEKDAY_HE, type PlanSlot } from "@/lib/workout-session";
 
