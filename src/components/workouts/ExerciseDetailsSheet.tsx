@@ -128,15 +128,31 @@ export function ExerciseDetailsSheet({
                 <p className="text-sm leading-relaxed">{whatItTrains(ex)}</p>
               </section>
 
+              {/* Personal intelligence */}
+              {intel.isLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-24 w-full rounded-2xl" />
+                  <Skeleton className="h-24 w-full rounded-2xl" />
+                </div>
+              ) : intel.data ? (
+                <PersonalIntel
+                  stats={intel.data.stats}
+                  routines={intel.data.routines}
+                  isFav={isFav}
+                />
+              ) : null}
+
               {/* Reserved AI coaching slot */}
               <section className="rounded-2xl border border-dashed border-border/60 p-3.5">
                 <p className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
-                  <Sparkles className="h-3.5 w-3.5" aria-hidden /> טיפים מהמאמן
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden /> Viora Coach
                 </p>
                 <p className="mt-1.5 text-xs text-muted-foreground">
-                  טיפים אישיים, טעויות נפוצות והנחיות בטיחות יופיעו כאן בקרוב.
+                  תובנות אישיות, טעויות נפוצות והמלצות אימון יופיעו כאן בקרוב.
                 </p>
               </section>
+
+
 
               {/* Related */}
               {related.length > 0 && (
