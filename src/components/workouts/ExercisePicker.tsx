@@ -246,11 +246,9 @@ export function ExercisePicker({ open, onClose, onSelect, title = "בחר תרג
                     <ExerciseCard
                       key={ex.id}
                       ex={ex}
-                      onPick={() => {
-                        onSelect(ex.id);
-                        onClose();
-                      }}
+                      onPick={() => setDetails(ex)}
                     />
+
                   ))}
                 </div>
                 <div ref={sentinel} className="h-8" />
