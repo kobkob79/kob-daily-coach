@@ -97,15 +97,20 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className={cn("relative z-10 mx-auto w-full max-w-2xl flex-1 px-4 pt-4", hideBottomNav ? "pb-4" : "pb-32")}>
+      <main
+        className="relative z-10 mx-auto w-full max-w-2xl flex-1 px-4 pt-4"
+        style={{ paddingBottom: hideBottomNav ? 16 : navHeight + 16 }}
+      >
         {children}
       </main>
 
       {!hideBottomNav && (
         <nav
+          ref={navRef}
           className="fixed inset-x-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)]"
           aria-label="Primary"
         >
+
           <div className="mx-auto max-w-2xl space-y-2 px-3 pb-3">
             <ActiveWorkoutBar />
             <div className="relative flex items-center justify-around rounded-[28px] border border-border bg-card/85 px-2 py-2 shadow-soft backdrop-blur-2xl">
