@@ -702,7 +702,7 @@ function SetRow({
           type="number"
           step="0.5"
           value={w}
-          disabled={done}
+          disabled={locked}
           onChange={(e) => setW(e.target.value)}
           onBlur={() => commit("weight_kg", w)}
           className="h-9 min-w-0 text-center text-sm font-bold tabular-nums"
@@ -711,7 +711,7 @@ function SetRow({
           inputMode="numeric"
           type="number"
           value={r}
-          disabled={done}
+          disabled={locked}
           onChange={(e) => setR(e.target.value)}
           onBlur={() => commit("reps", r)}
           className="h-9 min-w-0 text-center text-sm font-bold tabular-nums"
@@ -720,13 +720,14 @@ function SetRow({
           {done ? (
             <button
               onClick={onUncomplete}
-              className="grid h-9 w-9 place-items-center rounded-full bg-primary/15 text-primary"
+              disabled={locked}
+              className="grid h-9 w-9 place-items-center rounded-full bg-primary/15 text-primary disabled:opacity-60"
               aria-label="פתח מחדש את הסט (הושלם)"
               title="הושלם — פתח מחדש"
             >
               <CheckCircle2 className="h-4 w-4" />
             </button>
-          ) : isActive ? (
+          ) : locked ? null : isActive ? (
             <button
               onClick={onDelete}
               className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:text-destructive"
@@ -755,9 +756,14 @@ function SetRow({
           )}
         </div>
       </div>
-      {!done && (
+      {!done ? (
         <p className="mt-0.5 px-1 text-[9px] text-muted-foreground">קודם: {prevText}</p>
-      )}
+      ) : !locked ? (
+        <p className="mt-0.5 px-1 text-[9px] text-muted-foreground">
+          הושלם · ניתן לעריכה עד סיום האימון
+        </p>
+      ) : null}
+
     </div>
   );
 }
