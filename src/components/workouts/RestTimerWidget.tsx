@@ -106,7 +106,7 @@ export function RestTimerWidget({
               over ? "text-destructive" : "text-accent",
             )}
           >
-            {over ? "המנוחה הסתיימה" : "מנוחה"}
+            {over ? "מנוחה הסתיימה" : "מנוחה"}
           </span>
           {nextSetNumber != null && (
             <span className="block truncate text-[11px] text-muted-foreground">
