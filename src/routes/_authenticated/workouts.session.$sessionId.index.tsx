@@ -288,18 +288,18 @@ function OverviewPage() {
                     key={exerciseId}
                     to="/workouts/session/$sessionId/exercise/$exerciseId"
                     params={{ sessionId, exerciseId }}
-                    className={`relative flex gap-3 overflow-hidden rounded-3xl border transition ${
+                    className={`relative flex items-center gap-2.5 overflow-hidden rounded-2xl border p-2 transition ${
                       isCurrent
-                        ? "border-primary bg-card p-3 shadow-glow"
+                        ? "border-primary bg-card shadow-glow"
                         : isDone
-                          ? "border-border/60 bg-muted/20 p-2.5 opacity-80"
+                          ? "border-border/60 bg-muted/20 opacity-80"
                           : inProgress
-                            ? "border-primary/50 bg-card p-3"
-                            : "border-border bg-card p-2.5"
+                            ? "border-primary/50 bg-card"
+                            : "border-border bg-card"
                     }`}
                   >
 
-                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-muted">
+                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-muted">
                       {ex?.image_path ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -308,58 +308,57 @@ function OverviewPage() {
                           className={`h-full w-full object-cover ${isDone ? "opacity-40" : ""}`}
                         />
                       ) : (
-                        <div className="grid h-full w-full place-items-center text-2xl">
+                        <div className="grid h-full w-full place-items-center text-lg">
                           🏋️
                         </div>
                       )}
                       {isDone && (
                         <div className="absolute inset-0 grid place-items-center bg-primary/25">
-                          <span className="grid h-10 w-10 place-items-center rounded-full bg-primary text-primary-foreground shadow-glow">
-                            <Check className="h-6 w-6" strokeWidth={3} />
+                          <span className="grid h-7 w-7 place-items-center rounded-full bg-primary text-primary-foreground shadow-glow">
+                            <Check className="h-4 w-4" strokeWidth={3} />
                           </span>
                         </div>
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="truncate text-base font-bold">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate text-sm font-bold">
                           {isCurrent && (
-                            <span className="ml-2 rounded-full bg-primary/15 px-2 py-0.5 align-middle text-[10px] font-bold text-primary">
+                            <span className="ml-1.5 rounded-full bg-primary/15 px-1.5 py-0.5 align-middle text-[9px] font-bold text-primary">
                               עכשיו
                             </span>
                           )}
                           {ex?.name ?? "—"}
                         </p>
 
-                        {isPR && <Trophy className="h-4 w-4 shrink-0 text-primary" />}
+                        {isPR && <Trophy className="h-3.5 w-3.5 shrink-0 text-primary" />}
                       </div>
-                      <p
-                        className={`mt-0.5 text-xs ${
-                          isDone
-                            ? "font-semibold text-primary"
-                            : inProgress
-                              ? "font-medium text-primary"
-                              : "text-muted-foreground"
-                        }`}
-                      >
-                        {done} סטים מתוך {total}
-                      </p>
-                      <div className="mt-2 flex items-baseline gap-2 text-sm">
-                        <span className="text-lg font-extrabold text-primary">
+                      <div className="mt-0.5 flex items-baseline gap-1.5 text-[11px]">
+                        <span
+                          className={
+                            isDone
+                              ? "font-semibold text-primary"
+                              : inProgress
+                                ? "font-medium text-primary"
+                                : "text-muted-foreground"
+                          }
+                        >
+                          {done}/{total} סטים
+                        </span>
+                        <span className="text-muted-foreground">·</span>
+                        <span className="font-extrabold text-primary">
                           {displayWeight != null ? `${displayWeight}` : "—"}
                         </span>
-                        <span className="text-[11px] text-muted-foreground">ק״ג</span>
-                        <span className="text-muted-foreground">·</span>
-                        <span className="font-bold">
-                          {displayReps ?? "—"}
-                        </span>
-                        <span className="text-[11px] text-muted-foreground">חזרות</span>
+                        <span className="text-muted-foreground">ק״ג</span>
+                        <span className="text-muted-foreground">×</span>
+                        <span className="font-bold">{displayReps ?? "—"}</span>
                       </div>
                     </div>
-                    <ChevronLeft className="my-auto h-5 w-5 text-muted-foreground" />
+                    <ChevronLeft className="h-4 w-4 shrink-0 text-muted-foreground" />
                   </Link>
                 );
               })}
+
             </div>
           </section>
         ))}
