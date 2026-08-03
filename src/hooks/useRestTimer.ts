@@ -37,6 +37,46 @@ function write(sessionId: string, val: StoredTimer | null) {
   else sessionStorage.setItem(key(sessionId), JSON.stringify(val));
 }
 
+const SOUND_KEY = "viora:rest:sound";
+
+/** Whether the end-of-rest chime is enabled (opt-out, persisted locally). */
+export function isRestSoundEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(SOUND_KEY) !== "0";
+}
+
+export function setRestSoundEnabled(enabled: boolean) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(SOUND_KEY, enabled ? "1" : "0");
+}
+
+/** Short two-tone chime via WebAudio — no asset, no autoplay policy issues. */
+function playChime() {
+  try {
+    const Ctx =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const now = ctx.currentTime;
+    [880, 1174].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, now + i * 0.18);
+      gain.gain.linearRampToValueAtTime(0.18, now + i * 0.18 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.18 + 0.16);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now + i * 0.18);
+      osc.stop(now + i * 0.18 + 0.18);
+    });
+    window.setTimeout(() => ctx.close().catch(() => {}), 800);
+  } catch {
+    /* ignore */
+  }
+}
+
 export interface RestTimerState {
   active: boolean;
   elapsedSec: number;
@@ -44,11 +84,14 @@ export interface RestTimerState {
   overtimeSec: number;
   plannedSec: number;
   phase: "idle" | "running" | "overtime";
+  soundEnabled: boolean;
+  toggleSound: () => void;
   start: (opts: { plannedSec: number; exerciseId: string; setNumber: number }) => void;
   addSeconds: (delta: number) => void;
   stop: () => { plannedSec: number; actualSec: number; overtimeSec: number } | null;
   clear: () => void;
 }
+
 
 export function useRestTimer(sessionId: string): RestTimerState {
   const [stored, setStored] = useState<StoredTimer | null>(() => read(sessionId));
