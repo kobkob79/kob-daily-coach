@@ -557,14 +557,14 @@ function ExerciseDetailPage() {
         {doneCount > 0 && activeSet && (
           <button
             onClick={handleFinishExercise}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-primary/40 bg-card/90 text-base font-bold text-foreground backdrop-blur-xl transition active:scale-[0.98]"
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-2xl border border-primary/40 bg-card/90 text-sm font-bold text-foreground backdrop-blur-xl transition active:scale-[0.98]"
           >
-            <CheckCircle2 className="h-5 w-5 text-primary" />
+            <CheckCircle2 className="h-4 w-4 text-primary" />
             סיימתי תרגיל
           </button>
         )}
-        <div className="glass-tile flex items-center justify-between px-4 py-2">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="glass-tile flex items-center justify-between px-3 py-1.5">
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
             <Flame className="h-3.5 w-3.5 text-primary" />
             <span>זמן אימון</span>
           </div>
@@ -572,6 +572,7 @@ function ExerciseDetailPage() {
             {formatTotalTime(total.elapsedSec)}
           </span>
         </div>
+
       </div>
 
       <AlertDialog open={finishOpen} onOpenChange={setFinishOpen}>
@@ -638,19 +639,19 @@ function ActiveSetCard({
   return (
     <div
       ref={containerRef}
-      className="animate-slide-up scroll-mt-24 rounded-3xl border-2 border-accent bg-accent/[0.08] p-4 shadow-glow-accent ring-1 ring-accent/30 transition-all duration-300"
+      className="animate-slide-up scroll-mt-20 rounded-2xl border-2 border-accent bg-accent/[0.08] p-3 shadow-glow-accent ring-1 ring-accent/30 transition-all duration-300"
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-accent">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-accent">
           סט {set.set_number} מתוך {totalSets}
         </p>
-        <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-bold text-accent">
+        <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[9px] font-bold text-accent">
           הסט הנוכחי
         </span>
       </div>
 
       <PreviousVsCurrent
-        className="mt-3"
+        className="mt-2"
         previous={previous}
         current={{
           weightKg: w === "" ? null : Number(w),
@@ -658,9 +659,9 @@ function ActiveSetCard({
         }}
       />
 
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        <label className="space-y-1">
-          <span className="text-[11px] text-muted-foreground">משקל (ק״ג)</span>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <label className="space-y-0.5">
+          <span className="text-[10px] text-muted-foreground">משקל (ק״ג)</span>
           <Input
             inputMode="decimal"
             type="number"
@@ -668,23 +669,23 @@ function ActiveSetCard({
             value={w}
             onChange={(e) => setW(e.target.value)}
             onBlur={() => commit("weight_kg", w)}
-            className="h-16 text-center text-3xl font-extrabold tabular-nums"
+            className="h-12 text-center text-2xl font-extrabold tabular-nums"
           />
         </label>
-        <label className="space-y-1">
-          <span className="text-[11px] text-muted-foreground">חזרות</span>
+        <label className="space-y-0.5">
+          <span className="text-[10px] text-muted-foreground">חזרות</span>
           <Input
             inputMode="numeric"
             type="number"
             value={r}
             onChange={(e) => setR(e.target.value)}
             onBlur={() => commit("reps", r)}
-            className="h-16 text-center text-3xl font-extrabold tabular-nums"
+            className="h-12 text-center text-2xl font-extrabold tabular-nums"
           />
         </label>
       </div>
       <Button
-        className="mt-3 h-14 w-full text-lg font-extrabold"
+        className="mt-2 h-12 w-full text-base font-extrabold"
         onClick={onComplete}
         disabled={disabled}
       >
@@ -693,6 +694,7 @@ function ActiveSetCard({
       </Button>
     </div>
   );
+
 }
 
 /* ---------------- SetRow ---------------- */
@@ -753,13 +755,13 @@ function SetRow({
 
   return (
     <div
-      className={`rounded-2xl border p-2 transition-all duration-300 ${rowClass} ${
+      className={`rounded-xl border p-1.5 transition-all duration-300 ${rowClass} ${
         isActive ? "scale-[1.01]" : ""
       }`}
     >
       <div className="grid grid-cols-[2rem_1fr_1fr_3rem] items-center gap-2">
         <span
-          className={`grid h-8 w-8 place-items-center rounded-full text-sm font-bold ${numberClass}`}
+          className={`grid h-7 w-7 place-items-center rounded-full text-xs font-bold ${numberClass}`}
         >
           {set.set_number}
         </span>
@@ -771,7 +773,7 @@ function SetRow({
           disabled={done}
           onChange={(e) => setW(e.target.value)}
           onBlur={() => commit("weight_kg", w)}
-          className="h-11 min-w-0 text-center text-base font-bold tabular-nums"
+          className="h-9 min-w-0 text-center text-sm font-bold tabular-nums"
         />
         <Input
           inputMode="numeric"
@@ -780,17 +782,17 @@ function SetRow({
           disabled={done}
           onChange={(e) => setR(e.target.value)}
           onBlur={() => commit("reps", r)}
-          className="h-11 min-w-0 text-center text-base font-bold tabular-nums"
+          className="h-9 min-w-0 text-center text-sm font-bold tabular-nums"
         />
         <div className="flex items-center justify-end gap-1">
           {done ? (
             <button
               onClick={onUncomplete}
-              className="grid h-10 w-10 place-items-center rounded-full bg-primary/15 text-primary"
+              className="grid h-9 w-9 place-items-center rounded-full bg-primary/15 text-primary"
               aria-label="פתח מחדש את הסט (הושלם)"
               title="הושלם — פתח מחדש"
             >
-              <CheckCircle2 className="h-5 w-5" />
+              <CheckCircle2 className="h-4 w-4" />
             </button>
           ) : isActive ? (
             <button
@@ -801,7 +803,7 @@ function SetRow({
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           ) : (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
               <button
                 onClick={onComplete}
                 className="grid h-8 w-8 place-items-center rounded-full bg-muted text-foreground"
@@ -822,8 +824,9 @@ function SetRow({
         </div>
       </div>
       {!done && (
-        <p className="mt-1 px-1 text-[10px] text-muted-foreground">קודם: {prevText}</p>
+        <p className="mt-0.5 px-1 text-[9px] text-muted-foreground">קודם: {prevText}</p>
       )}
     </div>
   );
 }
+
