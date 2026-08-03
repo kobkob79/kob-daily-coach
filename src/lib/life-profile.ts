@@ -78,10 +78,15 @@ export async function fetchLifeProfile(): Promise<LifeProfile | null> {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) return null;
 
-  const [{ data: p }, { data: s }] = await Promise.all([
+  const [{ data: p, error: pErr }, { data: s }] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", u.user.id).maybeSingle(),
     supabase.from("shift_config").select("*").eq("user_id", u.user.id).maybeSingle(),
   ]);
+
+  // A failed read must NOT look like "profile missing" — that would keep the
+  // onboarding wizard open forever even though the data is already saved.
+  if (pErr) throw new Error(pErr.message);
+
 
   const profile = p as unknown as {
     first_name: string | null;

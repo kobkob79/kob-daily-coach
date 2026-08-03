@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { MorningIntake, type DayIntake, type DayTargets } from "@/components/dashboard/MorningIntake";
 import { getMemory } from "@/lib/ai-memory";
 import { supabase } from "@/integrations/supabase/client";
@@ -424,7 +424,11 @@ function Dashboard() {
     queryKey: ["life-profile"],
     queryFn: fetchLifeProfile,
   });
-  const showOnboarding = lifeQ.isSuccess && needsOnboarding(lifeQ.data);
+  // Local latch: once the wizard reports a successful completion write we
+  // dismiss immediately, without depending on the refetch result.
+  const [onboardingDone, setOnboardingDone] = useState(false);
+  const showOnboarding = !onboardingDone && lifeQ.isSuccess && needsOnboarding(lifeQ.data);
+
   const dayCtxQ = useDayContext(now);
   const chronicPainQ = useHasChronicPain();
 
@@ -541,9 +545,13 @@ function Dashboard() {
       {showOnboarding && (
         <LifeProfileOnboarding
           initial={lifeQ.data ?? null}
-          onComplete={() => queryClient.invalidateQueries({ queryKey: ["life-profile"] })}
+          onComplete={() => {
+            setOnboardingDone(true);
+            queryClient.invalidateQueries({ queryKey: ["life-profile"] });
+          }}
         />
       )}
+
       {showIntake && !showOnboarding && (
         <MorningIntake
           bioDay={bioDay}
