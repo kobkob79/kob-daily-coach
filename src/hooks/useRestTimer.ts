@@ -128,26 +128,55 @@ export function useRestTimer(sessionId: string): RestTimerState {
     return () => window.clearInterval(id);
   }, [stored]);
 
-  // Fire vibrate + chime + notification once when reaching zero
+  /**
+   * Fires the end-of-rest feedback exactly once: vibration, chime and a system
+   * notification so the event still reaches the athlete while the app is
+   * backgrounded or the screen is locked.
+   */
+  const fireZero = useCallback(() => {
+    if (vibrateRef.current) return;
+    vibrateRef.current = true;
+    try {
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        (navigator as Navigator).vibrate?.([300, 100, 300, 100, 300]);
+      }
+      if (soundRef.current) playChime();
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        new Notification("Viora", {
+          body: "מנוחה הסתיימה — לסט הבא",
+          tag: "viora-rest",
+          silent: false,
+        });
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  // Reaching zero must fire even with throttled timers: a wall-clock timeout
+  // covers the backgrounded tab, the interval covers the visible one, and
+  // returning to the tab re-checks immediately.
   useEffect(() => {
     if (!stored) return;
-    const elapsed = Math.floor((now - stored.startedAt) / 1000);
-    const remaining = stored.plannedSec - elapsed;
-    if (remaining <= 0 && !vibrateRef.current) {
-      vibrateRef.current = true;
-      try {
-        if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-          (navigator as Navigator).vibrate?.([200, 80, 200]);
-        }
-        if (soundRef.current) playChime();
-        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-          new Notification("Viora", { body: "המנוחה הסתיימה — לסט הבא" });
-        }
-      } catch {
-        /* ignore */
-      }
+    const elapsed = Math.floor((Date.now() - stored.startedAt) / 1000);
+    const msLeft = (stored.plannedSec - elapsed) * 1000;
+    if (msLeft <= 0) {
+      fireZero();
+      return;
     }
-  }, [stored, now]);
+    const timeout = window.setTimeout(fireZero, msLeft);
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      setNow(Date.now());
+      if (Date.now() - stored.startedAt >= stored.plannedSec * 1000) fireZero();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearTimeout(timeout);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [stored, fireZero]);
+
 
 
   const elapsed = stored ? Math.max(0, Math.floor((now - stored.startedAt) / 1000)) : 0;
