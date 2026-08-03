@@ -105,32 +105,33 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
 
       {!hideBottomNav && (
-        <nav
-          ref={navRef}
-          className="fixed inset-x-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)]"
-          aria-label="Primary"
-        >
-
-          <div className="mx-auto max-w-2xl space-y-2 px-3 pb-3">
+        <nav ref={navRef} className="fixed inset-x-0 bottom-0 z-40" aria-label="Primary">
+          {/* Active workout strip floats above the flat bar */}
+          <div className="mx-auto max-w-2xl px-3 pb-2">
             <ActiveWorkoutBar />
-            <div className="relative flex items-center justify-around rounded-[28px] border border-border bg-card/85 px-2 py-2 shadow-soft backdrop-blur-2xl">
+          </div>
+
+          <div className="border-t border-border bg-card/85 backdrop-blur-2xl shadow-soft pb-[env(safe-area-inset-bottom)]">
+            <div className="mx-auto flex h-[60px] max-w-2xl items-stretch">
               {leftNav.map((item) => (
                 <NavTab key={item.id} item={item} pathname={pathname} />
               ))}
 
-              <button
-                onClick={() => setAskOpen(true)}
-                aria-label="שאל את Viora"
-                className="group relative -mt-8 grid h-16 w-16 shrink-0 place-items-center"
-              >
-                <span
-                  className="absolute inset-0 rounded-full bg-primary/50 animate-breathe"
-                  aria-hidden
-                />
-                <span className="relative grid h-16 w-16 place-items-center rounded-full border border-primary/30 bg-primary text-primary-foreground shadow-[0_16px_48px_-10px_oklch(0.86_0.22_130/0.55)] transition group-active:scale-95">
-                  <Sparkles className="h-6 w-6" strokeWidth={2.2} />
-                </span>
-              </button>
+              <div className="flex shrink-0 items-center justify-center px-1">
+                <button
+                  onClick={() => setAskOpen(true)}
+                  aria-label="שאל את Viora"
+                  className="group relative grid h-12 w-12 place-items-center"
+                >
+                  <span
+                    className="absolute inset-0 rounded-full bg-primary/50 animate-breathe"
+                    aria-hidden
+                  />
+                  <span className="relative grid h-12 w-12 place-items-center rounded-full border border-primary/30 bg-primary text-primary-foreground shadow-[0_10px_32px_-8px_oklch(0.86_0.22_130/0.55)] transition group-active:scale-95">
+                    <Sparkles className="h-5 w-5" strokeWidth={2.2} />
+                  </span>
+                </button>
+              </div>
 
               {rightNav.map((item) => (
                 <NavTab key={item.id} item={item} pathname={pathname} />
@@ -139,6 +140,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </nav>
       )}
+
 
       <AskVioraSheet open={askOpen} onOpenChange={setAskOpen} pathname={pathname} />
     </div>
@@ -160,25 +162,25 @@ function NavTab({
     <Link
       to={item.route!}
       className={cn(
-        "group relative flex flex-1 flex-col items-center gap-0.5 rounded-2xl px-1 py-1.5 text-[10px] font-medium transition",
+        "group relative flex flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium transition",
         active ? "text-primary" : "text-muted-foreground hover:text-foreground",
       )}
     >
-      <span
-        className={cn(
-          "grid h-9 w-9 place-items-center rounded-2xl transition",
-          active && "bg-primary/12 shadow-[0_0_20px_-4px_oklch(0.93_0.24_125/0.5)]",
-        )}
-      >
-        <Icon
-          className={cn(
-            "h-[18px] w-[18px] transition",
-            active && "drop-shadow-[0_0_8px_currentColor]",
-          )}
-          strokeWidth={active ? 2.2 : 1.7}
+      {active && (
+        <span
+          className="absolute inset-x-3 top-0 h-[2px] rounded-full bg-primary shadow-[0_0_12px_0_oklch(0.93_0.24_125/0.7)]"
+          aria-hidden
         />
-      </span>
+      )}
+      <Icon
+        className={cn(
+          "h-[20px] w-[20px] transition",
+          active && "drop-shadow-[0_0_8px_currentColor]",
+        )}
+        strokeWidth={active ? 2.2 : 1.7}
+      />
       <span className="leading-none tracking-tight">{t(item.labelKey)}</span>
     </Link>
   );
 }
+
