@@ -366,21 +366,22 @@ function OverviewPage() {
 
       {/* Sticky bottom action bar */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
-        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 py-2">
           <div className="flex items-center gap-2">
-            <Flame className="h-4 w-4 text-primary" />
+            <Flame className="h-3.5 w-3.5 text-primary" />
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              <p className="text-[9px] uppercase tracking-wider text-muted-foreground">
                 זמן אימון
               </p>
-              <p className="font-mono text-lg font-bold tabular-nums">
+              <p className="font-mono text-base font-bold tabular-nums">
                 {formatTotalTime(timer.elapsedSec)}
               </p>
             </div>
           </div>
-          <Button size="lg" className="h-12 min-w-[140px] text-base" onClick={() => setFinishOpen(true)}>
+          <Button className="h-10 min-w-[130px] text-sm" onClick={() => setFinishOpen(true)}>
             סיים אימון
           </Button>
+
 
         </div>
       </div>
