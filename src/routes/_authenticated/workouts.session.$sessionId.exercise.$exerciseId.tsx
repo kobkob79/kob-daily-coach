@@ -48,7 +48,7 @@ import {
 import { useRestTimer } from "@/hooks/useRestTimer";
 import { useWorkoutTimer, formatTotalTime } from "@/hooks/useWorkoutTimer";
 import { ExerciseHero } from "@/components/workouts/ExerciseHero";
-import { PreviousVsCurrent } from "@/components/workouts/PreviousVsCurrent";
+import { PreviousVsCurrent, formatPerformance } from "@/components/workouts/PreviousVsCurrent";
 import { RestTimerWidget } from "@/components/workouts/RestTimerWidget";
 import {
   PRCelebration,
@@ -72,6 +72,19 @@ function ExerciseDetailPage() {
   const [finishOpen, setFinishOpen] = useState(false);
   const [pr, setPr] = useState<PRCelebrationData | null>(null);
   const activeCardRef = useRef<HTMLDivElement | null>(null);
+  /** Measured height of the floating stack, so content never hides beneath it. */
+  const floatingRef = useRef<HTMLDivElement | null>(null);
+  const [floatingHeight, setFloatingHeight] = useState(120);
+
+  useEffect(() => {
+    const el = floatingRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setFloatingHeight(el.offsetHeight));
+    ro.observe(el);
+    setFloatingHeight(el.offsetHeight);
+    return () => ro.disconnect();
+  }, []);
+
 
   const sessionQ = useQuery({
     queryKey: ["session", sessionId],
@@ -337,19 +350,65 @@ function ExerciseDetailPage() {
     finishExercise();
   };
 
-  const prLine =
-    prStats.weightKg > 0 || prStats.reps > 0 ? (
-      <p className="text-[11px] text-muted-foreground">
-        שיא אישי:{" "}
-        <span className="font-bold text-foreground">
-          {prStats.weightKg > 0 ? `${prStats.weightKg} ק״ג` : `${prStats.reps} חזרות`}
-        </span>
-        {prStats.e1rmKg > 0 ? ` · 1RM משוער ${prStats.e1rmKg} ק״ג` : ""}
-      </p>
-    ) : null;
+  const progressPct = sets.length > 0 ? Math.round((doneCount / sets.length) * 100) : 0;
+  const hasPrevRecord = prStats.weightKg > 0 || prStats.reps > 0;
+
+  /**
+   * Header meta: live progress, personal-record badge and the previous-vs-current
+   * summary — everything the athlete needs without scrolling.
+   */
+  const headerMeta = (
+    <div className="space-y-2">
+      <div>
+        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+          <span>התקדמות בתרגיל</span>
+          <span className="font-bold tabular-nums text-foreground">
+            {doneCount}/{sets.length} סטים
+          </span>
+        </div>
+        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-border/50">
+          <div
+            className="h-full rounded-full bg-primary transition-[width] duration-500"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+      </div>
+
+      {hasPrevRecord && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-0.5 text-[11px] font-bold text-primary">
+            <Trophy className="h-3 w-3" />
+            שיא אישי{" "}
+            {prStats.weightKg > 0 ? `${prStats.weightKg} ק״ג` : `${prStats.reps} חזרות`}
+          </span>
+          {prStats.e1rmKg > 0 && (
+            <span className="rounded-full border border-border/60 bg-muted/40 px-2.5 py-0.5 text-[11px] font-semibold text-muted-foreground">
+              1RM משוער {prStats.e1rmKg} ק״ג
+            </span>
+          )}
+        </div>
+      )}
+
+      {activeSet && (
+        <p className="text-[11px] text-muted-foreground">
+          סט {activeSet.set_number} · קודם:{" "}
+          <span className="font-bold text-foreground">
+            {formatPerformance(previousBySetNumber.get(activeSet.set_number) ?? null) ??
+              "ניסיון ראשון"}
+          </span>
+        </p>
+      )}
+
+    </div>
+  );
 
   return (
-    <div dir="rtl" className="mx-auto max-w-md space-y-4 pb-52 pt-2">
+    <div
+      dir="rtl"
+      className="mx-auto max-w-md space-y-4 pt-2"
+      style={{ paddingBottom: floatingHeight + 24 }}
+    >
+
       <PRCelebration data={pr} onDismiss={() => setPr(null)} />
 
       {/* Header */}
@@ -377,7 +436,7 @@ function ExerciseDetailPage() {
         exerciseTotal={exerciseTotal || null}
         fallbackImage={exQ.data?.image_path}
         titleAdornment={isPR ? <Trophy className="h-5 w-5 shrink-0 text-primary" /> : null}
-        footer={prLine}
+        footer={headerMeta}
       />
 
       {/* Active set focus / exercise completed */}
@@ -465,9 +524,11 @@ function ExerciseDetailPage() {
 
       {/* Floating stack: rest timer → finish exercise → workout clock */}
       <div
+        ref={floatingRef}
         className="fixed inset-x-0 z-30 mx-auto max-w-md space-y-2 px-4"
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
       >
+
         {rest.active && (
           <RestTimerWidget
             phase={rest.phase}

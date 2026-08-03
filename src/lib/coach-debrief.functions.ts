@@ -23,6 +23,10 @@ export interface DebriefExercise {
   avgRestSeconds: number | null;
   plannedRestSeconds: number | null;
   repsDropped: boolean;
+  /** Estimated 1RM this session vs. the best before it (Epley). */
+  e1rmKg: number | null;
+  prevE1rmKg: number | null;
+  weightDeltaKg: number | null;
 }
 
 export interface CoachDebriefContext {
@@ -32,6 +36,12 @@ export interface CoachDebriefContext {
   durationMinutes: number;
   totalVolumeKg: number;
   prevVolumeKg: number | null;
+  /** Consistency + progression signals used for concrete, non-generic feedback. */
+  workoutsLast7Days: number;
+  workoutsLast30Days: number;
+  avgVolumeLast4WorkoutsKg: number | null;
+  volumeTrendPct: number | null;
+  completionRatePct: number;
   plannedSets: number;
   completedSets: number;
   skippedSets: number;
@@ -65,6 +75,8 @@ const SYSTEM_PROMPT = `אתה Viora — מאמן כוח אישי בכיר, מד�
 - לעולם לא תבנית קבועה. כל דיברוף חייב להיראות אחרת מקודמו — פתיחה אחרת, סדר אחר, דגש אחר.
 - אל תמנה את כל הנושאים. בחר רק את מה שבאמת חשוב באימון הזה.
 - אל תמציא נתונים שלא בקונטקסט. אין ייעוץ רפואי.
+- אסור טקסט מוטיבציה כללי ("אלוף", "תמשיך כך", "אימון מעולה") בלי מספר או תרגיל שמאחוריו.
+- בסס כל תצפית על נתון: שיאים, השוואה לאימון הקודם, סטים שבוצעו מול מתוכננים, התקדמות במשקל, התקדמות בנפח, עקביות (אימונים ב-7/30 ימים).
 
 נושאים אפשריים (רק כשרלוונטי): ברכה, תצפית על האימון, הישגים, רגעים קשים, התאוששות, תזונה, שתייה, יעד לאימון הבא.
 
