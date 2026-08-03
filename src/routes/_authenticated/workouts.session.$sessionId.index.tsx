@@ -214,30 +214,31 @@ function OverviewPage() {
   }
 
   return (
-    <div dir="rtl" className="space-y-5 pb-[140px] pt-2">
+    <div dir="rtl" className="space-y-3 pb-[120px] pt-1">
       {/* Header */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
+            className="h-8 w-8"
             onClick={handleTemporaryExit}
             aria-label="יציאה זמנית מהאימון"
           >
             <ChevronRight className="h-5 w-5" />
           </Button>
-          <h1 className="truncate text-center text-base font-extrabold">{session.name}</h1>
+          <h1 className="truncate text-center text-sm font-extrabold">{session.name}</h1>
           <Button
             variant="ghost"
             size="sm"
-            className="font-semibold text-primary"
+            className="h-8 font-semibold text-primary"
             onClick={() => setFinishOpen(true)}
           >
             סיום
           </Button>
         </div>
 
-        <div className="grid grid-cols-4 gap-2 text-center">
+        <div className="grid grid-cols-4 gap-1.5 text-center">
           <HeaderStat label="זמן" value={formatTotalTime(timer.elapsedSec)} mono />
           <HeaderStat label="סטים" value={`${totalDone}/${totalPlanned}`} />
           <HeaderStat label="תרגילים" value={`${exercisesDone}/${orderedExerciseIds.length}`} />
@@ -245,7 +246,7 @@ function OverviewPage() {
         </div>
 
         {/* Progress bar */}
-        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+        <div className="h-1 overflow-hidden rounded-full bg-muted">
           <div
             className="h-full rounded-full bg-primary shadow-glow transition-all"
             style={{ width: `${progress}%` }}
@@ -254,14 +255,18 @@ function OverviewPage() {
       </div>
 
 
+
       {/* Groups */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         {groups.map(([muscle, list]) => (
-          <section key={muscle} className="space-y-3">
+          <section key={muscle} className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-extrabold">{muscle}</h2>
+              <h2 className="text-sm font-extrabold uppercase tracking-wide text-muted-foreground">
+                {muscle}
+              </h2>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-1.5">
+
               {list.map(({ exerciseId, sets: exSets, ex }) => {
                 const done = exSets.filter((s) => s.completed_at).length;
                 const total = exSets.length;
@@ -283,18 +288,18 @@ function OverviewPage() {
                     key={exerciseId}
                     to="/workouts/session/$sessionId/exercise/$exerciseId"
                     params={{ sessionId, exerciseId }}
-                    className={`relative flex gap-3 overflow-hidden rounded-3xl border transition ${
+                    className={`relative flex items-center gap-2.5 overflow-hidden rounded-2xl border p-2 transition ${
                       isCurrent
-                        ? "border-primary bg-card p-3 shadow-glow"
+                        ? "border-primary bg-card shadow-glow"
                         : isDone
-                          ? "border-border/60 bg-muted/20 p-2.5 opacity-80"
+                          ? "border-border/60 bg-muted/20 opacity-80"
                           : inProgress
-                            ? "border-primary/50 bg-card p-3"
-                            : "border-border bg-card p-2.5"
+                            ? "border-primary/50 bg-card"
+                            : "border-border bg-card"
                     }`}
                   >
 
-                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-muted">
+                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-muted">
                       {ex?.image_path ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -303,58 +308,57 @@ function OverviewPage() {
                           className={`h-full w-full object-cover ${isDone ? "opacity-40" : ""}`}
                         />
                       ) : (
-                        <div className="grid h-full w-full place-items-center text-2xl">
+                        <div className="grid h-full w-full place-items-center text-lg">
                           🏋️
                         </div>
                       )}
                       {isDone && (
                         <div className="absolute inset-0 grid place-items-center bg-primary/25">
-                          <span className="grid h-10 w-10 place-items-center rounded-full bg-primary text-primary-foreground shadow-glow">
-                            <Check className="h-6 w-6" strokeWidth={3} />
+                          <span className="grid h-7 w-7 place-items-center rounded-full bg-primary text-primary-foreground shadow-glow">
+                            <Check className="h-4 w-4" strokeWidth={3} />
                           </span>
                         </div>
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="truncate text-base font-bold">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate text-sm font-bold">
                           {isCurrent && (
-                            <span className="ml-2 rounded-full bg-primary/15 px-2 py-0.5 align-middle text-[10px] font-bold text-primary">
+                            <span className="ml-1.5 rounded-full bg-primary/15 px-1.5 py-0.5 align-middle text-[9px] font-bold text-primary">
                               עכשיו
                             </span>
                           )}
                           {ex?.name ?? "—"}
                         </p>
 
-                        {isPR && <Trophy className="h-4 w-4 shrink-0 text-primary" />}
+                        {isPR && <Trophy className="h-3.5 w-3.5 shrink-0 text-primary" />}
                       </div>
-                      <p
-                        className={`mt-0.5 text-xs ${
-                          isDone
-                            ? "font-semibold text-primary"
-                            : inProgress
-                              ? "font-medium text-primary"
-                              : "text-muted-foreground"
-                        }`}
-                      >
-                        {done} סטים מתוך {total}
-                      </p>
-                      <div className="mt-2 flex items-baseline gap-2 text-sm">
-                        <span className="text-lg font-extrabold text-primary">
+                      <div className="mt-0.5 flex items-baseline gap-1.5 text-[11px]">
+                        <span
+                          className={
+                            isDone
+                              ? "font-semibold text-primary"
+                              : inProgress
+                                ? "font-medium text-primary"
+                                : "text-muted-foreground"
+                          }
+                        >
+                          {done}/{total} סטים
+                        </span>
+                        <span className="text-muted-foreground">·</span>
+                        <span className="font-extrabold text-primary">
                           {displayWeight != null ? `${displayWeight}` : "—"}
                         </span>
-                        <span className="text-[11px] text-muted-foreground">ק״ג</span>
-                        <span className="text-muted-foreground">·</span>
-                        <span className="font-bold">
-                          {displayReps ?? "—"}
-                        </span>
-                        <span className="text-[11px] text-muted-foreground">חזרות</span>
+                        <span className="text-muted-foreground">ק״ג</span>
+                        <span className="text-muted-foreground">×</span>
+                        <span className="font-bold">{displayReps ?? "—"}</span>
                       </div>
                     </div>
-                    <ChevronLeft className="my-auto h-5 w-5 text-muted-foreground" />
+                    <ChevronLeft className="h-4 w-4 shrink-0 text-muted-foreground" />
                   </Link>
                 );
               })}
+
             </div>
           </section>
         ))}
@@ -362,21 +366,22 @@ function OverviewPage() {
 
       {/* Sticky bottom action bar */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
-        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 py-2">
           <div className="flex items-center gap-2">
-            <Flame className="h-4 w-4 text-primary" />
+            <Flame className="h-3.5 w-3.5 text-primary" />
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              <p className="text-[9px] uppercase tracking-wider text-muted-foreground">
                 זמן אימון
               </p>
-              <p className="font-mono text-lg font-bold tabular-nums">
+              <p className="font-mono text-base font-bold tabular-nums">
                 {formatTotalTime(timer.elapsedSec)}
               </p>
             </div>
           </div>
-          <Button size="lg" className="h-12 min-w-[140px] text-base" onClick={() => setFinishOpen(true)}>
+          <Button className="h-10 min-w-[130px] text-sm" onClick={() => setFinishOpen(true)}>
             סיים אימון
           </Button>
+
 
         </div>
       </div>
@@ -520,11 +525,12 @@ function HeaderStat({
   mono?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-card/60 px-1.5 py-1.5">
-      <p className="text-[10px] text-muted-foreground">{label}</p>
+    <div className="rounded-xl border border-border/60 bg-card/60 px-1.5 py-1">
+      <p className="text-[9px] text-muted-foreground">{label}</p>
       <p
-        className={`truncate text-sm font-bold tabular-nums ${mono ? "font-mono" : ""}`}
+        className={`truncate text-xs font-bold tabular-nums ${mono ? "font-mono" : ""}`}
       >
+
         {value}
       </p>
     </div>

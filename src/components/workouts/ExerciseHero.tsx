@@ -50,7 +50,8 @@ export function ExerciseHero({
 
   return (
     <div className="surface-card overflow-hidden p-0">
-      <div className="relative aspect-[16/10] w-full overflow-hidden bg-muted/30">
+      <div className="relative aspect-[2/1] w-full overflow-hidden bg-muted/30">
+
         {isPending ? (
           <div className="h-full w-full animate-pulse bg-muted/50" />
         ) : usableHero ? (
@@ -90,27 +91,30 @@ export function ExerciseHero({
         {/* Legibility scrim + media-type pill */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-card via-card/10 to-transparent" />
         {usableHero && (
-          <span className="absolute left-3 top-3 rounded-full border border-border/50 bg-background/70 px-2.5 py-0.5 text-[10px] font-bold text-muted-foreground backdrop-blur-md">
+          <span className="absolute left-2 top-2 rounded-full border border-border/50 bg-background/70 px-2 py-0.5 text-[9px] font-bold text-muted-foreground backdrop-blur-md">
             {EXERCISE_MEDIA_ROLE_LABEL[usableHero.role]}
           </span>
         )}
         {exerciseIndex && exerciseTotal ? (
-          <span className="absolute right-3 top-3 rounded-full border border-primary/40 bg-background/70 px-2.5 py-0.5 text-[10px] font-bold text-primary backdrop-blur-md">
-            תרגיל {exerciseIndex} מתוך {exerciseTotal}
+          <span className="absolute right-2 top-2 rounded-full border border-primary/40 bg-background/70 px-2 py-0.5 text-[9px] font-bold text-primary backdrop-blur-md">
+            תרגיל {exerciseIndex}/{exerciseTotal}
           </span>
         ) : null}
       </div>
 
-      <div className="px-4 pb-4 pt-3">
-        <h1 className="flex items-center gap-2 text-2xl font-extrabold leading-tight">
-          <span className="min-w-0 truncate">{name ?? "—"}</span>
+      <div className="px-3 pb-3 pt-2">
+        <div className="flex items-center gap-2">
+          <h1 className="min-w-0 flex-1 truncate text-lg font-extrabold leading-tight">
+            {name ?? "—"}
+          </h1>
           {titleAdornment}
-        </h1>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        </div>
+        <div className="mt-1.5 flex flex-wrap items-center gap-1">
           {muscleGroup ? <MetaPill label={muscleGroup} tone="primary" /> : null}
           {equipment ? <MetaPill label={equipment} /> : null}
         </div>
-        {footer ? <div className="mt-2">{footer}</div> : null}
+        {footer ? <div className="mt-1.5">{footer}</div> : null}
+
       </div>
     </div>
   );
@@ -120,7 +124,8 @@ function MetaPill({ label, tone }: { label: string; tone?: "primary" }) {
   return (
     <span
       className={cn(
-        "rounded-full border px-2.5 py-0.5 text-[11px] font-semibold",
+        "rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+
         tone === "primary"
           ? "border-primary/40 bg-primary/10 text-primary"
           : "border-border/60 bg-muted/40 text-muted-foreground",
