@@ -18,7 +18,6 @@ import {
   Camera, Upload, Trash2, ChevronLeft, ImagePlus, User, Pencil, X,
   Utensils, Dumbbell, HeartPulse, Activity, Pill, Moon, CalendarClock,
   Sparkles, Target,
-  Images,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -98,20 +97,7 @@ function ProfilePage() {
         onChanged={() => qc.invalidateQueries({ queryKey: ["body-photos"] })}
       />
 
-      <Link
-        to="/media"
-        search={{ character: "shiran", category: "identity" }}
-        className="flex items-center gap-3 rounded-3xl border border-border/60 bg-card/70 px-5 py-4 shadow-soft backdrop-blur-xl transition hover:border-primary/40"
-      >
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary/12 text-primary">
-          <Images className="h-4 w-4" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold">ספריית הנכסים</span>
-          <span className="block text-xs text-muted-foreground">נכסי ההפקה הרשמיים מהאחסון</span>
-        </span>
-        <ChevronLeft className="h-4 w-4 rotate-180 text-muted-foreground" />
-      </Link>
+
 
 
       <KnowledgeSection profile={profileQ.data ?? null} memory={memoryQ.data ?? {}} />

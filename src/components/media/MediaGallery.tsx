@@ -1,8 +1,9 @@
 /**
- * Reusable media gallery — bucket + prefix in, paginated grid out.
+ * Reusable media gallery — character + category (or raw bucket + prefix) in,
+ * paginated grid out.
  *
  * Deliberately generic: identity images, marketing assets, exercise assets
- * and future videos all render through this one component.
+ * and future videos all render through this one component, for any character.
  */
 import { useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
@@ -11,23 +12,28 @@ import { listMedia, MEDIA_PAGE_SIZE, SIGNED_URL_TTL, type MediaItem } from "@/se
 import { PremiumCard, EmptyState } from "@/components/ui-kit/Section";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  ASSETS_BUCKET,
+  characterAssetPrefix,
+  type AssetCategory,
+  type CharacterId,
+} from "@/lib/media-paths";
 
-interface MediaGalleryProps {
-  bucket: string;
-  prefix: string;
+type MediaGalleryProps = {
   title?: string;
   className?: string;
   /** Grid columns on mobile. */
   columns?: 2 | 3;
-}
+} & (
+  | { characterId: CharacterId; category: AssetCategory; bucket?: string; prefix?: never }
+  | { bucket: string; prefix: string; characterId?: never; category?: never }
+);
 
-export function MediaGallery({
-  bucket,
-  prefix,
-  title,
-  className,
-  columns = 2,
-}: MediaGalleryProps) {
+export function MediaGallery(props: MediaGalleryProps) {
+  const { title, className, columns = 2 } = props;
+  const bucket = props.bucket ?? ASSETS_BUCKET;
+  const prefix =
+    props.prefix ?? characterAssetPrefix(props.characterId!, props.category!);
   const [preview, setPreview] = useState<MediaItem | null>(null);
 
   const query = useInfiniteQuery({
@@ -41,6 +47,7 @@ export function MediaGallery({
     gcTime: SIGNED_URL_TTL * 1000,
     retry: 1,
   });
+
 
   const items = query.data?.pages.flatMap((p) => p.items) ?? [];
 

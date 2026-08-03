@@ -19,7 +19,6 @@ import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedProgressRouteImport } from './routes/_authenticated/progress'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedNutritionRouteImport } from './routes/_authenticated/nutrition'
-import { Route as AuthenticatedMediaRouteImport } from './routes/_authenticated/media'
 import { Route as AuthenticatedMealsRouteImport } from './routes/_authenticated/meals'
 import { Route as AuthenticatedJournalRouteImport } from './routes/_authenticated/journal'
 import { Route as AuthenticatedHydrationRouteImport } from './routes/_authenticated/hydration'
@@ -34,6 +33,7 @@ import { Route as AuthenticatedWorkoutsIndexRouteImport } from './routes/_authen
 import { Route as AuthenticatedWorkoutsProgramRouteImport } from './routes/_authenticated/workouts.program'
 import { Route as AuthenticatedWorkoutsHistoryRouteImport } from './routes/_authenticated/workouts.history'
 import { Route as AuthenticatedWorkoutSessionWorkoutIdRouteImport } from './routes/_authenticated/workout-session.$workoutId'
+import { Route as AuthenticatedDevAssetsRouteImport } from './routes/_authenticated/dev.assets'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedWorkoutsSessionSessionIdRouteImport } from './routes/_authenticated/workouts.session.$sessionId'
@@ -92,11 +92,6 @@ const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
 const AuthenticatedNutritionRoute = AuthenticatedNutritionRouteImport.update({
   id: '/nutrition',
   path: '/nutrition',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedMediaRoute = AuthenticatedMediaRouteImport.update({
-  id: '/media',
-  path: '/media',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedMealsRoute = AuthenticatedMealsRouteImport.update({
@@ -175,6 +170,11 @@ const AuthenticatedWorkoutSessionWorkoutIdRoute =
     path: '/workout-session/$workoutId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedDevAssetsRoute = AuthenticatedDevAssetsRouteImport.update({
+  id: '/dev/assets',
+  path: '/dev/assets',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -243,7 +243,6 @@ export interface FileRoutesByFullPath {
   '/hydration': typeof AuthenticatedHydrationRoute
   '/journal': typeof AuthenticatedJournalRoute
   '/meals': typeof AuthenticatedMealsRoute
-  '/media': typeof AuthenticatedMediaRoute
   '/nutrition': typeof AuthenticatedNutritionRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/progress': typeof AuthenticatedProgressRoute
@@ -252,6 +251,7 @@ export interface FileRoutesByFullPath {
   '/workouts': typeof AuthenticatedWorkoutsRouteWithChildren
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/dev/assets': typeof AuthenticatedDevAssetsRoute
   '/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
   '/workouts/history': typeof AuthenticatedWorkoutsHistoryRouteWithChildren
   '/workouts/program': typeof AuthenticatedWorkoutsProgramRoute
@@ -278,7 +278,6 @@ export interface FileRoutesByTo {
   '/hydration': typeof AuthenticatedHydrationRoute
   '/journal': typeof AuthenticatedJournalRoute
   '/meals': typeof AuthenticatedMealsRoute
-  '/media': typeof AuthenticatedMediaRoute
   '/nutrition': typeof AuthenticatedNutritionRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/progress': typeof AuthenticatedProgressRoute
@@ -286,6 +285,7 @@ export interface FileRoutesByTo {
   '/workout-templates': typeof AuthenticatedWorkoutTemplatesRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/dev/assets': typeof AuthenticatedDevAssetsRoute
   '/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
   '/workouts/history': typeof AuthenticatedWorkoutsHistoryRouteWithChildren
   '/workouts/program': typeof AuthenticatedWorkoutsProgramRoute
@@ -313,7 +313,6 @@ export interface FileRoutesById {
   '/_authenticated/hydration': typeof AuthenticatedHydrationRoute
   '/_authenticated/journal': typeof AuthenticatedJournalRoute
   '/_authenticated/meals': typeof AuthenticatedMealsRoute
-  '/_authenticated/media': typeof AuthenticatedMediaRoute
   '/_authenticated/nutrition': typeof AuthenticatedNutritionRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/progress': typeof AuthenticatedProgressRoute
@@ -322,6 +321,7 @@ export interface FileRoutesById {
   '/_authenticated/workouts': typeof AuthenticatedWorkoutsRouteWithChildren
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/_authenticated/dev/assets': typeof AuthenticatedDevAssetsRoute
   '/_authenticated/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
   '/_authenticated/workouts/history': typeof AuthenticatedWorkoutsHistoryRouteWithChildren
   '/_authenticated/workouts/program': typeof AuthenticatedWorkoutsProgramRoute
@@ -350,7 +350,6 @@ export interface FileRouteTypes {
     | '/hydration'
     | '/journal'
     | '/meals'
-    | '/media'
     | '/nutrition'
     | '/profile'
     | '/progress'
@@ -359,6 +358,7 @@ export interface FileRouteTypes {
     | '/workouts'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/dev/assets'
     | '/workout-session/$workoutId'
     | '/workouts/history'
     | '/workouts/program'
@@ -385,7 +385,6 @@ export interface FileRouteTypes {
     | '/hydration'
     | '/journal'
     | '/meals'
-    | '/media'
     | '/nutrition'
     | '/profile'
     | '/progress'
@@ -393,6 +392,7 @@ export interface FileRouteTypes {
     | '/workout-templates'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/dev/assets'
     | '/workout-session/$workoutId'
     | '/workouts/history'
     | '/workouts/program'
@@ -419,7 +419,6 @@ export interface FileRouteTypes {
     | '/_authenticated/hydration'
     | '/_authenticated/journal'
     | '/_authenticated/meals'
-    | '/_authenticated/media'
     | '/_authenticated/nutrition'
     | '/_authenticated/profile'
     | '/_authenticated/progress'
@@ -428,6 +427,7 @@ export interface FileRouteTypes {
     | '/_authenticated/workouts'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/_authenticated/dev/assets'
     | '/_authenticated/workout-session/$workoutId'
     | '/_authenticated/workouts/history'
     | '/_authenticated/workouts/program'
@@ -522,13 +522,6 @@ declare module '@tanstack/react-router' {
       path: '/nutrition'
       fullPath: '/nutrition'
       preLoaderRoute: typeof AuthenticatedNutritionRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/media': {
-      id: '/_authenticated/media'
-      path: '/media'
-      fullPath: '/media'
-      preLoaderRoute: typeof AuthenticatedMediaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/meals': {
@@ -627,6 +620,13 @@ declare module '@tanstack/react-router' {
       path: '/workout-session/$workoutId'
       fullPath: '/workout-session/$workoutId'
       preLoaderRoute: typeof AuthenticatedWorkoutSessionWorkoutIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dev/assets': {
+      id: '/_authenticated/dev/assets'
+      path: '/dev/assets'
+      fullPath: '/dev/assets'
+      preLoaderRoute: typeof AuthenticatedDevAssetsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/.mcp/invoke-tool/$tool': {
@@ -767,13 +767,13 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedHydrationRoute: typeof AuthenticatedHydrationRoute
   AuthenticatedJournalRoute: typeof AuthenticatedJournalRoute
   AuthenticatedMealsRoute: typeof AuthenticatedMealsRoute
-  AuthenticatedMediaRoute: typeof AuthenticatedMediaRoute
   AuthenticatedNutritionRoute: typeof AuthenticatedNutritionRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedProgressRoute: typeof AuthenticatedProgressRoute
   AuthenticatedShiftRoute: typeof AuthenticatedShiftRoute
   AuthenticatedWorkoutTemplatesRoute: typeof AuthenticatedWorkoutTemplatesRoute
   AuthenticatedWorkoutsRoute: typeof AuthenticatedWorkoutsRouteWithChildren
+  AuthenticatedDevAssetsRoute: typeof AuthenticatedDevAssetsRoute
   AuthenticatedWorkoutSessionWorkoutIdRoute: typeof AuthenticatedWorkoutSessionWorkoutIdRoute
 }
 
@@ -786,13 +786,13 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHydrationRoute: AuthenticatedHydrationRoute,
   AuthenticatedJournalRoute: AuthenticatedJournalRoute,
   AuthenticatedMealsRoute: AuthenticatedMealsRoute,
-  AuthenticatedMediaRoute: AuthenticatedMediaRoute,
   AuthenticatedNutritionRoute: AuthenticatedNutritionRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedProgressRoute: AuthenticatedProgressRoute,
   AuthenticatedShiftRoute: AuthenticatedShiftRoute,
   AuthenticatedWorkoutTemplatesRoute: AuthenticatedWorkoutTemplatesRoute,
   AuthenticatedWorkoutsRoute: AuthenticatedWorkoutsRouteWithChildren,
+  AuthenticatedDevAssetsRoute: AuthenticatedDevAssetsRoute,
   AuthenticatedWorkoutSessionWorkoutIdRoute:
     AuthenticatedWorkoutSessionWorkoutIdRoute,
 }
