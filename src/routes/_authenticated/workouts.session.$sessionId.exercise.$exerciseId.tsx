@@ -693,6 +693,7 @@ function ActiveSetCard({
 /* ---------------- SetRow ---------------- */
 
 function SetRow({
+  containerRef,
   set,
   isActive,
   previous,
@@ -701,6 +702,7 @@ function SetRow({
   onDelete,
   onChange,
 }: {
+  containerRef?: React.RefObject<HTMLDivElement | null>;
   set: SessionSet;
   isActive: boolean;
   previous: { weightKg: number | null; reps: number | null } | null;
