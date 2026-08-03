@@ -553,33 +553,35 @@ function ExerciseDetailPage() {
       )}
 
 
-      {/* Floating stack: rest timer → finish exercise → workout clock */}
+      {/* Floating rest timer — never occupies layout space */}
+      {rest.active && (
+        <FloatingRestTimer
+          phase={rest.phase}
+          paused={rest.paused}
+          remainingSec={rest.remainingSec}
+          overtimeSec={rest.overtimeSec}
+          plannedSec={rest.plannedSec}
+          nextSetNumber={activeSet?.set_number ?? null}
+          totalSets={sets.length}
+          soundEnabled={rest.soundEnabled}
+          onToggleSound={rest.toggleSound}
+          onTogglePause={rest.togglePause}
+          onAddSeconds={(d: number) => rest.addSeconds(d)}
+          onSkip={() => {
+            rest.clear();
+            scrollToActive();
+          }}
+        />
+      )}
+
+      {/* Floating stack: finish exercise → workout clock */}
       <div
         ref={floatingRef}
         className="fixed inset-x-0 z-30 mx-auto max-w-md space-y-2 px-4"
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
       >
 
-        {rest.active && (
-          <RestTimerWidget
-            phase={rest.phase}
-            remainingSec={rest.remainingSec}
-            overtimeSec={rest.overtimeSec}
-            plannedSec={rest.plannedSec}
-            nextSetNumber={activeSet?.set_number ?? null}
-            totalSets={sets.length}
-            nextWeight={activeSet?.weight_kg ?? null}
-            nextReps={activeSet?.reps ?? null}
-            soundEnabled={rest.soundEnabled}
-            onToggleSound={rest.toggleSound}
-            onAddSeconds={(d) => rest.addSeconds(d)}
-            onSkip={() => rest.clear()}
-            onNextSet={() => {
-              rest.clear();
-              scrollToActive();
-            }}
-          />
-        )}
+
         {doneCount > 0 && activeSet && (
           <button
             onClick={handleFinishExercise}
