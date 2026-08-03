@@ -432,7 +432,7 @@ function ExerciseDetailPage() {
         exerciseTotal={exerciseTotal || null}
         fallbackImage={exQ.data?.image_path}
         titleAdornment={isPR ? <Trophy className="h-5 w-5 shrink-0 text-primary" /> : null}
-        footer={prLine}
+        footer={headerMeta}
       />
 
       {/* Active set focus / exercise completed */}
