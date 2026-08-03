@@ -456,30 +456,19 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
               ))}
             </div>
 
-            <div className="mt-3 flex gap-2">
-              <Select value={pickId} onValueChange={setPickId}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder={t("workouts.pickExercise")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {exercisesQ.data?.map((ex) => (
-                    <SelectItem key={ex.id} value={ex.id}>
-                      {ex.name}{ex.muscle_group ? ` · ${ex.muscle_group}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                onClick={() => {
-                  if (!pickId) return;
-                  addExercise.mutate(pickId);
-                  setPickId("");
-                }}
-              >
+            <div className="mt-3">
+              <Button className="w-full" onClick={() => setPickerVisible(true)}>
                 <Plus className="mr-1 h-4 w-4" />
                 {t("templates.addExercise")}
               </Button>
             </div>
+
+            <ExercisePicker
+              open={pickerVisible}
+              onClose={() => setPickerVisible(false)}
+              onSelect={(id) => addExercise.mutate(id)}
+            />
+
           </div>
         </div>
 
