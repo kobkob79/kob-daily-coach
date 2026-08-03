@@ -1,15 +1,12 @@
 /**
  * useCharacterAssets — the single read path for character assets anywhere in
  * the app. Give it a characterId + assetCategory and it returns typed,
- * signed media items from Supabase Storage.
- *
- * Any screen (home, workouts, marketing surfaces, onboarding…) can call this
- * hook; the QA gallery is just one more consumer.
+ * signed media items from Supabase Storage, including nested folders,
+ * sorted alphabetically. Consuming screens never know the storage structure.
  */
 import { useQuery } from "@tanstack/react-query";
 import {
-  listMedia,
-  MEDIA_PAGE_SIZE,
+  listMediaTree,
   SIGNED_URL_TTL,
   type MediaItem,
 } from "@/services/media.service";
@@ -23,43 +20,52 @@ import {
 export interface UseCharacterAssetsOptions {
   characterId: CharacterId;
   category: AssetCategory;
-  /** Case-insensitive filename filter, e.g. "hero". */
+  /** Case-insensitive filename/path filter, e.g. "hero". */
   search?: string;
-  /** How many objects to fetch (single page). */
-  limit?: number;
+  /** Restrict to one nested subfolder below the category, e.g. "closeups". */
+  subfolder?: string;
+  /** How deep to walk nested folders. */
+  maxDepth?: number;
   enabled?: boolean;
 }
 
 export function characterAssetsQueryKey(
   characterId: CharacterId,
   category: AssetCategory,
-  search?: string,
+  subfolder?: string,
 ) {
-  return ["character-assets", characterId, category, search ?? null] as const;
+  return ["character-assets", characterId, category, subfolder ?? null] as const;
 }
 
 export function useCharacterAssets({
   characterId,
   category,
   search,
-  limit = MEDIA_PAGE_SIZE,
+  subfolder,
+  maxDepth = 4,
   enabled = true,
 }: UseCharacterAssetsOptions) {
-  return useQuery<MediaItem[]>({
-    queryKey: characterAssetsQueryKey(characterId, category, search),
+  const query = useQuery<MediaItem[]>({
+    queryKey: characterAssetsQueryKey(characterId, category, subfolder),
     enabled,
-    queryFn: async () => {
-      const page = await listMedia({
+    queryFn: () => {
+      const base = characterAssetPrefix(characterId, category);
+      return listMediaTree({
         bucket: ASSETS_BUCKET,
-        prefix: characterAssetPrefix(characterId, category),
-        limit,
-        search,
+        prefix: subfolder ? `${base}/${subfolder}` : base,
+        maxDepth,
       });
-      return page.items;
     },
     // Stay comfortably inside the signed-URL lifetime.
     staleTime: (SIGNED_URL_TTL - 300) * 1000,
     gcTime: SIGNED_URL_TTL * 1000,
     retry: 1,
   });
+
+  const needle = search?.trim().toLowerCase();
+  const items = needle
+    ? (query.data ?? []).filter((i) => i.path.toLowerCase().includes(needle))
+    : (query.data ?? []);
+
+  return { ...query, items };
 }
