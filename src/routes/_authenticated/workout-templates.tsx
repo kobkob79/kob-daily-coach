@@ -41,7 +41,7 @@ type TExercise = {
   target_weight_kg: number | null;
   exercises: { id: string; name: string; muscle_group: string | null } | null;
 };
-type ExerciseRow = { id: string; name: string; muscle_group: string | null };
+
 
 function TemplatesPage() {
   const qc = useQueryClient();
@@ -275,15 +275,6 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
         .order("position", { ascending: true });
       if (error) throw error;
       return (data ?? []) as unknown as TExercise[];
-    },
-  });
-  const exercisesQ = useQuery({
-    queryKey: ["exercises"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("exercises").select("id,name,muscle_group").order("name");
-      if (error) throw error;
-      return (data ?? []) as ExerciseRow[];
     },
   });
 
