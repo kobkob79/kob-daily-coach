@@ -46,7 +46,7 @@ export function CharacterAsset({
   muted = true,
 }: CharacterAssetProps) {
   const query = useCharacterAssets({ characterId, category, search: name });
-  const items = query.data ?? [];
+  const items = query.items;
   const item: MediaItem | undefined = name
     ? (items.find((i) => i.name.toLowerCase() === name.toLowerCase()) ?? items[0])
     : items[index];
