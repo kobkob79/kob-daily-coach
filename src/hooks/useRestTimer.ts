@@ -6,6 +6,10 @@
  * accuracy: elapsed time is recomputed from wall-clock (`Date.now() -
  * startedAt`). The timer keeps running when it reaches zero and counts up
  * in overtime until explicitly stopped by completing the next set.
+ *
+ * When rest ends the athlete gets strong feedback (vibration + chime +
+ * notification) and, if no action is taken, a repeat reminder every 30s
+ * until the timer is skipped or the next set is completed.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -14,6 +18,8 @@ interface StoredTimer {
   plannedSec: number;
   exerciseId: string;
   setNumber: number;
+  /** Wall-clock moment the timer was paused, or null/undefined when running. */
+  pausedAt?: number | null;
   finishedAt?: number;
 }
 
@@ -39,6 +45,9 @@ function write(sessionId: string, val: StoredTimer | null) {
 
 const SOUND_KEY = "viora:rest:sound";
 
+/** Interval between repeat "rest is over" reminders, in ms. */
+const REMINDER_MS = 30_000;
+
 /** Whether the end-of-rest chime is enabled (opt-out, persisted locally). */
 export function isRestSoundEnabled(): boolean {
   if (typeof window === "undefined") return false;
@@ -59,19 +68,19 @@ function playChime() {
     if (!Ctx) return;
     const ctx = new Ctx();
     const now = ctx.currentTime;
-    [880, 1174].forEach((freq, i) => {
+    [880, 1174, 880].forEach((freq, i) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = "sine";
       osc.frequency.value = freq;
       gain.gain.setValueAtTime(0, now + i * 0.18);
-      gain.gain.linearRampToValueAtTime(0.18, now + i * 0.18 + 0.02);
+      gain.gain.linearRampToValueAtTime(0.22, now + i * 0.18 + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.18 + 0.16);
       osc.connect(gain).connect(ctx.destination);
       osc.start(now + i * 0.18);
       osc.stop(now + i * 0.18 + 0.18);
     });
-    window.setTimeout(() => ctx.close().catch(() => {}), 800);
+    window.setTimeout(() => ctx.close().catch(() => {}), 1000);
   } catch {
     /* ignore */
   }
@@ -79,6 +88,7 @@ function playChime() {
 
 export interface RestTimerState {
   active: boolean;
+  paused: boolean;
   elapsedSec: number;
   remainingSec: number;
   overtimeSec: number;
@@ -88,6 +98,9 @@ export interface RestTimerState {
   toggleSound: () => void;
   start: (opts: { plannedSec: number; exerciseId: string; setNumber: number }) => void;
   addSeconds: (delta: number) => void;
+  pause: () => void;
+  resume: () => void;
+  togglePause: () => void;
   stop: () => { plannedSec: number; actualSec: number; overtimeSec: number } | null;
   clear: () => void;
 }
@@ -123,27 +136,21 @@ export function useRestTimer(sessionId: string): RestTimerState {
 
   // Tick while active
   useEffect(() => {
-    if (!stored) return;
+    if (!stored || stored.pausedAt) return;
     const id = window.setInterval(() => setNow(Date.now()), 250);
     return () => window.clearInterval(id);
   }, [stored]);
 
-  /**
-   * Fires the end-of-rest feedback exactly once: vibration, chime and a system
-   * notification so the event still reaches the athlete while the app is
-   * backgrounded or the screen is locked.
-   */
-  const fireZero = useCallback(() => {
-    if (vibrateRef.current) return;
-    vibrateRef.current = true;
+  /** Vibration + chime + system notification — usable for repeat reminders too. */
+  const notify = useCallback(() => {
     try {
       if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-        (navigator as Navigator).vibrate?.([300, 100, 300, 100, 300]);
+        (navigator as Navigator).vibrate?.([400, 120, 400, 120, 400]);
       }
       if (soundRef.current) playChime();
       if (typeof Notification !== "undefined" && Notification.permission === "granted") {
         new Notification("Viora", {
-          body: "מנוחה הסתיימה — לסט הבא",
+          body: "המנוחה הסתיימה — לסט הבא",
           tag: "viora-rest",
           silent: false,
         });
@@ -153,11 +160,20 @@ export function useRestTimer(sessionId: string): RestTimerState {
     }
   }, []);
 
+  /**
+   * Fires the end-of-rest feedback exactly once.
+   */
+  const fireZero = useCallback(() => {
+    if (vibrateRef.current) return;
+    vibrateRef.current = true;
+    notify();
+  }, [notify]);
+
   // Reaching zero must fire even with throttled timers: a wall-clock timeout
   // covers the backgrounded tab, the interval covers the visible one, and
   // returning to the tab re-checks immediately.
   useEffect(() => {
-    if (!stored) return;
+    if (!stored || stored.pausedAt) return;
     const elapsed = Math.floor((Date.now() - stored.startedAt) / 1000);
     const msLeft = (stored.plannedSec - elapsed) * 1000;
     if (msLeft <= 0) {
@@ -178,10 +194,19 @@ export function useRestTimer(sessionId: string): RestTimerState {
   }, [stored, fireZero]);
 
 
-
-  const elapsed = stored ? Math.max(0, Math.floor((now - stored.startedAt) / 1000)) : 0;
+  const elapsed = stored
+    ? Math.max(0, Math.floor(((stored.pausedAt ?? now) - stored.startedAt) / 1000))
+    : 0;
   const remaining = stored ? Math.max(0, stored.plannedSec - elapsed) : 0;
   const overtime = stored ? Math.max(0, elapsed - stored.plannedSec) : 0;
+
+  // Repeat reminder while the athlete ignores the finished rest.
+  const isOvertime = !!stored && !stored.pausedAt && remaining === 0;
+  useEffect(() => {
+    if (!isOvertime) return;
+    const id = window.setInterval(notify, REMINDER_MS);
+    return () => window.clearInterval(id);
+  }, [isOvertime, notify]);
 
   const start = useCallback<RestTimerState["start"]>(
     ({ plannedSec, exerciseId, setNumber }) => {
@@ -190,6 +215,7 @@ export function useRestTimer(sessionId: string): RestTimerState {
         plannedSec,
         exerciseId,
         setNumber,
+        pausedAt: null,
       };
       write(sessionId, val);
       setStored(val);
@@ -214,6 +240,9 @@ export function useRestTimer(sessionId: string): RestTimerState {
       setStored((prev) => {
         if (!prev) return prev;
         const next: StoredTimer = { ...prev, plannedSec: Math.max(0, prev.plannedSec + delta) };
+        // Extending rest past zero re-arms the end-of-rest feedback.
+        const elapsedNow = Math.floor(((prev.pausedAt ?? Date.now()) - prev.startedAt) / 1000);
+        if (next.plannedSec > elapsedNow) vibrateRef.current = false;
         write(sessionId, next);
         return next;
       });
@@ -221,10 +250,41 @@ export function useRestTimer(sessionId: string): RestTimerState {
     [sessionId],
   );
 
+  const pause = useCallback(() => {
+    setStored((prev) => {
+      if (!prev || prev.pausedAt) return prev;
+      const next: StoredTimer = { ...prev, pausedAt: Date.now() };
+      write(sessionId, next);
+      return next;
+    });
+  }, [sessionId]);
+
+  const resume = useCallback(() => {
+    setStored((prev) => {
+      if (!prev || !prev.pausedAt) return prev;
+      const next: StoredTimer = {
+        ...prev,
+        startedAt: prev.startedAt + (Date.now() - prev.pausedAt),
+        pausedAt: null,
+      };
+      write(sessionId, next);
+      setNow(Date.now());
+      return next;
+    });
+  }, [sessionId]);
+
+  const togglePause = useCallback(() => {
+    if (stored?.pausedAt) resume();
+    else pause();
+  }, [stored, pause, resume]);
+
   const stop = useCallback(() => {
     const current = read(sessionId);
     if (!current) return null;
-    const actual = Math.max(0, Math.floor((Date.now() - current.startedAt) / 1000));
+    const actual = Math.max(
+      0,
+      Math.floor(((current.pausedAt ?? Date.now()) - current.startedAt) / 1000),
+    );
     const over = Math.max(0, actual - current.plannedSec);
     write(sessionId, null);
     setStored(null);
@@ -240,6 +300,7 @@ export function useRestTimer(sessionId: string): RestTimerState {
 
   return {
     active: !!stored,
+    paused: !!stored?.pausedAt,
     elapsedSec: elapsed,
     remainingSec: remaining,
     overtimeSec: overtime,
@@ -249,6 +310,9 @@ export function useRestTimer(sessionId: string): RestTimerState {
     toggleSound,
     start,
     addSeconds,
+    pause,
+    resume,
+    togglePause,
     stop,
     clear,
   };
