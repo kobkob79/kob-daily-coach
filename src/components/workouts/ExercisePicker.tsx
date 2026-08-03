@@ -259,8 +259,23 @@ export function ExercisePicker({ open, onClose, onSelect, title = "בחר תרג
           </div>
         </div>
       </SheetContent>
+      </SheetContent>
+
+      <ExerciseDetailsSheet
+        open={!!details}
+        exercise={details}
+        library={all}
+        onClose={() => setDetails(null)}
+        onOpenExercise={(ex) => setDetails(ex)}
+        onAdd={(id) => {
+          setDetails(null);
+          onSelect(id);
+          onClose();
+        }}
+      />
     </Sheet>
   );
+
 }
 
 function ChipRow({ children }: { children: React.ReactNode }) {
