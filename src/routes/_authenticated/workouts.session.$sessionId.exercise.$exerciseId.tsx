@@ -337,19 +337,61 @@ function ExerciseDetailPage() {
     finishExercise();
   };
 
-  const prLine =
-    prStats.weightKg > 0 || prStats.reps > 0 ? (
-      <p className="text-[11px] text-muted-foreground">
-        שיא אישי:{" "}
-        <span className="font-bold text-foreground">
-          {prStats.weightKg > 0 ? `${prStats.weightKg} ק״ג` : `${prStats.reps} חזרות`}
-        </span>
-        {prStats.e1rmKg > 0 ? ` · 1RM משוער ${prStats.e1rmKg} ק״ג` : ""}
-      </p>
-    ) : null;
+  const progressPct = sets.length > 0 ? Math.round((doneCount / sets.length) * 100) : 0;
+  const hasPrevRecord = prStats.weightKg > 0 || prStats.reps > 0;
+
+  /**
+   * Header meta: live progress, personal-record badge and the previous-vs-current
+   * summary — everything the athlete needs without scrolling.
+   */
+  const headerMeta = (
+    <div className="space-y-2">
+      <div>
+        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+          <span>התקדמות בתרגיל</span>
+          <span className="font-bold tabular-nums text-foreground">
+            {doneCount}/{sets.length} סטים
+          </span>
+        </div>
+        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-border/50">
+          <div
+            className="h-full rounded-full bg-primary transition-[width] duration-500"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+      </div>
+
+      {hasPrevRecord && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-0.5 text-[11px] font-bold text-primary">
+            <Trophy className="h-3 w-3" />
+            שיא אישי{" "}
+            {prStats.weightKg > 0 ? `${prStats.weightKg} ק״ג` : `${prStats.reps} חזרות`}
+          </span>
+          {prStats.e1rmKg > 0 && (
+            <span className="rounded-full border border-border/60 bg-muted/40 px-2.5 py-0.5 text-[11px] font-semibold text-muted-foreground">
+              1RM משוער {prStats.e1rmKg} ק״ג
+            </span>
+          )}
+        </div>
+      )}
+
+      {activeSet && (
+        <PreviousVsCurrent
+          previous={previousBySetNumber.get(activeSet.set_number) ?? null}
+          current={{ weightKg: activeSet.weight_kg, reps: activeSet.reps }}
+        />
+      )}
+    </div>
+  );
 
   return (
-    <div dir="rtl" className="mx-auto max-w-md space-y-4 pb-52 pt-2">
+    <div
+      dir="rtl"
+      className="mx-auto max-w-md space-y-4 pt-2"
+      style={{ paddingBottom: floatingHeight + 24 }}
+    >
+
       <PRCelebration data={pr} onDismiss={() => setPr(null)} />
 
       {/* Header */}
