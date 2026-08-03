@@ -520,9 +520,11 @@ function ExerciseDetailPage() {
 
       {/* Floating stack: rest timer → finish exercise → workout clock */}
       <div
+        ref={floatingRef}
         className="fixed inset-x-0 z-30 mx-auto max-w-md space-y-2 px-4"
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
       >
+
         {rest.active && (
           <RestTimerWidget
             phase={rest.phase}
