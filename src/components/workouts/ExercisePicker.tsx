@@ -18,16 +18,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dumbbell, Image as ImageIcon, Plus, Search, SearchX, X } from "lucide-react";
 import { normalizeMuscleGroup, type MuscleGroup } from "@/lib/muscle-groups";
+import {
+  EQUIPMENT_CHIPS,
+  difficultyOf,
+  equipmentKey,
+  equipmentLabel,
+  type EquipmentKey,
+  type PickerExercise,
+} from "@/lib/exercise-meta";
+import { ExerciseDetailsSheet } from "./ExerciseDetailsSheet";
 import { cn } from "@/lib/utils";
 
-export type PickerExercise = {
-  id: string;
-  name: string;
-  muscle_group: string | null;
-  equipment: string | null;
-  category: string | null;
-  description: string | null;
-};
+export type { PickerExercise };
 
 /** Muscle chips shown horizontally, in Hebrew with an emoji cue. */
 const MUSCLE_CHIPS: { group: MuscleGroup; emoji: string }[] = [
@@ -42,52 +44,6 @@ const MUSCLE_CHIPS: { group: MuscleGroup; emoji: string }[] = [
   { group: "קרדיו", emoji: "🏃" },
   { group: "מוביליטי", emoji: "🤸" },
 ];
-
-type EquipmentKey =
-  | "machine" | "cable" | "barbell" | "dumbbell"
-  | "bodyweight" | "smith" | "band" | "other";
-
-const EQUIPMENT_CHIPS: { key: EquipmentKey; label: string; emoji: string }[] = [
-  { key: "bodyweight", label: "משקל גוף", emoji: "🧍" },
-  { key: "dumbbell", label: "משקולות יד", emoji: "🏋" },
-  { key: "barbell", label: "מוט", emoji: "➖" },
-  { key: "machine", label: "מכונה", emoji: "⚙️" },
-  { key: "cable", label: "כבלים", emoji: "🔗" },
-  { key: "smith", label: "סמית'", emoji: "🏗" },
-  { key: "band", label: "גומייה", emoji: "🎗" },
-];
-
-/** Maps free-text equipment values (Hebrew or English) to a filter key. */
-function equipmentKey(raw: string | null | undefined): EquipmentKey {
-  const s = (raw ?? "").toLowerCase().trim();
-  if (!s) return "bodyweight";
-  if (/smith|סמית/.test(s)) return "smith";
-  if (/band|גומי|רצוע/.test(s)) return "band";
-  if (/cable|כבל|פולי/.test(s)) return "cable";
-  if (/machine|מכונ/.test(s)) return "machine";
-  if (/barbell|מוט/.test(s)) return "barbell";
-  if (/dumbbell|משקולת|משקולות/.test(s)) return "dumbbell";
-  if (/body|גוף|none|ללא/.test(s)) return "bodyweight";
-  return "other";
-}
-
-function equipmentLabel(raw: string | null | undefined): string {
-  const key = equipmentKey(raw);
-  const chip = EQUIPMENT_CHIPS.find((c) => c.key === key);
-  return chip?.label ?? (raw?.trim() || "משקל גוף");
-}
-
-/** Difficulty is derived from equipment/category when the DB has no column. */
-function difficultyOf(ex: PickerExercise): { label: string; tone: string } {
-  const key = equipmentKey(ex.equipment);
-  if (key === "bodyweight" || key === "machine" || key === "band") {
-    return { label: "מתחילים", tone: "bg-success/15 text-success" };
-  }
-  if (key === "barbell" || key === "smith") {
-    return { label: "מתקדם", tone: "bg-destructive/15 text-destructive" };
-  }
-  return { label: "בינוני", tone: "bg-primary/15 text-primary" };
-}
 
 /** Lightweight alias index so Hebrew/English searches both hit. */
 const ALIASES: { test: RegExp; words: string[] }[] = [
@@ -147,6 +103,8 @@ export function ExercisePicker({ open, onClose, onSelect, title = "בחר תרג
   const [muscle, setMuscle] = useState<MuscleGroup | null>(null);
   const [equip, setEquip] = useState<EquipmentKey | null>(null);
   const [visible, setVisible] = useState(PAGE);
+  const [details, setDetails] = useState<PickerExercise | null>(null);
+
 
   const all = q.data ?? [];
 
@@ -290,11 +248,9 @@ export function ExercisePicker({ open, onClose, onSelect, title = "בחר תרג
                     <ExerciseCard
                       key={ex.id}
                       ex={ex}
-                      onPick={() => {
-                        onSelect(ex.id);
-                        onClose();
-                      }}
+                      onPick={() => setDetails(ex)}
                     />
+
                   ))}
                 </div>
                 <div ref={sentinel} className="h-8" />
@@ -303,8 +259,23 @@ export function ExercisePicker({ open, onClose, onSelect, title = "בחר תרג
           </div>
         </div>
       </SheetContent>
+
+
+      <ExerciseDetailsSheet
+        open={!!details}
+        exercise={details}
+        library={all}
+        onClose={() => setDetails(null)}
+        onOpenExercise={(ex) => setDetails(ex)}
+        onAdd={(id) => {
+          setDetails(null);
+          onSelect(id);
+          onClose();
+        }}
+      />
     </Sheet>
   );
+
 }
 
 function ChipRow({ children }: { children: React.ReactNode }) {
