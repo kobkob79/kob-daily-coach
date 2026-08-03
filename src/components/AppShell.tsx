@@ -57,7 +57,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const rightNav = nav.slice(mid);
 
   return (
-    <div className="relative min-h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden">
+    <div className="relative min-h-[100dvh] bg-background text-foreground flex flex-col overflow-x-hidden">
       {/* Cinematic background — soft indigo + lime auras */}
       <div className="pointer-events-none fixed inset-0 z-0" aria-hidden>
         <div className="absolute -top-32 -left-24 h-[420px] w-[420px] rounded-full bg-[oklch(0.68_0.18_275/0.22)] blur-[120px]" />
