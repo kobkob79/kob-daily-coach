@@ -698,10 +698,15 @@ function Dashboard() {
               {dateStr}
             </p>
             <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-tight">
-              {greetingPrefix},
+              {adaptiveGreeting.timeOfDay},
               <br />
-              <span className="gradient-text">{firstName || "אורח"}</span>
+              <span className="gradient-text">{adaptiveGreeting.name}</span>
             </h1>
+            {adaptiveGreeting.context && (
+              <span className="mt-3 inline-flex items-center rounded-full bg-white/6 px-3 py-1 text-[11px] font-semibold text-foreground/80">
+                {adaptiveGreeting.context}
+              </span>
+            )}
           </div>
           {/* Weather chip hidden until a real weather integration is connected. */}
         </div>
