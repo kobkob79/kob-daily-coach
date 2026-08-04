@@ -6,7 +6,7 @@ import { getMemory } from "@/lib/ai-memory";
 import { supabase } from "@/integrations/supabase/client";
 import { getShiftForDate, SHIFT_STYLES, SHIFT_HOURS, type ShiftConfig } from "@/lib/shift";
 import { format, subDays, differenceInYears, startOfWeek } from "date-fns";
-import { Dumbbell, HeartPulse, CalendarClock, ChevronLeft, BookOpen, Footprints, Flame, Moon, Droplet, Zap } from "lucide-react";
+import { Dumbbell, HeartPulse, CalendarClock, ChevronLeft, BookOpen } from "lucide-react";
 import { useCountUp } from "@/hooks/useCountUp";
 
 import { t } from "@/lib/i18n";
@@ -514,11 +514,6 @@ function Dashboard() {
 
 
   const greetingHour = now.getHours();
-  const greetingPrefix =
-    greetingHour < 5 ? "לילה טוב" :
-    greetingHour < 12 ? "בוקר טוב" :
-    greetingHour < 17 ? "צהריים טובים" :
-    greetingHour < 21 ? "ערב טוב" : "לילה טוב";
   const firstName = (lifeQ.data?.first_name?.trim() || displayName || "").split(" ")[0];
 
   // ---- AI Score (0–100) ----
@@ -538,7 +533,6 @@ function Dashboard() {
   const ringCircumference = 2 * Math.PI * 88;
   const ringOffset = ringCircumference * (1 - scoreValue / 100);
 
-  const proteinPctInt = Math.round(Math.min(100, proteinPct * 100));
   const waterPctInt = WATER_TARGET_ML > 0 ? Math.round(Math.min(100, (waterMl / WATER_TARGET_ML) * 100)) : 0;
   const dateStr = format(now, "EEEE · d MMMM");
 
@@ -955,59 +949,3 @@ function Dashboard() {
     </div>
   );
 }
-
-function SnapshotTile({
-  icon,
-  label,
-  value,
-  hint,
-  accent,
-  progress,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  hint?: string;
-  accent: "lime" | "indigo" | "cyan" | "orange" | "rose";
-  progress?: number;
-}) {
-  const accentClasses: Record<string, string> = {
-    lime: "text-primary bg-primary/12",
-    indigo: "text-accent bg-accent/20",
-    cyan: "text-sky-300 bg-sky-500/15",
-    orange: "text-orange-300 bg-orange-500/15",
-    rose: "text-rose-300 bg-rose-500/15",
-  };
-  const barClasses: Record<string, string> = {
-    lime: "bg-primary",
-    indigo: "bg-accent",
-    cyan: "bg-sky-400",
-    orange: "bg-orange-400",
-    rose: "bg-rose-400",
-  };
-  return (
-    <div className="glass-tile relative flex flex-col gap-3 overflow-hidden p-4">
-      <div className="flex items-start justify-between">
-        <div className={cn("grid h-10 w-10 place-items-center rounded-2xl", accentClasses[accent])}>
-          {icon}
-        </div>
-        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-          {label}
-        </span>
-      </div>
-      <div>
-        <p className="text-[24px] font-bold leading-none tracking-tight tabular-nums">{value}</p>
-        {hint && <p className="mt-1.5 text-[11px] text-muted-foreground">{hint}</p>}
-      </div>
-      {typeof progress === "number" && (
-        <div className="h-1 overflow-hidden rounded-full bg-white/5">
-          <div
-            className={cn("h-full rounded-full transition-all duration-700", barClasses[accent])}
-            style={{ width: `${Math.max(2, Math.min(100, progress))}%` }}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
