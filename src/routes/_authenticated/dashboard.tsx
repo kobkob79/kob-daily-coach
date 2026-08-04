@@ -192,7 +192,25 @@ function Dashboard() {
         .eq("biological_day", yesterdayIso);
       return data ?? [];
     },
+  };
+
+  // Completed workout sessions of the last 60 days — powers weekly progress
+  // and the streak counter in the Command Center.
+  const sessionsRecentQ = useQuery({
+    queryKey: ["workout-sessions", "recent-completed"],
+    queryFn: async () => {
+      const since = format(subDays(new Date(), 60), "yyyy-MM-dd");
+      const { data } = await supabase
+        .from("workout_sessions")
+        .select("id,name,status,finished_at,duration_seconds,total_volume_kg")
+        .eq("status", "completed")
+        .gte("finished_at", `${since}T00:00:00Z`)
+        .order("finished_at", { ascending: false });
+      return data ?? [];
+    },
   });
+
+
 
 
   const PROTEIN_TARGET_G = profileQ.data?.protein_target_g ?? PROTEIN_TARGET_G_DEFAULT;
