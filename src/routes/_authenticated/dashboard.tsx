@@ -50,6 +50,8 @@ import {
   buildWeeklyProgress,
 } from "@/lib/command-center";
 import { HomeHero } from "@/components/home/HomeHero";
+import { HomeWidget } from "@/components/home/HomeWidget";
+
 import { WeeklyProgressCard } from "@/components/dashboard/WeeklyProgressCard";
 import {
   PerformanceSnapshot,
