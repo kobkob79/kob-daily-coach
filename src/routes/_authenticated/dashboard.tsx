@@ -5,8 +5,8 @@ import { MorningIntake, type DayIntake, type DayTargets } from "@/components/das
 import { getMemory } from "@/lib/ai-memory";
 import { supabase } from "@/integrations/supabase/client";
 import { getShiftForDate, SHIFT_STYLES, SHIFT_HOURS, type ShiftConfig } from "@/lib/shift";
-import { format, subDays, differenceInYears } from "date-fns";
-import { Dumbbell, HeartPulse, CalendarClock, ChevronLeft, BookOpen, Footprints, Flame, Moon, Droplet, Zap } from "lucide-react";
+import { format, subDays, differenceInYears, startOfWeek } from "date-fns";
+import { Dumbbell, HeartPulse, CalendarClock, ChevronLeft, BookOpen } from "lucide-react";
 import { useCountUp } from "@/hooks/useCountUp";
 
 import { t } from "@/lib/i18n";
@@ -44,6 +44,19 @@ import {
 } from "@/lib/daily-brief";
 import { buildHomeInsight } from "@/lib/home-insight";
 import { HomeInsightCards } from "@/components/dashboard/HomeInsightCards";
+import {
+  buildAdaptiveGreeting,
+  buildTodaysFocus,
+  buildWeeklyProgress,
+} from "@/lib/command-center";
+import { TodaysFocusCard } from "@/components/dashboard/TodaysFocusCard";
+import { WeeklyProgressCard } from "@/components/dashboard/WeeklyProgressCard";
+import {
+  PerformanceSnapshot,
+  type SnapshotItem,
+} from "@/components/dashboard/PerformanceSnapshot";
+import { QuickActionsGrid } from "@/components/dashboard/QuickActionsGrid";
+import { CoachCardSlot } from "@/components/dashboard/CoachCardSlot";
 
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -193,6 +206,24 @@ function Dashboard() {
       return data ?? [];
     },
   });
+
+  // Completed workout sessions of the last 60 days — powers weekly progress
+  // and the streak counter in the Command Center.
+  const sessionsRecentQ = useQuery({
+    queryKey: ["workout-sessions", "recent-completed"],
+    queryFn: async () => {
+      const since = format(subDays(new Date(), 60), "yyyy-MM-dd");
+      const { data } = await supabase
+        .from("workout_sessions")
+        .select("id,name,status,finished_at,duration_seconds,total_volume_kg")
+        .eq("status", "completed")
+        .gte("finished_at", `${since}T00:00:00Z`)
+        .order("finished_at", { ascending: false });
+      return data ?? [];
+    },
+  });
+
+
 
 
   const PROTEIN_TARGET_G = profileQ.data?.protein_target_g ?? PROTEIN_TARGET_G_DEFAULT;
@@ -483,11 +514,6 @@ function Dashboard() {
 
 
   const greetingHour = now.getHours();
-  const greetingPrefix =
-    greetingHour < 5 ? "לילה טוב" :
-    greetingHour < 12 ? "בוקר טוב" :
-    greetingHour < 17 ? "צהריים טובים" :
-    greetingHour < 21 ? "ערב טוב" : "לילה טוב";
   const firstName = (lifeQ.data?.first_name?.trim() || displayName || "").split(" ")[0];
 
   // ---- AI Score (0–100) ----
@@ -507,7 +533,6 @@ function Dashboard() {
   const ringCircumference = 2 * Math.PI * 88;
   const ringOffset = ringCircumference * (1 - scoreValue / 100);
 
-  const proteinPctInt = Math.round(Math.min(100, proteinPct * 100));
   const waterPctInt = WATER_TARGET_ML > 0 ? Math.round(Math.min(100, (waterMl / WATER_TARGET_ML) * 100)) : 0;
   const dateStr = format(now, "EEEE · d MMMM");
 
@@ -523,6 +548,100 @@ function Dashboard() {
   })();
 
   const animatedScore = useCountUp(scoreValue, 1400);
+
+  /* ---------- Command Center (VIORA-HOME-001) ---------- */
+  const plannedWorkoutToday = intakeQ.data?.intake?.plannedWorkout ?? false;
+  const workoutDoneToday =
+    workoutTodayMinutes > 0 || (workoutTodayQ.data ?? []).length > 0;
+
+  const adaptiveGreeting = buildAdaptiveGreeting({
+    now,
+    firstName: firstName,
+    dayContext: dayCtxQ.data ?? null,
+    shift,
+    hasPlannedWorkout: plannedWorkoutToday,
+    workoutDoneToday,
+  });
+
+  const todaysFocus = buildTodaysFocus({
+    now,
+    checkinDone: !!intakeQ.data?.intake,
+    hasPlannedWorkout: plannedWorkoutToday,
+    workoutDoneToday,
+    waterMl,
+    waterTargetMl: WATER_TARGET_ML,
+    proteinG: protein,
+    proteinTargetG: PROTEIN_TARGET_G,
+    mealsCount: meals.length,
+    lastSleepHours,
+    painLevel: currentPain?.level ?? null,
+  });
+
+  const completedSessions = sessionsRecentQ.data ?? [];
+  const completedDates = completedSessions
+    .filter((s) => s.finished_at)
+    .map((s) => format(new Date(s.finished_at as string), "yyyy-MM-dd"));
+  const weekStartIso = format(startOfWeek(now, { weekStartsOn: 0 }), "yyyy-MM-dd");
+  const weeklyProgress = buildWeeklyProgress(
+    completedDates,
+    weekStartIso,
+    todayIso,
+    4,
+  );
+
+  const lastSession = completedSessions[0] ?? null;
+  const recoveryPct = briefCtx?.recoveryPct ?? null;
+  const snapshotItems: SnapshotItem[] = [
+    {
+      id: "last-workout",
+      emoji: "🏋",
+      label: "אימון אחרון",
+      value: lastSession?.finished_at
+        ? format(new Date(lastSession.finished_at), "d MMM")
+        : "—",
+      hint: lastSession?.duration_seconds
+        ? `${Math.round(Number(lastSession.duration_seconds) / 60)} דקות`
+        : lastSession
+          ? (lastSession.name ?? "אימון")
+          : "אין נתונים",
+      accent: "lime",
+    },
+    {
+      id: "water",
+      emoji: "💧",
+      label: "מים היום",
+      value: waterMl > 0 ? `${(waterMl / 1000).toFixed(1)}L` : "—",
+      hint: `${waterPctInt}% מהיעד`,
+      accent: "cyan",
+      progress: waterPctInt,
+    },
+    {
+      id: "sleep",
+      emoji: "😴",
+      label: "שינה",
+      value: lastSleepHours != null ? `${lastSleepHours.toFixed(1)}ש׳` : "—",
+      hint: avgSleepHours != null ? `ממוצע ${avgSleepHours.toFixed(1)}ש׳` : "אין נתונים",
+      accent: "indigo",
+    },
+    {
+      id: "recovery",
+      emoji: "⚡",
+      label: "התאוששות",
+      value: recoveryPct != null ? `${recoveryPct}%` : "—",
+      hint: recoveryPct != null ? "מבוסס שינה ותזונה" : "נאסף מידע",
+      accent: "orange",
+      progress: recoveryPct,
+    },
+    {
+      id: "weekly-score",
+      emoji: "📈",
+      label: "ציון שבועי",
+      value: hasEnoughData ? String(scoreValue) : "—",
+      hint: hasEnoughData ? "מתעדכן בזמן אמת" : "עדיין לומדת אותך",
+      accent: "rose",
+      progress: hasEnoughData ? scoreValue : null,
+    },
+  ];
 
   // Deterministic-ish particle set — 14 green particles floating up behind ring.
   const particles = Array.from({ length: 14 }, (_, i) => {
@@ -573,10 +692,15 @@ function Dashboard() {
               {dateStr}
             </p>
             <h1 className="mt-2 text-[32px] font-bold leading-[1.05] tracking-tight">
-              {greetingPrefix},
+              {adaptiveGreeting.timeOfDay},
               <br />
-              <span className="gradient-text">{firstName || "אורח"}</span>
+              <span className="gradient-text">{adaptiveGreeting.name}</span>
             </h1>
+            {adaptiveGreeting.context && (
+              <span className="mt-3 inline-flex items-center rounded-full bg-white/6 px-3 py-1 text-[11px] font-semibold text-foreground/80">
+                {adaptiveGreeting.context}
+              </span>
+            )}
           </div>
           {/* Weather chip hidden until a real weather integration is connected. */}
         </div>
@@ -650,6 +774,9 @@ function Dashboard() {
         </div>
       </section>
 
+      <TodaysFocusCard focus={todaysFocus} />
+
+
       {/* Today's priorities */}
       {homeInsight.priorities.length > 0 && (
         <section className="animate-stagger">
@@ -688,72 +815,18 @@ function Dashboard() {
         </section>
       )}
 
-      {/* Quick Health Snapshot — Steps, Sleep, Heart, Calories */}
-      <section className="animate-stagger">
-        <div className="mb-3 flex items-center justify-between px-1">
-          <h2 className="text-[15px] font-bold tracking-tight">מבט מהיר</h2>
-          {/* "חי" only appears once at least one live device is connected.
-              For now no live sources exist, so we show an honest waiting state. */}
-          <span className="text-[11px] font-medium text-muted-foreground">
-            ממתין לחיבור מכשיר
-          </span>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <SnapshotTile
-            icon={<Footprints className="h-5 w-5" strokeWidth={1.8} />}
-            label="צעדים"
-            value="—"
-            hint="לא מחובר"
-            accent="lime"
-          />
-          <SnapshotTile
-            icon={<Moon className="h-5 w-5" strokeWidth={1.8} />}
-            label="שינה"
-            value={lastSleepHours != null ? `${lastSleepHours.toFixed(1)}ש'` : "—"}
-            hint={avgSleepHours != null ? `ממוצע ${avgSleepHours.toFixed(1)}ש'` : "אין נתונים"}
-            accent="indigo"
-          />
-          <SnapshotTile
-            icon={<HeartPulse className="h-5 w-5" strokeWidth={1.8} />}
-            label="דופק"
-            value="—"
-            hint="לא מחובר"
-            accent="rose"
-          />
-          <SnapshotTile
-            icon={<Flame className="h-5 w-5" strokeWidth={1.8} />}
-            label="קלוריות"
-            value={caloriesEaten > 0 ? Math.round(caloriesEaten).toLocaleString() : "—"}
-            hint={caloriesBurned > 0 ? `נשרפו ${Math.round(caloriesBurned)}` : "עדיין לא נאכל"}
-            accent="orange"
-          />
-        </div>
-
-        {/* Water + Protein secondary row (kept from previous functionality) */}
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <SnapshotTile
-            icon={<Droplet className="h-5 w-5" strokeWidth={1.8} />}
-            label="מים"
-            value={waterMl > 0 ? `${(waterMl / 1000).toFixed(1)}L` : "—"}
-            hint={`${waterPctInt}% מהיעד`}
-            accent="cyan"
-            progress={waterPctInt}
-          />
-          <SnapshotTile
-            icon={<Zap className="h-5 w-5" strokeWidth={1.8} />}
-            label="חלבון"
-            value={protein > 0 ? `${Math.round(protein)}g` : "—"}
-            hint={`${proteinPctInt}% מהיעד`}
-            accent="lime"
-            progress={proteinPctInt}
-          />
-        </div>
-      </section>
+      <PerformanceSnapshot items={snapshotItems} />
 
 
 
       {/* AI Coach shortcut removed — the single global entry point is
           the center button in the bottom navigation (AskVioraSheet). */}
+
+      <WeeklyProgressCard progress={weeklyProgress} />
+
+      <QuickActionsGrid />
+
+      <CoachCardSlot hint={dynamicInsight} />
 
       {/* Smart Coach hints */}
       <SmartCoach hints={hints} name={displayName} />
@@ -876,59 +949,3 @@ function Dashboard() {
     </div>
   );
 }
-
-function SnapshotTile({
-  icon,
-  label,
-  value,
-  hint,
-  accent,
-  progress,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  hint?: string;
-  accent: "lime" | "indigo" | "cyan" | "orange" | "rose";
-  progress?: number;
-}) {
-  const accentClasses: Record<string, string> = {
-    lime: "text-primary bg-primary/12",
-    indigo: "text-accent bg-accent/20",
-    cyan: "text-sky-300 bg-sky-500/15",
-    orange: "text-orange-300 bg-orange-500/15",
-    rose: "text-rose-300 bg-rose-500/15",
-  };
-  const barClasses: Record<string, string> = {
-    lime: "bg-primary",
-    indigo: "bg-accent",
-    cyan: "bg-sky-400",
-    orange: "bg-orange-400",
-    rose: "bg-rose-400",
-  };
-  return (
-    <div className="glass-tile relative flex flex-col gap-3 overflow-hidden p-4">
-      <div className="flex items-start justify-between">
-        <div className={cn("grid h-10 w-10 place-items-center rounded-2xl", accentClasses[accent])}>
-          {icon}
-        </div>
-        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-          {label}
-        </span>
-      </div>
-      <div>
-        <p className="text-[24px] font-bold leading-none tracking-tight tabular-nums">{value}</p>
-        {hint && <p className="mt-1.5 text-[11px] text-muted-foreground">{hint}</p>}
-      </div>
-      {typeof progress === "number" && (
-        <div className="h-1 overflow-hidden rounded-full bg-white/5">
-          <div
-            className={cn("h-full rounded-full transition-all duration-700", barClasses[accent])}
-            style={{ width: `${Math.max(2, Math.min(100, progress))}%` }}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
