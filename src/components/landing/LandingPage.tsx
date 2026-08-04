@@ -72,7 +72,7 @@ export function LandingPage() {
             </Link>
             <Link
               to="/auth"
-              className="flex h-14 items-center justify-center rounded-full border border-white/12 bg-card/60 text-[15px] font-medium backdrop-blur-xl transition hover:border-primary/40 active:scale-[0.98]"
+              className="flex h-14 items-center justify-center rounded-full border border-white/12 bg-card text-[15px] font-medium transition hover:border-primary/40 active:scale-[0.98]"
             >
               {c.cta.secondary}
             </Link>
@@ -91,7 +91,7 @@ export function LandingPage() {
               return (
                 <article
                   key={f.id}
-                  className="animate-stagger min-w-[196px] max-w-[196px] shrink-0 snap-start rounded-3xl border border-white/10 bg-card/80 p-5 shadow-soft backdrop-blur-xl"
+                  className="animate-stagger min-w-[196px] max-w-[196px] shrink-0 snap-start rounded-3xl border border-white/10 bg-card p-5 shadow-soft"
                   style={{ animationDelay: `${i * 60}ms` }}
                 >
                   <span className="grid h-11 w-11 place-items-center rounded-2xl bg-primary/12 text-primary">
@@ -107,7 +107,7 @@ export function LandingPage() {
 
         {/* TRUST */}
         <section className="py-8">
-          <div className="rounded-3xl border border-white/10 bg-card/80 p-6 shadow-soft backdrop-blur-xl">
+          <div className="rounded-3xl border border-white/10 bg-card p-6 shadow-soft">
             <h2 className="font-display text-lg font-bold tracking-tight">{c.trustTitle}</h2>
             <ul className="mt-4 space-y-3">
               {c.trust.map((item) => (
