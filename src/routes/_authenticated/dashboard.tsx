@@ -5,7 +5,7 @@ import { MorningIntake, type DayIntake, type DayTargets } from "@/components/das
 import { getMemory } from "@/lib/ai-memory";
 import { supabase } from "@/integrations/supabase/client";
 import { getShiftForDate, SHIFT_STYLES, SHIFT_HOURS, type ShiftConfig } from "@/lib/shift";
-import { format, subDays, differenceInYears } from "date-fns";
+import { format, subDays, differenceInYears, startOfWeek } from "date-fns";
 import { Dumbbell, HeartPulse, CalendarClock, ChevronLeft, BookOpen, Footprints, Flame, Moon, Droplet, Zap } from "lucide-react";
 import { useCountUp } from "@/hooks/useCountUp";
 
@@ -44,6 +44,19 @@ import {
 } from "@/lib/daily-brief";
 import { buildHomeInsight } from "@/lib/home-insight";
 import { HomeInsightCards } from "@/components/dashboard/HomeInsightCards";
+import {
+  buildAdaptiveGreeting,
+  buildTodaysFocus,
+  buildWeeklyProgress,
+} from "@/lib/command-center";
+import { TodaysFocusCard } from "@/components/dashboard/TodaysFocusCard";
+import { WeeklyProgressCard } from "@/components/dashboard/WeeklyProgressCard";
+import {
+  PerformanceSnapshot,
+  type SnapshotItem,
+} from "@/components/dashboard/PerformanceSnapshot";
+import { QuickActionsGrid } from "@/components/dashboard/QuickActionsGrid";
+import { CoachCardSlot } from "@/components/dashboard/CoachCardSlot";
 
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -579,7 +592,7 @@ function Dashboard() {
     completedDates,
     weekStartIso,
     todayIso,
-    targets?.workoutsPerWeek ?? 4,
+    4,
   );
 
   const lastSession = completedSessions[0] ?? null;
