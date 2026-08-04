@@ -128,7 +128,7 @@ export function LandingPage() {
         <section className="pt-4 pb-2 text-center">
           <Link
             to="/auth"
-            className="inline-flex h-13 items-center justify-center rounded-full bg-primary px-10 py-4 text-[16px] font-semibold text-primary-foreground shadow-glow transition active:scale-[0.98]"
+            className="inline-flex items-center justify-center rounded-full bg-primary px-10 py-4 text-[16px] font-semibold text-primary-foreground shadow-glow transition active:scale-[0.98]"
           >
             {c.cta.primary}
           </Link>

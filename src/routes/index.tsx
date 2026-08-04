@@ -21,20 +21,22 @@ export const Route = createFileRoute("/")({
 
 function Landing() {
   const router = useRouter();
-  const [checked, setChecked] = useState(false);
+  const [hasSession, setHasSession] = useState(false);
 
   useEffect(() => {
     let active = true;
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
-      if (data.session) router.navigate({ to: "/dashboard", replace: true });
-      else setChecked(true);
+      if (data.session) {
+        setHasSession(true);
+        router.navigate({ to: "/dashboard", replace: true });
+      }
     });
     return () => {
       active = false;
     };
   }, [router]);
 
-  if (!checked) return <div className="min-h-[100dvh] bg-background" />;
+  if (hasSession) return <div className="min-h-[100dvh] bg-background" />;
   return <LandingPage />;
 }
