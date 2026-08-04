@@ -60,6 +60,6 @@ export function WeeklyProgressCard({ progress }: { progress: WeeklyProgress }) {
           ))}
         </div>
       </div>
-    </section>
+    </HomeWidget>
   );
 }
