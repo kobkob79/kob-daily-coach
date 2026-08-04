@@ -26,7 +26,7 @@ const icons: Record<string, LucideIcon> = {
 
 export function LandingPage() {
   return (
-    <div className="relative min-h-[100dvh] overflow-x-hidden bg-background text-foreground">
+    <div className="dark relative min-h-[100dvh] overflow-x-hidden bg-background text-foreground">
       {/* Ambient gradient field */}
       <div className="pointer-events-none fixed inset-0 z-0" aria-hidden>
         <div className="absolute -top-40 right-[-15%] h-[520px] w-[520px] rounded-full bg-[oklch(0.93_0.24_125/0.16)] blur-[130px] animate-soft-pulse" />
