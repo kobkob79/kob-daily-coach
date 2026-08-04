@@ -49,7 +49,7 @@ import {
   buildTodaysFocus,
   buildWeeklyProgress,
 } from "@/lib/command-center";
-import { TodaysFocusCard } from "@/components/dashboard/TodaysFocusCard";
+import { HomeHero } from "@/components/home/HomeHero";
 import { WeeklyProgressCard } from "@/components/dashboard/WeeklyProgressCard";
 import {
   PerformanceSnapshot,
@@ -774,7 +774,7 @@ function Dashboard() {
         </div>
       </section>
 
-      <TodaysFocusCard focus={todaysFocus} />
+      <HomeHero focus={todaysFocus} />
 
 
       {/* Today's priorities */}
