@@ -91,7 +91,7 @@ export function LandingPage() {
               return (
                 <article
                   key={f.id}
-                  className="glass-tile animate-stagger min-w-[196px] max-w-[196px] shrink-0 snap-start p-5"
+                  className="animate-stagger min-w-[196px] max-w-[196px] shrink-0 snap-start rounded-3xl border border-white/10 bg-card/80 p-5 shadow-soft backdrop-blur-xl"
                   style={{ animationDelay: `${i * 60}ms` }}
                 >
                   <span className="grid h-11 w-11 place-items-center rounded-2xl bg-primary/12 text-primary">
@@ -107,7 +107,7 @@ export function LandingPage() {
 
         {/* TRUST */}
         <section className="py-8">
-          <div className="glass-card p-6">
+          <div className="rounded-3xl border border-white/10 bg-card/80 p-6 shadow-soft backdrop-blur-xl">
             <h2 className="font-display text-lg font-bold tracking-tight">{c.trustTitle}</h2>
             <ul className="mt-4 space-y-3">
               {c.trust.map((item) => (
