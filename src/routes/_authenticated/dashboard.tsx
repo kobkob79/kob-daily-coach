@@ -542,6 +542,100 @@ function Dashboard() {
 
   const animatedScore = useCountUp(scoreValue, 1400);
 
+  /* ---------- Command Center (VIORA-HOME-001) ---------- */
+  const plannedWorkoutToday = intakeQ.data?.intake?.plannedWorkout ?? false;
+  const workoutDoneToday =
+    workoutTodayMinutes > 0 || (workoutTodayQ.data ?? []).length > 0;
+
+  const adaptiveGreeting = buildAdaptiveGreeting({
+    now,
+    firstName: firstName,
+    dayContext: dayCtxQ.data ?? null,
+    shift,
+    hasPlannedWorkout: plannedWorkoutToday,
+    workoutDoneToday,
+  });
+
+  const todaysFocus = buildTodaysFocus({
+    now,
+    checkinDone: !!intakeQ.data?.intake,
+    hasPlannedWorkout: plannedWorkoutToday,
+    workoutDoneToday,
+    waterMl,
+    waterTargetMl: WATER_TARGET_ML,
+    proteinG: protein,
+    proteinTargetG: PROTEIN_TARGET_G,
+    mealsCount: meals.length,
+    lastSleepHours,
+    painLevel: currentPain?.level ?? null,
+  });
+
+  const completedSessions = sessionsRecentQ.data ?? [];
+  const completedDates = completedSessions
+    .filter((s) => s.finished_at)
+    .map((s) => format(new Date(s.finished_at as string), "yyyy-MM-dd"));
+  const weekStartIso = format(startOfWeek(now, { weekStartsOn: 0 }), "yyyy-MM-dd");
+  const weeklyProgress = buildWeeklyProgress(
+    completedDates,
+    weekStartIso,
+    todayIso,
+    targets?.workoutsPerWeek ?? 4,
+  );
+
+  const lastSession = completedSessions[0] ?? null;
+  const recoveryPct = briefCtx?.recoveryPct ?? null;
+  const snapshotItems: SnapshotItem[] = [
+    {
+      id: "last-workout",
+      emoji: "🏋",
+      label: "אימון אחרון",
+      value: lastSession?.finished_at
+        ? format(new Date(lastSession.finished_at), "d MMM")
+        : "—",
+      hint: lastSession?.duration_seconds
+        ? `${Math.round(Number(lastSession.duration_seconds) / 60)} דקות`
+        : lastSession
+          ? (lastSession.name ?? "אימון")
+          : "אין נתונים",
+      accent: "lime",
+    },
+    {
+      id: "water",
+      emoji: "💧",
+      label: "מים היום",
+      value: waterMl > 0 ? `${(waterMl / 1000).toFixed(1)}L` : "—",
+      hint: `${waterPctInt}% מהיעד`,
+      accent: "cyan",
+      progress: waterPctInt,
+    },
+    {
+      id: "sleep",
+      emoji: "😴",
+      label: "שינה",
+      value: lastSleepHours != null ? `${lastSleepHours.toFixed(1)}ש׳` : "—",
+      hint: avgSleepHours != null ? `ממוצע ${avgSleepHours.toFixed(1)}ש׳` : "אין נתונים",
+      accent: "indigo",
+    },
+    {
+      id: "recovery",
+      emoji: "⚡",
+      label: "התאוששות",
+      value: recoveryPct != null ? `${recoveryPct}%` : "—",
+      hint: recoveryPct != null ? "מבוסס שינה ותזונה" : "נאסף מידע",
+      accent: "orange",
+      progress: recoveryPct,
+    },
+    {
+      id: "weekly-score",
+      emoji: "📈",
+      label: "ציון שבועי",
+      value: hasEnoughData ? String(scoreValue) : "—",
+      hint: hasEnoughData ? "מתעדכן בזמן אמת" : "עדיין לומדת אותך",
+      accent: "rose",
+      progress: hasEnoughData ? scoreValue : null,
+    },
+  ];
+
   // Deterministic-ish particle set — 14 green particles floating up behind ring.
   const particles = Array.from({ length: 14 }, (_, i) => {
     const seed = (i * 9301 + 49297) % 233280;
