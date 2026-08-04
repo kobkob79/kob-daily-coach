@@ -227,11 +227,17 @@ export function buildWeeklyProgress(
   const cursor = new Date(`${todayIso}T00:00:00`);
   if (!set.has(todayIso)) cursor.setDate(cursor.getDate() - 1);
   for (let guard = 0; guard < 400; guard++) {
-    const iso = cursor.toISOString().slice(0, 10);
+    const iso = localIso(cursor);
     if (!set.has(iso)) break;
     streakDays++;
     cursor.setDate(cursor.getDate() - 1);
   }
 
   return { completed, goal: safeGoal, pct, streakDays };
+}
+
+function localIso(d: Date): string {
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
 }
