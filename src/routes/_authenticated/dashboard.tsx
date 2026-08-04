@@ -780,6 +780,9 @@ function Dashboard() {
         </div>
       </section>
 
+      <TodaysFocusCard focus={todaysFocus} />
+
+
       {/* Today's priorities */}
       {homeInsight.priorities.length > 0 && (
         <section className="animate-stagger">
@@ -818,72 +821,18 @@ function Dashboard() {
         </section>
       )}
 
-      {/* Quick Health Snapshot — Steps, Sleep, Heart, Calories */}
-      <section className="animate-stagger">
-        <div className="mb-3 flex items-center justify-between px-1">
-          <h2 className="text-[15px] font-bold tracking-tight">מבט מהיר</h2>
-          {/* "חי" only appears once at least one live device is connected.
-              For now no live sources exist, so we show an honest waiting state. */}
-          <span className="text-[11px] font-medium text-muted-foreground">
-            ממתין לחיבור מכשיר
-          </span>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <SnapshotTile
-            icon={<Footprints className="h-5 w-5" strokeWidth={1.8} />}
-            label="צעדים"
-            value="—"
-            hint="לא מחובר"
-            accent="lime"
-          />
-          <SnapshotTile
-            icon={<Moon className="h-5 w-5" strokeWidth={1.8} />}
-            label="שינה"
-            value={lastSleepHours != null ? `${lastSleepHours.toFixed(1)}ש'` : "—"}
-            hint={avgSleepHours != null ? `ממוצע ${avgSleepHours.toFixed(1)}ש'` : "אין נתונים"}
-            accent="indigo"
-          />
-          <SnapshotTile
-            icon={<HeartPulse className="h-5 w-5" strokeWidth={1.8} />}
-            label="דופק"
-            value="—"
-            hint="לא מחובר"
-            accent="rose"
-          />
-          <SnapshotTile
-            icon={<Flame className="h-5 w-5" strokeWidth={1.8} />}
-            label="קלוריות"
-            value={caloriesEaten > 0 ? Math.round(caloriesEaten).toLocaleString() : "—"}
-            hint={caloriesBurned > 0 ? `נשרפו ${Math.round(caloriesBurned)}` : "עדיין לא נאכל"}
-            accent="orange"
-          />
-        </div>
-
-        {/* Water + Protein secondary row (kept from previous functionality) */}
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <SnapshotTile
-            icon={<Droplet className="h-5 w-5" strokeWidth={1.8} />}
-            label="מים"
-            value={waterMl > 0 ? `${(waterMl / 1000).toFixed(1)}L` : "—"}
-            hint={`${waterPctInt}% מהיעד`}
-            accent="cyan"
-            progress={waterPctInt}
-          />
-          <SnapshotTile
-            icon={<Zap className="h-5 w-5" strokeWidth={1.8} />}
-            label="חלבון"
-            value={protein > 0 ? `${Math.round(protein)}g` : "—"}
-            hint={`${proteinPctInt}% מהיעד`}
-            accent="lime"
-            progress={proteinPctInt}
-          />
-        </div>
-      </section>
+      <PerformanceSnapshot items={snapshotItems} />
 
 
 
       {/* AI Coach shortcut removed — the single global entry point is
           the center button in the bottom navigation (AskVioraSheet). */}
+
+      <WeeklyProgressCard progress={weeklyProgress} />
+
+      <QuickActionsGrid />
+
+      <CoachCardSlot hint={dynamicInsight} />
 
       {/* Smart Coach hints */}
       <SmartCoach hints={hints} name={displayName} />
