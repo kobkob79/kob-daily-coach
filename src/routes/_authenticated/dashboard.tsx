@@ -192,7 +192,7 @@ function Dashboard() {
         .eq("biological_day", yesterdayIso);
       return data ?? [];
     },
-  };
+  });
 
   // Completed workout sessions of the last 60 days — powers weekly progress
   // and the streak counter in the Command Center.
