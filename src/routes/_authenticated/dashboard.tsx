@@ -816,7 +816,8 @@ function Dashboard() {
               </div>
             ))}
           </div>
-        </section>
+        </HomeWidget>
+
       )}
 
       <PerformanceSnapshot items={snapshotItems} />
