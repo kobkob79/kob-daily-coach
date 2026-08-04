@@ -1,22 +1,25 @@
 /**
  * Weekly Progress — completed workouts vs. weekly goal + streak.
+ * Rendered inside the shared Home widget framework.
  */
 import { Link } from "@tanstack/react-router";
 import { Flame } from "lucide-react";
 import type { WeeklyProgress } from "@/lib/command-center";
+import { HomeWidget } from "@/components/home/HomeWidget";
 
 export function WeeklyProgressCard({ progress }: { progress: WeeklyProgress }) {
   const dots = Array.from({ length: Math.max(progress.goal, progress.completed, 1) });
   return (
-    <section className="animate-stagger">
-      <div className="mb-3 flex items-center justify-between px-1">
-        <h2 className="text-[15px] font-bold tracking-tight">ההתקדמות השבועית</h2>
-        <Link to="/workouts/program" className="text-[11px] font-medium text-primary">
+    <HomeWidget
+      title="ההתקדמות השבועית"
+      action={
+        <Link to="/workouts/program" className="text-primary">
           מתכנן שבועי
         </Link>
-      </div>
+      }
+    >
+      <div>
 
-      <div className="glass-tile p-5">
         <div className="flex items-end justify-between">
           <div>
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
@@ -57,6 +60,6 @@ export function WeeklyProgressCard({ progress }: { progress: WeeklyProgress }) {
           ))}
         </div>
       </div>
-    </section>
+    </HomeWidget>
   );
 }
