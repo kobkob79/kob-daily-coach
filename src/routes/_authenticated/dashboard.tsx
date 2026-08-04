@@ -779,14 +779,18 @@ function Dashboard() {
 
       {/* Today's priorities */}
       {homeInsight.priorities.length > 0 && (
-        <section className="animate-stagger">
-          <div className="mb-3 flex items-center justify-between px-1">
-            <h2 className="text-[15px] font-bold tracking-tight">העדיפויות להיום</h2>
-            <span className="text-[11px] font-medium text-muted-foreground">
+        <HomeWidget
+          title="העדיפויות להיום"
+          collapsible
+          bare
+          action={
+            <span className="text-muted-foreground">
               {homeInsight.priorities.length} משימות
             </span>
-          </div>
+          }
+        >
           <div className="space-y-2.5">
+
             {homeInsight.priorities.map((p, i) => (
               <div
                 key={p.id}
