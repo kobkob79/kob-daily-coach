@@ -678,11 +678,43 @@ export async function getExercisePRStats(
 
 
 /**
- * Seed a session with planned sets. For each template exercise, prefer the
- * user's last actual performance (weight/reps per set), else fall back to
- * template targets. Idempotent: if the session already has any sets, no-op.
+ * In-flight seeding guard. Two surfaces (hub start, session restore, brief)
+ * may ask to seed the same session at the same time; without this they both
+ * pass the "already has sets?" check and each insert a full set list, which
+ * is what produced `Set 1, Set 1, Set 2, Set 2`.
+ *
+ * The DB-level unique index
+ * `workout_sets_session_exercise_setnum_key (session_id, exercise_id, set_number)`
+ * is the structural guarantee; this map only avoids pointless round-trips.
+ */
+const seedingInFlight = new Map<string, Promise<void>>();
+
+/**
+ * Seed a session with planned sets — the SINGLE writer of planned sets.
+ * For each template exercise, prefer the user's last actual performance
+ * (weight/reps per set), else fall back to template targets.
+ *
+ * Idempotent on every level:
+ *  - concurrent callers share one promise,
+ *  - a session that already has sets is a no-op,
+ *  - the insert itself is a conflict-ignoring upsert on
+ *    (session_id, exercise_id, set_number).
  */
 export async function seedSessionFromTemplate(
+  sessionId: string,
+  templateId: string,
+): Promise<void> {
+  const key = `${sessionId}:${templateId}`;
+  const running = seedingInFlight.get(key);
+  if (running) return running;
+  const task = seedSessionFromTemplateInner(sessionId, templateId).finally(() => {
+    seedingInFlight.delete(key);
+  });
+  seedingInFlight.set(key, task);
+  return task;
+}
+
+async function seedSessionFromTemplateInner(
   sessionId: string,
   templateId: string,
 ): Promise<void> {
@@ -706,11 +738,17 @@ export async function seedSessionFromTemplate(
 
   // Build every planned row up-front and insert in a single batch call.
   const inserts: any[] = [];
+  const seen = new Set<string>();
   let pos = 0;
   for (const r of tplRows) {
     const history = historyByEx.get(r.exercise_id) ?? [];
     const targetSets = r.target_sets ?? 3;
     for (let n = 1; n <= targetSets; n++) {
+      // A template listing the same exercise twice must not produce two rows
+      // with the same set_number — they are one and the same planned set.
+      const dedupeKey = `${r.exercise_id}:${n}`;
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
       pos += 1;
       const past = history.find((h) => h.set_number === n);
       inserts.push({
@@ -726,10 +764,16 @@ export async function seedSessionFromTemplate(
     }
   }
   if (inserts.length === 0) return;
-  const { error } = await (supabase as any).from("workout_sets").insert(inserts);
+  const { error } = await (supabase as any)
+    .from("workout_sets")
+    .upsert(inserts, {
+      onConflict: "session_id,exercise_id,set_number",
+      ignoreDuplicates: true,
+    });
   if (error) throw error;
   await touchSession(sessionId);
 }
+
 
 /**
  * Compare current session's best weight per exercise vs the exercise's PR
