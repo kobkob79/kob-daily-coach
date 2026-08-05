@@ -105,11 +105,8 @@ function CharacterAssetsModule() {
             active={c === character}
             muted={!POPULATED_CHARACTERS.includes(c)}
             label={CHARACTER_LABELS[c]}
-            onClick={() =>
-              navigate({
-                search: (prev) => ({ ...prev, character: c }),
-              })
-            }
+            onClick={() => navigate({ search: { character: c, category } })}
+
 
           />
         ))}
