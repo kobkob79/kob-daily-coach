@@ -107,9 +107,10 @@ function CharacterAssetsModule() {
             label={CHARACTER_LABELS[c]}
             onClick={() =>
               navigate({
-                search: (prev: Record<string, unknown>) => ({ ...prev, character: c }),
+                search: (prev) => ({ ...prev, character: c }),
               })
             }
+
           />
         ))}
       </div>
@@ -122,9 +123,10 @@ function CharacterAssetsModule() {
             label={CATEGORY_LABELS[cat]}
             onClick={() =>
               navigate({
-                search: (prev: Record<string, unknown>) => ({ ...prev, category: cat }),
+                search: (prev) => ({ ...prev, category: cat }),
               })
             }
+
           />
         ))}
       </div>
