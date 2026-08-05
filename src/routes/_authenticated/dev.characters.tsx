@@ -118,11 +118,8 @@ function CharacterAssetsModule() {
             key={cat}
             active={cat === category}
             label={CATEGORY_LABELS[cat]}
-            onClick={() =>
-              navigate({
-                search: (prev) => ({ ...prev, category: cat }),
-              })
-            }
+            onClick={() => navigate({ search: { character, category: cat } })}
+
 
           />
         ))}
