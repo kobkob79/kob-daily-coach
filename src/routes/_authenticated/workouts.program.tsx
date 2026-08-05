@@ -20,7 +20,9 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getWeeklyPlan, setPlanSlot, WEEKDAY_HE } from "@/lib/workout-session";
+import { getWeeklyPlan, setPlanSlot, WEEKDAY_HE, type SessionRow } from "@/lib/workout-session";
+import { matchSessionsToSlots } from "@/lib/workout-occurrence";
+
 import { AssignDayDialog, REST_DAY_LABEL } from "@/components/workouts/AssignDayDialog";
 import { PlannerDayCard, type PlannerDay } from "@/components/workouts/PlannerDayCard";
 import {
@@ -101,20 +103,29 @@ function PlannerPage() {
     },
   });
 
+  /**
+   * Sessions are READ ONLY here, and completion is derived through the single
+   * shared source of truth (`matchSessionsToSlots`). Matching by template_id
+   * alone — as this screen used to do — marked every day sharing a routine as
+   * completed, which is why planned workouts looked done before being trained.
+   */
   const sessionsQ = useQuery({
     queryKey: ["planner_week_sessions", weekKey()],
-    queryFn: async () => {
+    queryFn: async (): Promise<SessionRow[]> => {
       const from = startOfWeek().toISOString();
       const { data, error } = await supabase
         .from("workout_sessions")
-        .select("id,status,plan_weekday,template_id,started_at")
-        .gte("started_at", from);
+        .select("*")
+        .or(`started_at.gte.${from},status.eq.in_progress`)
+        .order("started_at", { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as unknown as SessionRow[];
     },
   });
 
   const today = new Date().getDay();
+
+  const match = matchSessionsToSlots(planQ.data ?? [], sessionsQ.data ?? [], startOfWeek());
 
   const days: PlannerDay[] = WEEKDAY_HE.map((label, idx) => {
     const slot = planQ.data?.find((p) => p.weekday === idx) ?? null;
@@ -123,12 +134,8 @@ function PlannerPage() {
       : undefined;
     const assigned = !!slot?.template_id;
     const rest = !assigned && slot?.display_name === REST_DAY_LABEL;
-    const completed = (sessionsQ.data ?? []).some(
-      (s: any) =>
-        s.status === "completed" &&
-        (s.plan_weekday === idx ||
-          (s.template_id && slot?.template_id && s.template_id === slot.template_id)),
-    );
+    const completed = match.completedByWeekday.has(idx);
+
     return {
       weekday: idx,
       weekdayLabel: label,

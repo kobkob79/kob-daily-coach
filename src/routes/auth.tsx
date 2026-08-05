@@ -20,11 +20,12 @@ function safeNext(raw: unknown): string {
 }
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (s: Record<string, unknown>) => ({
-    next: safeNext(s.next),
-  }),
+  // `next` is optional so plain `<Link to="/auth" />` stays valid everywhere.
+  validateSearch: (s: Record<string, unknown>): { next?: string } =>
+    s.next === undefined ? {} : { next: safeNext(s.next) },
   component: AuthPage,
 });
+
 
 import { t } from "@/lib/i18n";
 
@@ -34,7 +35,7 @@ const schema = z.object({
 });
 
 function AuthPage() {
-  const { next } = Route.useSearch();
+  const next = Route.useSearch().next ?? "/dashboard";
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

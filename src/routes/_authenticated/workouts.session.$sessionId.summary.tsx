@@ -79,6 +79,11 @@ function SummaryPage() {
       qc.invalidateQueries({ queryKey: ["active-session"] });
       qc.invalidateQueries({ queryKey: ["sessions", "recent"] });
       qc.invalidateQueries({ queryKey: ["session", sessionId] });
+      // Planner reads its own week-scoped session list; without this the
+      // weekly card would stay "planned" until a manual refresh.
+      qc.invalidateQueries({ queryKey: ["planner_week_sessions"] });
+      qc.invalidateQueries({ queryKey: ["weekly_plan"] });
+
       toast.success("האימון נשמר");
       navigate({ to: "/workouts/session/$sessionId/debrief", params: { sessionId } });
 
