@@ -20,7 +20,9 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getWeeklyPlan, setPlanSlot, WEEKDAY_HE } from "@/lib/workout-session";
+import { getWeeklyPlan, setPlanSlot, WEEKDAY_HE, type SessionRow } from "@/lib/workout-session";
+import { matchSessionsToSlots } from "@/lib/workout-occurrence";
+
 import { AssignDayDialog, REST_DAY_LABEL } from "@/components/workouts/AssignDayDialog";
 import { PlannerDayCard, type PlannerDay } from "@/components/workouts/PlannerDayCard";
 import {
