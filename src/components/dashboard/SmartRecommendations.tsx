@@ -39,9 +39,7 @@ function RecommendationRow({ r }: { r: Recommendation }) {
             aria-expanded={open}
           >
             {t("intel.why")}
-            <ChevronDown
-              className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")}
-            />
+            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
           </button>
           {open && r.reasons.length > 0 && (
             <ul className="mt-2 space-y-1 rounded-xl bg-background/50 p-3 text-[12px] leading-relaxed text-muted-foreground">
@@ -59,21 +57,31 @@ function RecommendationRow({ r }: { r: Recommendation }) {
   );
 }
 
-export function SmartRecommendations({ recommendations }: { recommendations: Recommendation[] }) {
+export function SmartRecommendations({
+  recommendations,
+  bare = false,
+}: {
+  recommendations: Recommendation[];
+  /** Skip the section header/card chrome when nested inside a Home card. */
+  bare?: boolean;
+}) {
+  const body =
+    recommendations.length === 0 ? (
+      <EmptyState icon={<Sparkles className="h-5 w-5" />} title={t("intel.empty")} />
+    ) : (
+      <div className="space-y-2.5">
+        {recommendations.map((r) => (
+          <RecommendationRow key={r.id} r={r} />
+        ))}
+      </div>
+    );
+
+  if (bare) return body;
+
   return (
     <section>
       <SectionHeader title={t("intel.section.title")} subtitle={t("intel.section.subtitle")} />
-      {recommendations.length === 0 ? (
-        <PremiumCard>
-          <EmptyState icon={<Sparkles className="h-5 w-5" />} title={t("intel.empty")} />
-        </PremiumCard>
-      ) : (
-        <div className="space-y-2.5">
-          {recommendations.map((r) => (
-            <RecommendationRow key={r.id} r={r} />
-          ))}
-        </div>
-      )}
+      {recommendations.length === 0 ? <PremiumCard>{body}</PremiumCard> : body}
     </section>
   );
 }

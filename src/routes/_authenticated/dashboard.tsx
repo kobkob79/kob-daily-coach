@@ -1,23 +1,37 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { MorningIntake, type DayIntake, type DayTargets } from "@/components/dashboard/MorningIntake";
+import {
+  MorningIntake,
+  type DayIntake,
+  type DayTargets,
+} from "@/components/dashboard/MorningIntake";
 import { getMemory } from "@/lib/ai-memory";
 import { supabase } from "@/integrations/supabase/client";
 import { getShiftForDate, SHIFT_STYLES, SHIFT_HOURS, type ShiftConfig } from "@/lib/shift";
 import { format, subDays, differenceInYears, startOfWeek } from "date-fns";
-import { Dumbbell, HeartPulse, CalendarClock, ChevronLeft, BookOpen } from "lucide-react";
+import {
+  Dumbbell,
+  CalendarClock,
+  ChevronLeft,
+  Droplet,
+  Utensils,
+  HeartPulse,
+  History,
+  Sparkles,
+  CalendarDays,
+  Camera,
+  BookOpen,
+  TrendingUp,
+  Clock,
+  Flame,
+} from "lucide-react";
 import { useCountUp } from "@/hooks/useCountUp";
 
-import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { PremiumCard, SectionHeader, EmptyState } from "@/components/ui-kit/Section";
-import { ProgressRing } from "@/components/ui-kit/ProgressRing";
 import { biologicalDay } from "@/lib/meals";
-import { buildTimeline, buildCoachHints } from "@/lib/timeline";
+import { buildTimeline } from "@/lib/timeline";
 import { Timeline } from "@/components/dashboard/Timeline";
-import { SmartCoach } from "@/components/dashboard/SmartCoach";
-import { OneTapBar } from "@/components/dashboard/OneTapBar";
 import { useCoachMemory } from "@/lib/coach-memory";
 import { buildRecommendations } from "@/lib/intelligence";
 import { SmartRecommendations } from "@/components/dashboard/SmartRecommendations";
@@ -27,39 +41,12 @@ import { useDayContext } from "@/lib/day-context";
 import { useHasChronicPain } from "@/lib/daily-engine";
 
 import { getShiftPositionForDate } from "@/lib/shift";
-import { AIHeroCard } from "@/components/dashboard/AIHeroCard";
-import { LiveStatusBar } from "@/components/dashboard/LiveStatusBar";
-import { BodyStatusGrid } from "@/components/dashboard/BodyStatusGrid";
-import { DailyAnalysisCard } from "@/components/dashboard/DailyAnalysisCard";
-import { TodaysStoryCard } from "@/components/dashboard/TodaysStoryCard";
-import {
-  AICoachPlaceholderCard,
-  BodyScorePlaceholderCard,
-} from "@/components/dashboard/HomePlaceholders";
-import {
-  buildBodyStatus,
-  estimateCaloriesBurned,
-  useDailyBrief,
-  type DailyBriefContext,
-} from "@/lib/daily-brief";
+import { estimateCaloriesBurned, useDailyBrief, type DailyBriefContext } from "@/lib/daily-brief";
 import { buildHomeInsight } from "@/lib/home-insight";
-import { HomeInsightCards } from "@/components/dashboard/HomeInsightCards";
-import {
-  buildAdaptiveGreeting,
-  buildTodaysFocus,
-  buildWeeklyProgress,
-} from "@/lib/command-center";
+import { buildAdaptiveGreeting, buildTodaysFocus, buildWeeklyProgress } from "@/lib/command-center";
+import { buildCoachMessage, buildQuickActions, type QuickAction } from "@/lib/home-coach";
 import { HomeHero } from "@/components/home/HomeHero";
-import { HomeWidget } from "@/components/home/HomeWidget";
-
-import { WeeklyProgressCard } from "@/components/dashboard/WeeklyProgressCard";
-import {
-  PerformanceSnapshot,
-  type SnapshotItem,
-} from "@/components/dashboard/PerformanceSnapshot";
-import { QuickActionsGrid } from "@/components/dashboard/QuickActionsGrid";
-import { CoachCardSlot } from "@/components/dashboard/CoachCardSlot";
-
+import { HomeCardStack, HomeCard, HomeStat } from "@/components/home/HomeCardStack";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -225,9 +212,6 @@ function Dashboard() {
     },
   });
 
-
-
-
   const PROTEIN_TARGET_G = profileQ.data?.protein_target_g ?? PROTEIN_TARGET_G_DEFAULT;
   const WATER_TARGET_ML = profileQ.data?.water_target_ml ?? WATER_TARGET_ML_DEFAULT;
 
@@ -267,19 +251,6 @@ function Dashboard() {
 
   const coachMemory = useCoachMemory(bioDay);
 
-  const hints = buildCoachHints({
-    now,
-    proteinToday: protein,
-    proteinTarget: PROTEIN_TARGET_G,
-    waterMlToday: waterMl,
-    waterTargetMl: WATER_TARGET_ML,
-    lastWaterAt,
-    lastMealAt,
-    workoutLoggedToday: (workoutTodayQ.data ?? []).length > 0,
-    shiftConfig: shiftQ.data ?? null,
-    memory: coachMemory ?? undefined,
-  });
-
   const sleepRows = (sleepRecentQ.data ?? []).filter((r) => r.amount != null);
   const lastSleepHours = sleepRows[0] ? Number(sleepRows[0].amount) : null;
   const avgSleepHours =
@@ -299,12 +270,8 @@ function Dashboard() {
   const currentPain = (() => {
     const rows = healthTodayQ.data ?? [];
     if (rows.length === 0) return null;
-    const top = [...rows].sort(
-      (a, b) => Number(b.pain_level ?? 0) - Number(a.pain_level ?? 0),
-    )[0];
-    return top?.pain_level != null
-      ? { area: top.area, level: Number(top.pain_level) }
-      : null;
+    const top = [...rows].sort((a, b) => Number(b.pain_level ?? 0) - Number(a.pain_level ?? 0))[0];
+    return top?.pain_level != null ? { area: top.area, level: Number(top.pain_level) } : null;
   })();
 
   const shiftPos = shiftQ.data ? getShiftPositionForDate(shiftQ.data, now) : null;
@@ -333,8 +300,7 @@ function Dashboard() {
   const shiftStyle = shift ? SHIFT_STYLES[shift] : null;
   const rawDisplay = profileQ.data?.display_name?.trim() ?? "";
   const looksLikeHandle = /[@._]/.test(rawDisplay);
-  const displayName =
-    profileQ.data?.full_name?.trim() || (looksLikeHandle ? "" : rawDisplay) || "";
+  const displayName = profileQ.data?.full_name?.trim() || (looksLikeHandle ? "" : rawDisplay) || "";
 
   const primaryWorkout = workoutTodayQ.data?.[0];
 
@@ -349,7 +315,12 @@ function Dashboard() {
     gender: (profileQ.data?.gender as "male" | "female" | "other" | null) ?? null,
     activity:
       (profileQ.data?.activity_level as
-        | "sedentary" | "light" | "moderate" | "active" | "very_active" | null) ?? null,
+        | "sedentary"
+        | "light"
+        | "moderate"
+        | "active"
+        | "very_active"
+        | null) ?? null,
     shift: shift ?? null,
     workoutMinutes: workoutTodayMinutes,
   });
@@ -385,7 +356,10 @@ function Dashboard() {
       ((lastSleepHours ?? 6) / 8) * 50 + hydrationPct * 0.3 + Math.min(100, proteinPct * 100) * 0.2,
     );
     const healthScore = Math.round(
-      recoveryPct * 0.35 + hydrationPct * 0.25 + energyPct * 0.25 + Math.min(100, proteinPct * 100) * 0.15,
+      recoveryPct * 0.35 +
+        hydrationPct * 0.25 +
+        energyPct * 0.25 +
+        Math.min(100, proteinPct * 100) * 0.15,
     );
     return {
       now: now.toISOString(),
@@ -443,12 +417,9 @@ function Dashboard() {
   ]);
 
   const briefQ = useDailyBrief(briefCtx);
-  const bodyCards = briefCtx ? buildBodyStatus(briefCtx) : [];
   const proteinLeftG = Math.max(0, Math.round(PROTEIN_TARGET_G - protein));
   const waterLeftMl = Math.max(0, WATER_TARGET_ML - waterMl);
   const calorieNet = Math.round(caloriesEaten - caloriesBurned);
-  const briefErrorMessage =
-    briefQ.error && briefQ.error instanceof Error ? briefQ.error.message : undefined;
 
   const targets = intakeQ.data?.targets;
   const showIntake = intakeQ.isSuccess && !intakeQ.data?.intake;
@@ -514,7 +485,6 @@ function Dashboard() {
     ],
   );
 
-
   const greetingHour = now.getHours();
   const firstName = (lifeQ.data?.first_name?.trim() || displayName || "").split(" ")[0];
 
@@ -535,26 +505,15 @@ function Dashboard() {
   const ringCircumference = 2 * Math.PI * 88;
   const ringOffset = ringCircumference * (1 - scoreValue / 100);
 
-  const waterPctInt = WATER_TARGET_ML > 0 ? Math.round(Math.min(100, (waterMl / WATER_TARGET_ML) * 100)) : 0;
+  const waterPctInt =
+    WATER_TARGET_ML > 0 ? Math.round(Math.min(100, (waterMl / WATER_TARGET_ML) * 100)) : 0;
   const dateStr = format(now, "EEEE · d MMMM");
-
-  // Dynamic one-line AI insight below the ring
-  const dynamicInsight = (() => {
-    if (lastSleepHours != null && lastSleepHours >= 7.5) return "הלילה ישנת מצוין 🌙";
-    if (lastSleepHours != null && lastSleepHours < 6) return `ישנת רק ${lastSleepHours.toFixed(1)} שעות — קח את זה בקצב היום.`;
-    if (waterMl > 0 && waterMl < WATER_TARGET_ML * 0.4 && new Date().getHours() >= 12) return "הגיע הזמן לשתות מים 💧";
-    if (protein > 0 && proteinPct < 0.5 && new Date().getHours() >= 15) return `חסרים לך עוד ${Math.max(0, PROTEIN_TARGET_G - Math.round(protein))}g חלבון להיום.`;
-    if (workoutTodayMinutes > 0) return `סיימת אימון של ${workoutTodayMinutes} דקות — כל הכבוד 🔥`;
-    if (homeInsight.headline) return homeInsight.headline;
-    return "בוא נעבור על מה שחשוב היום.";
-  })();
 
   const animatedScore = useCountUp(scoreValue, 1400);
 
   /* ---------- Command Center (VIORA-HOME-001) ---------- */
   const plannedWorkoutToday = intakeQ.data?.intake?.plannedWorkout ?? false;
-  const workoutDoneToday =
-    workoutTodayMinutes > 0 || (workoutTodayQ.data ?? []).length > 0;
+  const workoutDoneToday = workoutTodayMinutes > 0 || (workoutTodayQ.data ?? []).length > 0;
 
   const adaptiveGreeting = buildAdaptiveGreeting({
     now,
@@ -584,66 +543,57 @@ function Dashboard() {
     .filter((s) => s.finished_at)
     .map((s) => format(new Date(s.finished_at as string), "yyyy-MM-dd"));
   const weekStartIso = format(startOfWeek(now, { weekStartsOn: 0 }), "yyyy-MM-dd");
-  const weeklyProgress = buildWeeklyProgress(
-    completedDates,
-    weekStartIso,
-    todayIso,
-    4,
-  );
+  const weeklyProgress = buildWeeklyProgress(completedDates, weekStartIso, todayIso, 4);
 
   const lastSession = completedSessions[0] ?? null;
   const recoveryPct = briefCtx?.recoveryPct ?? null;
-  const snapshotItems: SnapshotItem[] = [
-    {
-      id: "last-workout",
-      emoji: "🏋",
-      label: "אימון אחרון",
-      value: lastSession?.finished_at
-        ? format(new Date(lastSession.finished_at), "d MMM")
-        : "—",
-      hint: lastSession?.duration_seconds
-        ? `${Math.round(Number(lastSession.duration_seconds) / 60)} דקות`
-        : lastSession
-          ? (lastSession.name ?? "אימון")
-          : "אין נתונים",
-      accent: "lime",
-    },
-    {
-      id: "water",
-      emoji: "💧",
-      label: "מים היום",
-      value: waterMl > 0 ? `${(waterMl / 1000).toFixed(1)}L` : "—",
-      hint: `${waterPctInt}% מהיעד`,
-      accent: "cyan",
-      progress: waterPctInt,
-    },
-    {
-      id: "sleep",
-      emoji: "😴",
-      label: "שינה",
-      value: lastSleepHours != null ? `${lastSleepHours.toFixed(1)}ש׳` : "—",
-      hint: avgSleepHours != null ? `ממוצע ${avgSleepHours.toFixed(1)}ש׳` : "אין נתונים",
-      accent: "indigo",
-    },
-    {
-      id: "recovery",
-      emoji: "⚡",
-      label: "התאוששות",
-      value: recoveryPct != null ? `${recoveryPct}%` : "—",
-      hint: recoveryPct != null ? "מבוסס שינה ותזונה" : "נאסף מידע",
-      accent: "orange",
-      progress: recoveryPct,
-    },
-    {
-      id: "weekly-score",
-      emoji: "📈",
-      label: "ציון שבועי",
-      value: hasEnoughData ? String(scoreValue) : "—",
-      hint: hasEnoughData ? "מתעדכן בזמן אמת" : "עדיין לומדת אותך",
-      accent: "rose",
-      progress: hasEnoughData ? scoreValue : null,
-    },
-  ];
+
+  /* ---------- One coach voice (rule 12: no metric dumps) ---------- */
+  const coachMessage = buildCoachMessage({
+    now,
+    firstName,
+    shift,
+    checkinDone: !!intakeQ.data?.intake,
+    score: hasEnoughData ? scoreValue : null,
+    lastSleepHours,
+    avgSleepHours,
+    waterPct: waterPctInt,
+    proteinPct: PROTEIN_TARGET_G > 0 ? Math.round(proteinPct * 100) : null,
+    workoutDoneToday,
+    plannedWorkoutToday,
+    painLevel: currentPain?.level ?? null,
+    mealsCount: meals.length,
+    streakDays: weeklyProgress.streakDays,
+  });
+
+  /** AI brief wins when it is ready; the deterministic voice is the fallback. */
+  const coachLines = briefQ.data?.hero
+    ? [briefQ.data.hero, briefQ.data.statusLine].filter(Boolean)
+    : coachMessage.lines;
+
+  const quickActions = buildQuickActions({
+    now,
+    focusId: todaysFocus.id,
+    shift,
+    workoutDoneToday,
+    plannedWorkoutToday,
+    waterPct: waterPctInt,
+    proteinPct: PROTEIN_TARGET_G > 0 ? Math.round(proteinPct * 100) : null,
+    mealsCount: meals.length,
+    painLevel: currentPain?.level ?? null,
+  });
+
+  const QUICK_ICONS: Record<QuickAction["icon"], typeof Dumbbell> = {
+    dumbbell: Dumbbell,
+    calendar: CalendarDays,
+    camera: Camera,
+    droplet: Droplet,
+    heart: HeartPulse,
+    book: BookOpen,
+    trending: TrendingUp,
+    utensils: Utensils,
+    clock: Clock,
+  };
 
   // Deterministic-ish particle set — 14 green particles floating up behind ring.
   const particles = Array.from({ length: 14 }, (_, i) => {
@@ -659,7 +609,6 @@ function Dashboard() {
       opacity: 0.4 + rand(7) * 0.5,
     };
   });
-
 
   return (
     <div className="space-y-6 pb-2">
@@ -709,7 +658,10 @@ function Dashboard() {
 
         <div className="relative mt-6 flex flex-col items-center">
           {/* Particle field */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-64 w-64 overflow-visible" aria-hidden>
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-64 w-64 overflow-visible"
+            aria-hidden
+          >
             {particles.map((p, i) => (
               <span
                 key={i}
@@ -729,9 +681,19 @@ function Dashboard() {
           </div>
 
           <div className="relative h-56 w-56">
-            <div className="absolute inset-2 rounded-full bg-primary/30 animate-breathe" aria-hidden />
+            <div
+              className="absolute inset-2 rounded-full bg-primary/30 animate-breathe"
+              aria-hidden
+            />
             <svg viewBox="0 0 192 192" className="relative h-full w-full -rotate-90">
-              <circle cx="96" cy="96" r="88" stroke="oklch(1 0 0 / 6%)" strokeWidth="10" fill="none" />
+              <circle
+                cx="96"
+                cy="96"
+                r="88"
+                stroke="oklch(1 0 0 / 6%)"
+                strokeWidth="10"
+                fill="none"
+              />
               <circle
                 cx="96"
                 cy="96"
@@ -770,189 +732,243 @@ function Dashboard() {
             </div>
           </div>
 
-          <p className="mt-5 max-w-[300px] text-center text-[15px] font-medium leading-relaxed text-foreground/85">
-            {dynamicInsight}
-          </p>
+          <div className="mt-5 max-w-[320px] space-y-1.5 text-center">
+            {coachLines.map((line, i) => (
+              <p
+                key={i}
+                className={cn(
+                  "text-[15px] leading-relaxed",
+                  i === 0 ? "font-semibold text-foreground/90" : "text-muted-foreground",
+                )}
+              >
+                {line}
+              </p>
+            ))}
+          </div>
         </div>
       </section>
 
       <HomeHero focus={todaysFocus} />
 
-
-      {/* Today's priorities */}
-      {homeInsight.priorities.length > 0 && (
-        <HomeWidget
-          title="העדיפויות להיום"
-          collapsible
-          bare
-          action={
-            <span className="text-muted-foreground">
-              {homeInsight.priorities.length} משימות
-            </span>
-          }
-        >
-          <div className="space-y-2.5">
-
-            {homeInsight.priorities.map((p, i) => (
-              <div
-                key={p.id}
-                className="glass-tile flex items-center gap-3 p-3.5 transition-all duration-300"
-              >
-                <div
-                  className={cn(
-                    "grid h-11 w-11 shrink-0 place-items-center rounded-2xl",
-                    i === 0 && "bg-primary/15 text-primary",
-                    i === 1 && "bg-accent/20 text-accent",
-                    i === 2 && "bg-white/10 text-foreground",
-                  )}
-                >
-                  <span className="text-sm font-bold tabular-nums">{i + 1}</span>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[14px] font-semibold leading-tight">{p.title}</p>
-                  {p.hint && (
-                    <p className="mt-0.5 truncate text-[12px] text-muted-foreground">{p.hint}</p>
-                  )}
-                </div>
-                <ChevronLeft className="h-4 w-4 text-muted-foreground/60 rtl:rotate-180" />
-              </div>
-            ))}
-          </div>
-        </HomeWidget>
-
-      )}
-
-      <PerformanceSnapshot items={snapshotItems} />
-
-
-
-      {/* AI Coach shortcut removed — the single global entry point is
-          the center button in the bottom navigation (AskVioraSheet). */}
-
-      <WeeklyProgressCard progress={weeklyProgress} />
-
-      <QuickActionsGrid />
-
-      <CoachCardSlot hint={dynamicInsight} />
-
-      {/* Smart Coach hints */}
-      <SmartCoach hints={hints} name={displayName} />
-
-      {/* Personalized recommendations */}
-      <SmartRecommendations recommendations={recommendations} />
-
-      {/* Daily Journal */}
-      <Link to="/journal">
-        <div className="glass-tile flex items-center justify-between p-4">
-          <div className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-accent/20 text-accent">
-              <BookOpen className="h-5 w-5" strokeWidth={1.8} />
-            </div>
-            <div>
-              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                {t("home.journal.title")}
-              </p>
-              <p className="text-[14px] font-semibold">היום · אתמול · ימים קודמים</p>
-            </div>
-          </div>
-          <ChevronLeft className="h-5 w-5 text-muted-foreground rtl:rotate-180" />
-        </div>
-      </Link>
-
-      {/* Shift banner */}
-      {shift && shiftStyle && (
-        <Link to="/shift">
-          <div className="glass-tile flex items-center justify-between p-4">
-            <div className="flex items-center gap-3">
-              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-primary/15 text-primary">
-                <CalendarClock className="h-5 w-5" strokeWidth={1.8} />
-              </div>
-              <div>
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                  {t("shift.today")}
-                </p>
-                <p className="text-[14px] font-semibold">
-                  {shiftStyle.label}
-                  <span className="ms-2 text-[11px] font-normal text-muted-foreground">
-                    {SHIFT_HOURS[shift]}
+      {/* Context-aware quick actions */}
+      <section className="animate-stagger">
+        <div className="grid grid-cols-4 gap-2.5">
+          {quickActions.map((a) => {
+            const Icon = QUICK_ICONS[a.icon];
+            return (
+              <Link key={a.id} to={a.to as never} className="block">
+                <div className="glass-tile flex flex-col items-center gap-2 px-2 py-3.5 transition-all duration-300 active:scale-[0.97]">
+                  <span className={cn("grid h-10 w-10 place-items-center rounded-2xl", a.tint)}>
+                    <Icon className="h-5 w-5" strokeWidth={1.8} />
                   </span>
-                </p>
-              </div>
-            </div>
-            <ChevronLeft className="h-5 w-5 text-muted-foreground rtl:rotate-180" />
-          </div>
-        </Link>
-      )}
-
-      {/* Timeline */}
-      <Timeline items={timelineItems} />
-
-      {/* Today's workout */}
-      <section>
-        <SectionHeader title={t("home.section.workout")} />
-        <Link to="/workouts">
-          <PremiumCard interactive>
-            {primaryWorkout ? (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="grid h-11 w-11 place-items-center rounded-2xl"
-                    style={{ background: "var(--gradient-primary)" }}
-                  >
-                    <Dumbbell className="h-5 w-5 text-primary-foreground" strokeWidth={1.8} />
-                  </div>
-                  <div>
-                    <p className="font-semibold">{primaryWorkout.name ?? t("timeline.workout")}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {primaryWorkout.duration_min ?? "—"} {t("common.minutes")}
-                    </p>
-                  </div>
+                  <span className="truncate text-[11px] font-semibold">{a.label}</span>
                 </div>
-                <ChevronLeft className="h-5 w-5 text-muted-foreground rtl:rotate-180" />
-              </div>
-            ) : (
-              <EmptyState
-                icon={<Dumbbell className="h-5 w-5" />}
-                title={t("home.workout.none")}
-              />
-            )}
-          </PremiumCard>
-        </Link>
+              </Link>
+            );
+          })}
+        </div>
       </section>
 
-      {/* Health summary */}
-      <section>
-        <SectionHeader title={t("home.section.health")} />
-        <PremiumCard className="p-0">
+      {/* Category cards — one KPI each, collapsed by default */}
+      <HomeCardStack>
+        <HomeCard
+          id="workouts"
+          title="אימונים"
+          kpi={`${weeklyProgress.completed}/${weeklyProgress.goal || "—"}`}
+          kpiHint="השבוע"
+          accent="lime"
+          progress={weeklyProgress.pct}
+          icon={<Dumbbell className="h-5 w-5" strokeWidth={1.8} />}
+        >
+          <div className="grid grid-cols-2 gap-2.5">
+            <HomeStat label="רצף" value={`${weeklyProgress.streakDays}`} hint="ימים ברצף" />
+            <HomeStat
+              label="אימון אחרון"
+              value={
+                lastSession?.finished_at ? format(new Date(lastSession.finished_at), "d MMM") : "—"
+              }
+              hint={
+                lastSession?.duration_seconds
+                  ? `${Math.round(Number(lastSession.duration_seconds) / 60)} דקות`
+                  : (lastSession?.name ?? "אין נתונים")
+              }
+            />
+          </div>
+          <div className="mt-3 rounded-2xl bg-white/4 p-3">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">היום</p>
+            <p className="mt-1 text-[14px] font-semibold">
+              {primaryWorkout?.name ?? (plannedWorkoutToday ? "אימון מתוכנן" : "אין אימון מתוכנן")}
+              {primaryWorkout?.duration_min ? (
+                <span className="ms-2 text-[11px] font-normal text-muted-foreground">
+                  {primaryWorkout.duration_min} דקות
+                </span>
+              ) : null}
+            </p>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2 text-[12px] font-semibold">
+            <Link to="/workouts" className="rounded-full bg-primary/12 px-3 py-1.5 text-primary">
+              לאימונים
+            </Link>
+            <Link to="/workouts/program" className="rounded-full bg-white/6 px-3 py-1.5">
+              מתכנן שבועי
+            </Link>
+            <Link to="/workouts/history" className="rounded-full bg-white/6 px-3 py-1.5">
+              היסטוריה
+            </Link>
+          </div>
+        </HomeCard>
+
+        <HomeCard
+          id="nutrition"
+          title="תזונה"
+          kpi={`${Math.round(caloriesEaten)}`}
+          kpiHint="קלוריות היום"
+          accent="orange"
+          icon={<Utensils className="h-5 w-5" strokeWidth={1.8} />}
+        >
+          <div className="grid grid-cols-2 gap-2.5">
+            <HomeStat
+              label="חלבון"
+              value={`${Math.round(protein)}g`}
+              hint={proteinLeftG > 0 ? `עוד ${proteinLeftG}g ליעד` : "היעד הושג"}
+            />
+            <HomeStat label="פחמימות" value={`${Math.round(carbs_g)}g`} />
+            <HomeStat label="שומן" value={`${Math.round(fat_g)}g`} />
+            <HomeStat label="סיבים" value={`${Math.round(fiber_g)}g`} />
+          </div>
+          <p className="mt-3 text-[12px] text-muted-foreground">
+            {meals.length} ארוחות · מאזן קלורי {calorieNet > 0 ? "+" : ""}
+            {calorieNet}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2 text-[12px] font-semibold">
+            <Link
+              to="/nutrition"
+              className="rounded-full bg-orange-500/15 px-3 py-1.5 text-orange-200"
+            >
+              מרכז תזונה
+            </Link>
+            <Link to="/capture" className="rounded-full bg-white/6 px-3 py-1.5">
+              צילום ארוחה
+            </Link>
+          </div>
+        </HomeCard>
+
+        <HomeCard
+          id="hydration"
+          title="שתייה"
+          kpi={`${waterPctInt}%`}
+          kpiHint="מהיעד היומי"
+          accent="cyan"
+          progress={waterPctInt}
+          icon={<Droplet className="h-5 w-5" strokeWidth={1.8} />}
+        >
+          <div className="grid grid-cols-2 gap-2.5">
+            <HomeStat label="שתית" value={`${(waterMl / 1000).toFixed(1)}L`} />
+            <HomeStat
+              label="נשאר"
+              value={`${(waterLeftMl / 1000).toFixed(1)}L`}
+              hint={waterLeftMl === 0 ? "היעד הושג" : undefined}
+            />
+          </div>
+          <div className="mt-3">
+            <Link
+              to="/hydration"
+              className="inline-flex rounded-full bg-sky-500/15 px-3 py-1.5 text-[12px] font-semibold text-sky-200"
+            >
+              מרכז השתייה
+            </Link>
+          </div>
+        </HomeCard>
+
+        <HomeCard
+          id="recovery"
+          title="התאוששות"
+          kpi={recoveryPct != null ? `${recoveryPct}%` : "—"}
+          kpiHint="שינה · כאב · עומס"
+          accent="indigo"
+          progress={recoveryPct}
+          icon={<HeartPulse className="h-5 w-5" strokeWidth={1.8} />}
+        >
+          <div className="grid grid-cols-2 gap-2.5">
+            <HomeStat
+              label="שינה"
+              value={lastSleepHours != null ? `${lastSleepHours.toFixed(1)}ש׳` : "—"}
+              hint={avgSleepHours != null ? `ממוצע ${avgSleepHours.toFixed(1)}ש׳` : undefined}
+            />
+            <HomeStat
+              label="כאב"
+              value={currentPain ? `${currentPain.level}/10` : "—"}
+              hint={currentPain?.area ?? "לא דווח כאב"}
+            />
+          </div>
           {healthRecentQ.data?.length ? (
-            <ul className="divide-y divide-border/60">
-              {healthRecentQ.data.map((h, i) => (
-                <li key={i} className="flex items-center justify-between px-5 py-3.5">
-                  <div className="flex items-center gap-3">
-                    <div className="grid h-9 w-9 place-items-center rounded-xl bg-muted/50 text-primary">
-                      <HeartPulse className="h-4 w-4" strokeWidth={1.8} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">{t(`health.area.${h.area}`)}</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {format(new Date(h.date), "EEE d MMM")}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    <b className="text-base text-foreground">{h.pain_level ?? "—"}</b>{" "}
-                    {t("common.of10")}
+            <ul className="mt-3 space-y-1.5">
+              {healthRecentQ.data.slice(0, 3).map((h, i) => (
+                <li
+                  key={i}
+                  className="flex items-center justify-between rounded-2xl bg-white/4 px-3 py-2 text-[12px]"
+                >
+                  <span className="font-medium">{h.area}</span>
+                  <span className="text-muted-foreground">
+                    {format(new Date(h.date), "d MMM")} · {h.pain_level ?? "—"}/10
                   </span>
                 </li>
               ))}
             </ul>
-          ) : (
-            <div className="p-5">
-              <EmptyState icon={<HeartPulse className="h-5 w-5" />} title={t("home.health.none")} />
-            </div>
-          )}
-        </PremiumCard>
-      </section>
+          ) : null}
+          <div className="mt-3">
+            <Link
+              to="/health"
+              className="inline-flex rounded-full bg-accent/20 px-3 py-1.5 text-[12px] font-semibold text-accent"
+            >
+              ספר הבריאות
+            </Link>
+          </div>
+        </HomeCard>
+
+        <HomeCard
+          id="day"
+          title="היום שלי"
+          kpi={shiftStyle?.label ?? "—"}
+          kpiHint={shift ? SHIFT_HOURS[shift] : "ללא משמרת"}
+          accent="neutral"
+          icon={<CalendarClock className="h-5 w-5" strokeWidth={1.8} />}
+        >
+          <div className="flex flex-wrap gap-2 text-[12px] font-semibold">
+            <Link to="/shift" className="rounded-full bg-white/6 px-3 py-1.5">
+              לוח המשמרות
+            </Link>
+            <Link to="/journal" className="rounded-full bg-white/6 px-3 py-1.5">
+              יומן יומי
+            </Link>
+            <Link to="/progress" className="rounded-full bg-white/6 px-3 py-1.5">
+              התקדמות
+            </Link>
+          </div>
+        </HomeCard>
+
+        <HomeCard
+          id="timeline"
+          title="ציר הזמן של היום"
+          kpi={`${timelineItems.length}`}
+          kpiHint="רשומות היום"
+          accent="neutral"
+          icon={<History className="h-5 w-5" strokeWidth={1.8} />}
+        >
+          <Timeline items={timelineItems} bare />
+        </HomeCard>
+
+        <HomeCard
+          id="insights"
+          title="תובנות Viora"
+          kpi={`${recommendations.length}`}
+          kpiHint="המלצות עם הסבר"
+          accent="rose"
+          icon={<Sparkles className="h-5 w-5" strokeWidth={1.8} />}
+        >
+          <SmartRecommendations recommendations={recommendations} bare />
+        </HomeCard>
+      </HomeCardStack>
     </div>
   );
 }
