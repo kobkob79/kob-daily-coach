@@ -18,44 +18,49 @@ const KIND_TINT: Record<TimelineItem["kind"], string> = {
   health: "bg-destructive/10 text-destructive",
 };
 
-export function Timeline({ items }: { items: TimelineItem[] }) {
+export function Timeline({ items, bare = false }: { items: TimelineItem[]; bare?: boolean }) {
+  const list =
+    items.length === 0 ? (
+      <EmptyState
+        icon={<History className="h-5 w-5" />}
+        title={t("timeline.empty")}
+        hint={t("timeline.emptyHint")}
+      />
+    ) : (
+      <ul className={cn(bare ? "-mx-4 divide-y divide-white/6" : "divide-y divide-border/60")}>
+        {items.map((it) => (
+          <li key={it.id} className="flex items-center gap-3 px-5 py-3.5">
+            <span
+              className={cn(
+                "grid h-10 w-10 shrink-0 place-items-center rounded-2xl text-lg",
+                KIND_TINT[it.kind],
+              )}
+            >
+              {it.emoji}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold">{it.title}</p>
+              {it.subtitle && (
+                <p className="truncate text-[11px] text-muted-foreground">{it.subtitle}</p>
+              )}
+            </div>
+            <span className="shrink-0 text-[11px] font-medium tabular-nums text-muted-foreground">
+              {formatItemTime(it.time)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    );
+
+  if (bare) return list;
+
   return (
     <section>
       <SectionHeader title={t("timeline.title")} subtitle={t("timeline.subtitle")} />
       {items.length === 0 ? (
-        <PremiumCard>
-          <EmptyState
-            icon={<History className="h-5 w-5" />}
-            title={t("timeline.empty")}
-            hint={t("timeline.emptyHint")}
-          />
-        </PremiumCard>
+        <PremiumCard>{list}</PremiumCard>
       ) : (
-        <PremiumCard className="p-0">
-          <ul className="divide-y divide-border/60">
-            {items.map((it) => (
-              <li key={it.id} className="flex items-center gap-3 px-5 py-3.5">
-                <span
-                  className={cn(
-                    "grid h-10 w-10 shrink-0 place-items-center rounded-2xl text-lg",
-                    KIND_TINT[it.kind],
-                  )}
-                >
-                  {it.emoji}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{it.title}</p>
-                  {it.subtitle && (
-                    <p className="truncate text-[11px] text-muted-foreground">{it.subtitle}</p>
-                  )}
-                </div>
-                <span className="shrink-0 text-[11px] font-medium tabular-nums text-muted-foreground">
-                  {formatItemTime(it.time)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </PremiumCard>
+        <PremiumCard className="p-0">{list}</PremiumCard>
       )}
     </section>
   );
