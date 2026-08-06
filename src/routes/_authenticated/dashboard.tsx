@@ -1,7 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { MorningIntake, type DayIntake, type DayTargets } from "@/components/dashboard/MorningIntake";
+import {
+  MorningIntake,
+  type DayIntake,
+  type DayTargets,
+} from "@/components/dashboard/MorningIntake";
 import { getMemory } from "@/lib/ai-memory";
 import { supabase } from "@/integrations/supabase/client";
 import { getShiftForDate, SHIFT_STYLES, SHIFT_HOURS, type ShiftConfig } from "@/lib/shift";
@@ -37,22 +41,12 @@ import { useDayContext } from "@/lib/day-context";
 import { useHasChronicPain } from "@/lib/daily-engine";
 
 import { getShiftPositionForDate } from "@/lib/shift";
-import {
-  estimateCaloriesBurned,
-  useDailyBrief,
-  type DailyBriefContext,
-} from "@/lib/daily-brief";
+import { estimateCaloriesBurned, useDailyBrief, type DailyBriefContext } from "@/lib/daily-brief";
 import { buildHomeInsight } from "@/lib/home-insight";
-import {
-  buildAdaptiveGreeting,
-  buildTodaysFocus,
-  buildWeeklyProgress,
-} from "@/lib/command-center";
+import { buildAdaptiveGreeting, buildTodaysFocus, buildWeeklyProgress } from "@/lib/command-center";
 import { buildCoachMessage, buildQuickActions, type QuickAction } from "@/lib/home-coach";
 import { HomeHero } from "@/components/home/HomeHero";
 import { HomeCardStack, HomeCard, HomeStat } from "@/components/home/HomeCardStack";
-
-
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -218,9 +212,6 @@ function Dashboard() {
     },
   });
 
-
-
-
   const PROTEIN_TARGET_G = profileQ.data?.protein_target_g ?? PROTEIN_TARGET_G_DEFAULT;
   const WATER_TARGET_ML = profileQ.data?.water_target_ml ?? WATER_TARGET_ML_DEFAULT;
 
@@ -260,7 +251,6 @@ function Dashboard() {
 
   const coachMemory = useCoachMemory(bioDay);
 
-
   const sleepRows = (sleepRecentQ.data ?? []).filter((r) => r.amount != null);
   const lastSleepHours = sleepRows[0] ? Number(sleepRows[0].amount) : null;
   const avgSleepHours =
@@ -280,12 +270,8 @@ function Dashboard() {
   const currentPain = (() => {
     const rows = healthTodayQ.data ?? [];
     if (rows.length === 0) return null;
-    const top = [...rows].sort(
-      (a, b) => Number(b.pain_level ?? 0) - Number(a.pain_level ?? 0),
-    )[0];
-    return top?.pain_level != null
-      ? { area: top.area, level: Number(top.pain_level) }
-      : null;
+    const top = [...rows].sort((a, b) => Number(b.pain_level ?? 0) - Number(a.pain_level ?? 0))[0];
+    return top?.pain_level != null ? { area: top.area, level: Number(top.pain_level) } : null;
   })();
 
   const shiftPos = shiftQ.data ? getShiftPositionForDate(shiftQ.data, now) : null;
@@ -314,8 +300,7 @@ function Dashboard() {
   const shiftStyle = shift ? SHIFT_STYLES[shift] : null;
   const rawDisplay = profileQ.data?.display_name?.trim() ?? "";
   const looksLikeHandle = /[@._]/.test(rawDisplay);
-  const displayName =
-    profileQ.data?.full_name?.trim() || (looksLikeHandle ? "" : rawDisplay) || "";
+  const displayName = profileQ.data?.full_name?.trim() || (looksLikeHandle ? "" : rawDisplay) || "";
 
   const primaryWorkout = workoutTodayQ.data?.[0];
 
@@ -330,7 +315,12 @@ function Dashboard() {
     gender: (profileQ.data?.gender as "male" | "female" | "other" | null) ?? null,
     activity:
       (profileQ.data?.activity_level as
-        | "sedentary" | "light" | "moderate" | "active" | "very_active" | null) ?? null,
+        | "sedentary"
+        | "light"
+        | "moderate"
+        | "active"
+        | "very_active"
+        | null) ?? null,
     shift: shift ?? null,
     workoutMinutes: workoutTodayMinutes,
   });
@@ -366,7 +356,10 @@ function Dashboard() {
       ((lastSleepHours ?? 6) / 8) * 50 + hydrationPct * 0.3 + Math.min(100, proteinPct * 100) * 0.2,
     );
     const healthScore = Math.round(
-      recoveryPct * 0.35 + hydrationPct * 0.25 + energyPct * 0.25 + Math.min(100, proteinPct * 100) * 0.15,
+      recoveryPct * 0.35 +
+        hydrationPct * 0.25 +
+        energyPct * 0.25 +
+        Math.min(100, proteinPct * 100) * 0.15,
     );
     return {
       now: now.toISOString(),
@@ -427,7 +420,6 @@ function Dashboard() {
   const proteinLeftG = Math.max(0, Math.round(PROTEIN_TARGET_G - protein));
   const waterLeftMl = Math.max(0, WATER_TARGET_ML - waterMl);
   const calorieNet = Math.round(caloriesEaten - caloriesBurned);
-
 
   const targets = intakeQ.data?.targets;
   const showIntake = intakeQ.isSuccess && !intakeQ.data?.intake;
@@ -493,7 +485,6 @@ function Dashboard() {
     ],
   );
 
-
   const greetingHour = now.getHours();
   const firstName = (lifeQ.data?.first_name?.trim() || displayName || "").split(" ")[0];
 
@@ -514,16 +505,15 @@ function Dashboard() {
   const ringCircumference = 2 * Math.PI * 88;
   const ringOffset = ringCircumference * (1 - scoreValue / 100);
 
-  const waterPctInt = WATER_TARGET_ML > 0 ? Math.round(Math.min(100, (waterMl / WATER_TARGET_ML) * 100)) : 0;
+  const waterPctInt =
+    WATER_TARGET_ML > 0 ? Math.round(Math.min(100, (waterMl / WATER_TARGET_ML) * 100)) : 0;
   const dateStr = format(now, "EEEE · d MMMM");
-
 
   const animatedScore = useCountUp(scoreValue, 1400);
 
   /* ---------- Command Center (VIORA-HOME-001) ---------- */
   const plannedWorkoutToday = intakeQ.data?.intake?.plannedWorkout ?? false;
-  const workoutDoneToday =
-    workoutTodayMinutes > 0 || (workoutTodayQ.data ?? []).length > 0;
+  const workoutDoneToday = workoutTodayMinutes > 0 || (workoutTodayQ.data ?? []).length > 0;
 
   const adaptiveGreeting = buildAdaptiveGreeting({
     now,
@@ -553,12 +543,7 @@ function Dashboard() {
     .filter((s) => s.finished_at)
     .map((s) => format(new Date(s.finished_at as string), "yyyy-MM-dd"));
   const weekStartIso = format(startOfWeek(now, { weekStartsOn: 0 }), "yyyy-MM-dd");
-  const weeklyProgress = buildWeeklyProgress(
-    completedDates,
-    weekStartIso,
-    todayIso,
-    4,
-  );
+  const weeklyProgress = buildWeeklyProgress(completedDates, weekStartIso, todayIso, 4);
 
   const lastSession = completedSessions[0] ?? null;
   const recoveryPct = briefCtx?.recoveryPct ?? null;
@@ -582,10 +567,9 @@ function Dashboard() {
   });
 
   /** AI brief wins when it is ready; the deterministic voice is the fallback. */
-  const coachLines =
-    briefQ.data?.hero
-      ? [briefQ.data.hero, briefQ.data.statusLine].filter(Boolean)
-      : coachMessage.lines;
+  const coachLines = briefQ.data?.hero
+    ? [briefQ.data.hero, briefQ.data.statusLine].filter(Boolean)
+    : coachMessage.lines;
 
   const quickActions = buildQuickActions({
     now,
@@ -611,7 +595,6 @@ function Dashboard() {
     clock: Clock,
   };
 
-
   // Deterministic-ish particle set — 14 green particles floating up behind ring.
   const particles = Array.from({ length: 14 }, (_, i) => {
     const seed = (i * 9301 + 49297) % 233280;
@@ -626,7 +609,6 @@ function Dashboard() {
       opacity: 0.4 + rand(7) * 0.5,
     };
   });
-
 
   return (
     <div className="space-y-6 pb-2">
@@ -676,7 +658,10 @@ function Dashboard() {
 
         <div className="relative mt-6 flex flex-col items-center">
           {/* Particle field */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-64 w-64 overflow-visible" aria-hidden>
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-64 w-64 overflow-visible"
+            aria-hidden
+          >
             {particles.map((p, i) => (
               <span
                 key={i}
@@ -696,9 +681,19 @@ function Dashboard() {
           </div>
 
           <div className="relative h-56 w-56">
-            <div className="absolute inset-2 rounded-full bg-primary/30 animate-breathe" aria-hidden />
+            <div
+              className="absolute inset-2 rounded-full bg-primary/30 animate-breathe"
+              aria-hidden
+            />
             <svg viewBox="0 0 192 192" className="relative h-full w-full -rotate-90">
-              <circle cx="96" cy="96" r="88" stroke="oklch(1 0 0 / 6%)" strokeWidth="10" fill="none" />
+              <circle
+                cx="96"
+                cy="96"
+                r="88"
+                stroke="oklch(1 0 0 / 6%)"
+                strokeWidth="10"
+                fill="none"
+              />
               <circle
                 cx="96"
                 cy="96"
@@ -786,17 +781,11 @@ function Dashboard() {
           icon={<Dumbbell className="h-5 w-5" strokeWidth={1.8} />}
         >
           <div className="grid grid-cols-2 gap-2.5">
-            <HomeStat
-              label="רצף"
-              value={`${weeklyProgress.streakDays}`}
-              hint="ימים ברצף"
-            />
+            <HomeStat label="רצף" value={`${weeklyProgress.streakDays}`} hint="ימים ברצף" />
             <HomeStat
               label="אימון אחרון"
               value={
-                lastSession?.finished_at
-                  ? format(new Date(lastSession.finished_at), "d MMM")
-                  : "—"
+                lastSession?.finished_at ? format(new Date(lastSession.finished_at), "d MMM") : "—"
               }
               hint={
                 lastSession?.duration_seconds
@@ -808,8 +797,7 @@ function Dashboard() {
           <div className="mt-3 rounded-2xl bg-white/4 p-3">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">היום</p>
             <p className="mt-1 text-[14px] font-semibold">
-              {primaryWorkout?.name ??
-                (plannedWorkoutToday ? "אימון מתוכנן" : "אין אימון מתוכנן")}
+              {primaryWorkout?.name ?? (plannedWorkoutToday ? "אימון מתוכנן" : "אין אימון מתוכנן")}
               {primaryWorkout?.duration_min ? (
                 <span className="ms-2 text-[11px] font-normal text-muted-foreground">
                   {primaryWorkout.duration_min} דקות
@@ -981,7 +969,6 @@ function Dashboard() {
           <SmartRecommendations recommendations={recommendations} bare />
         </HomeCard>
       </HomeCardStack>
-
     </div>
   );
 }

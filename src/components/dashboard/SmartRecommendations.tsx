@@ -39,9 +39,7 @@ function RecommendationRow({ r }: { r: Recommendation }) {
             aria-expanded={open}
           >
             {t("intel.why")}
-            <ChevronDown
-              className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")}
-            />
+            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
           </button>
           {open && r.reasons.length > 0 && (
             <ul className="mt-2 space-y-1 rounded-xl bg-background/50 p-3 text-[12px] leading-relaxed text-muted-foreground">
@@ -87,4 +85,3 @@ export function SmartRecommendations({
     </section>
   );
 }
-

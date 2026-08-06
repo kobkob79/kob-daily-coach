@@ -63,9 +63,7 @@ export function HomeCardStack({
 }) {
   const [openId, setOpenId] = useState<string | null>(defaultOpenId);
   return (
-    <Ctx.Provider
-      value={{ openId, toggle: (id) => setOpenId((cur) => (cur === id ? null : id)) }}
-    >
+    <Ctx.Provider value={{ openId, toggle: (id) => setOpenId((cur) => (cur === id ? null : id)) }}>
       <div className={cn("space-y-2.5", className)}>{children}</div>
     </Ctx.Provider>
   );
@@ -165,15 +163,7 @@ export function HomeCard({
 }
 
 /** Small labelled stat used inside expanded card bodies. */
-export function HomeStat({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-}) {
+export function HomeStat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="rounded-2xl bg-white/4 p-3">
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
