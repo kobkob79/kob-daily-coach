@@ -25,6 +25,8 @@ export interface SessionRow {
   template_id: string | null;
   /** Weekly-plan occurrence (0=Sunday) this session was started from. */
   plan_weekday?: number | null;
+  /** Durable dated planning identity this session executes (credit 2). */
+  instance_id?: string | null;
   name: string | null;
   status: SessionStatus;
   started_at: string;
