@@ -138,8 +138,8 @@ Queue set writes locally and sync when connectivity returns.
 Must Have · P1 · L · Deps: CORE-003 · Backlog · Platform
 
 **WORKOUT-016 — Persisted workout instance identity**
-Dated `workout_instances` occurrence object (planned/active/completed/skipped) linking plan slots to sessions; removes legacy weekday matching heuristics. Root cause fix documented in `docs/workout-architecture-audit-001.md`.
-Must Have · P0 · M · Deps: WORKOUT-001, PLANNER-001 · Backlog · Platform
+Dated `workout_instances` occurrence object (planned/active/partial/completed/skipped, overdue derived) linking plan slots to sessions; multiple instances per date supported; `workout_sessions.instance_id` added. Domain layer: `src/lib/workout-instance.ts`. Root cause fix documented in `docs/workout-architecture-audit-001.md`.
+Must Have · P0 · M · Deps: WORKOUT-001, PLANNER-001 · Done (credit 2 — foundation only; screens still read legacy matcher until WORKOUT-017) · Platform
 
 **WORKOUT-017 — Screen responsibility cleanup**
 Planner shows planning only (no completion counts/chips), Hub next-action order active → overdue → today → next, Home reuses one weekly-progress selector.
