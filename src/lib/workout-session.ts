@@ -337,13 +337,23 @@ export async function finalizeSession(
     pain: feedback.pain,
     notes: feedback.notes ?? null,
   });
+  await completeInstanceForSession(id).catch((e) =>
+    console.warn("[workout-session] instance complete failed", e),
+  );
 }
 
 export async function discardSession(id: string): Promise<void> {
+  // Progress logged? the dated instance becomes `partial` (still resumable),
+  // otherwise it returns to `planned`. Never `skipped` — that needs an explicit
+  // user action.
+  const hadProgress = (await getSessionSets(id).catch(() => [])).some((s) => s.completed_at);
   await updateSession(id, {
     status: "discarded",
     finished_at: new Date().toISOString(),
   });
+  await releaseInstanceForSession(id, hadProgress).catch((e) =>
+    console.warn("[workout-session] instance release failed", e),
+  );
 }
 
 /* --------------------------- Sets --------------------------- */
