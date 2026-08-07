@@ -1,60 +1,168 @@
-# Viora Developer Console — Implementation Plan
+# Workout Integration & Consistency Audit (Credit 1/5)
 
-## Goal
-Replace the one-off QA asset page with a permanent, dev-only Developer Console at `/dev` that hosts all future internal tools. First module: Character Assets, reading dynamically from Supabase Storage.
+Engineering report only. No feature work, no redesign, no implementation in this credit.
 
-## 1. Access & visibility rules
-Three independent gates, all must pass:
+---
 
-1. **Build-time gate** — `import.meta.env.DEV` (plus an optional `VITE_ENABLE_DEV_CONSOLE` escape hatch for preview testing). In a production build the console modules are behind a lazy dynamic import that is never reached, so nothing meaningful ships to real users.
-2. **Route gate** — the console lives under the existing `_authenticated` layout, so signing in is still required.
-3. **Identity gate** — reuse `checkIsQAUser()` from `src/lib/qa.ts` (owner/tester email). Failing any gate renders a plain "Not available" screen, never a redirect loop.
+## 1. Architecture Review
 
-No entry appears in the bottom nav or profile. Entry point stays the QA tools card, which itself only renders for QA users.
+The current architecture is **three-quarters correct**. Screens are already separated, and one shared matcher (`workout-occurrence.ts`) exists. What is missing is a persisted identity for "a workout that was planned for a specific date".
 
-## 2. Route structure
+Today the model is:
+
 ```text
-src/routes/_authenticated/dev.tsx            -> layout: gate + console chrome + <Outlet/>
-src/routes/_authenticated/dev.index.tsx      -> module launcher grid
-src/routes/_authenticated/dev.characters.tsx -> Character Assets module
-(future) dev.storage.tsx, dev.prompts.tsx, dev.qa.tsx, dev.ai.tsx, dev.db.tsx, dev.health.tsx
+workout_templates          content (what exercises)
+workout_template_exercises  content
+workout_plans               7 recurring weekday slots (no date, no week)
+workout_sessions            execution record (started_at, status, plan_weekday int)
+workout_sets                execution data
+workouts (legacy)           parallel old execution table, still has 28 sets attached
 ```
-The existing `dev.assets.tsx` becomes `dev.characters.tsx`; the old path keeps working via a redirect route so the QA card link never breaks.
 
-All console routes declare `head()` with `robots: noindex, nofollow`.
+There is no row anywhere that means "Monday 3 Aug, Push, planned". That object only exists as a runtime derivation inside `matchSessionsToSlots()`. Every inconsistency the product shows traces back to this single gap: planning state is computed from execution rows instead of being stored.
 
-## 3. Module registry (the extensibility mechanism)
-`src/lib/dev-console.ts` exports a typed array of module descriptors:
+Verified against the database:
+- `workout_plans` holds 10 rows across 2 users, unique on `(user_id, weekday)` — correct, but weekday-only (recurring, dateless).
+- `workout_sessions`: 17 completed, of which **only 10 carry `plan_weekday`** — 7 completed sessions still depend on the legacy heuristic. 30 discarded rows, 1 in_progress.
+- Structural guards are in place and healthy: `workout_sets_session_exercise_setnum_key (session_id, exercise_id, set_number)` and `workout_sessions_one_active_per_user`. The duplicate-sets class of bug is fixed at the database level.
+- 28 `workout_sets` rows still point at `workout_id` (legacy `workouts` table, 10 rows) and have no session.
 
-- `id`, Hebrew `title`, one-line `description`, lucide `icon`
-- `to` (route path) and `status`: `"ready" | "planned"`
-- optional `requires` flag (e.g. storage, AI gateway)
+## 2. Module Responsibility Review
 
-The launcher renders this array: ready modules are links, planned modules are dimmed non-clickable tiles. Adding a future tool = one registry entry + one route file. The ten listed modules are all seeded now, with only Character Assets marked `ready`.
+| Module | Responsibility | Verdict |
+| --- | --- | --- |
+| `workouts.index.tsx` (Hub) | "What now?" | Correct intent, but owns its own next-workout algorithm, its own template-meta query and its own duration formula |
+| `workouts.program.tsx` (Planner) | "What remains this week?" | Mostly correct; still renders completion (`הושלמו`, completed chips, % ring) — outcome data on a planning screen |
+| `workouts.session.$sessionId.*` | Execute | Correct. Leave untouched |
+| `workouts.history.tsx` / `.$sessionId` | Completed only | Correct filter; contains dead branches rendering `discarded` / `in_progress` states that can never appear |
+| `weekly-planner.ts` | Planning pure helpers | Correct and well-scoped. Keep |
+| `workout-occurrence.ts` | Session ↔ slot matching | Right idea, wrong primitive (weekday int, no date) |
+| `workout-session.ts` (801 lines) | Plans + sessions + sets + seeding + PR analytics | Overloaded god module; also still uses `as any` casts although the generated types now include these tables |
+| `workout-session.$workoutId.tsx` (legacy) | Old execution flow | Legacy. Reachable route, writes sets outside the session lifecycle |
+| `services/sessions.service.ts`, `services/programs.service.ts` | Same reads/writes again | Duplicate API surface over the same tables |
 
-## 4. Console chrome (reuses existing design system only — no redesign)
-`src/components/dev/DevConsoleShell.tsx`: RTL header with "קונסולת מפתחים", a `DEV` badge in warning colors, back link, and a horizontal module switcher. Built from existing `PremiumCard` / `SectionHeader` / `Button` primitives so the luxury dark glass style is untouched.
+### Overlapping responsibilities
+1. **Planner shows outcome.** Completion count, percentage ring and "הושלם" chips are History-domain facts rendered on the planning screen. This is the literal "Planner displays completed workouts" complaint.
+2. **Hub and Planner each own a next/remaining calculation** with different rules and different duration math.
+3. **Home dashboard owns a third weekly-completed count** (`buildWeeklyProgress` over completed session dates) that does not go through `matchSessionsToSlots`, so Home and Planner can disagree.
+4. **Two execution flows exist** (`/workouts/session/$sessionId` and legacy `/workout-session/$workoutId`).
 
-## 5. Character Assets module
-Reuses the media layer already built — no new storage logic:
+### Untouched
+`workouts.session.*` routes, `FloatingRestTimer`, `ExerciseHero`, `ExercisePicker`, `exercise-stats.ts`, `useWorkoutTimer`, `ActiveWorkoutBar`, seeding logic, PR logic.
 
-- Character chips from `CHARACTER_IDS` / `CHARACTER_LABELS`; characters without assets shown muted via `POPULATED_CHARACTERS`.
-- Category chips from `ASSET_CATEGORIES` (identity / marketing / exercise / video) with Hebrew labels.
-- Selection is held in URL search params (`character`, `category`, optional `q` search, optional `subfolder`) so states are shareable and refresh-safe.
-- Assets render through `MediaGallery` → `useCharacterAssets` → `listMediaTree`, which already: reads from Storage recursively, never hardcodes filenames, sorts alphabetically by full path, detects type from mimetype/extension, batch-signs URLs, and groups by nested folder.
-- States: skeleton grid while loading, Hebrew empty state naming the exact storage prefix, error card with a retry button, and per-tile skeleton/error placeholders.
-- Newly uploaded files appear automatically; a "רענן" button invalidates the query, and the query's staleTime stays inside the signed-URL lifetime.
-- Footer shows the resolved prefix `characters/<id>/<category>` plus asset count for debugging.
+## 3. Integration Review — where orchestration breaks
 
-## 6. Cleanup
-- `QAToolsCard` link points at the console root instead of the asset page; the asset link becomes one tile inside the console.
-- No changes to `media-paths.ts`, `media.service.ts`, `useCharacterAssets.ts`, or `MediaGallery.tsx` beyond prop pass-through — the media layer is already generic.
+1. **Next Workout can jump to next week.** The Hub scans `offset = 0..6` from today, so once today's and later days are consumed it wraps into next week's weekday slots, while an unfinished earlier-in-week workout is filtered out as `missed` and shown nowhere. Nothing in the system represents "overdue but still doable".
+2. **Active session claims a weekday regardless of date.** `matchSessionsToSlots` date-filters completed sessions to the current week but claims the in_progress session by `plan_weekday` alone. A session started last week keeps owning this week's card.
+3. **Legacy claim path.** For the 7 completed sessions with `plan_weekday = NULL`, the matcher guesses via `template_id` + `started_at` weekday. Any near-miss silently shows a planned day as completed or an executed day as not done.
+4. **Planner ↔ Session:** one-directional and correct (planner never writes sessions). Keep this.
+5. **Session ↔ History:** correct, driven by `status = 'completed'`. The stated "completed workouts appear outside History" symptom is the Planner rendering completion, not History losing rows.
+6. **Cache keys are fragmented** — `weekly-plan`, `planner_week_sessions`, `sessions.recent`, `active-session`, `template_meta`, `planner_templates_meta` — so a finish invalidates some surfaces and not others.
 
-## Technical notes
-- Files touched: new `src/lib/dev-console.ts`, new `src/components/dev/DevConsoleShell.tsx`, new `dev.tsx` + `dev.index.tsx`, rename `dev.assets.tsx` → `dev.characters.tsx` (+ redirect stub), small edit to `QAToolsCard.tsx`.
-- Heavy module bodies are `React.lazy`-imported from the route so production bundles don't carry console UI.
-- No database migration, no new bucket, no RLS change: `exercise-assets` and its authenticated-read policy already exist.
-- Hebrew RTL throughout; existing tokens only, zero visual-style changes.
+## 4. Technical Debt Report
 
-## Out of scope for this sprint
-The nine remaining modules ship as `planned` tiles only — no partial implementations.
+| Debt | Status | Severity |
+| --- | --- | --- |
+| Missing persisted Workout Instance identity | Confirmed — root cause | Critical |
+| Legacy matching heuristics (`plan_weekday IS NULL`) | Confirmed, 7 live rows | High |
+| Duplicate set generation | Fixed (DB unique index + in-flight guard). No further work | Resolved |
+| Next Workout calculation | Confirmed broken (week wrap, missed days dropped) | High |
+| Planner ↔ Session sync | Correct direction, wrong primitive | Medium |
+| Session ↔ History sync | Healthy | Low |
+| `as any` casts across `workout-session.ts` | Stale, types now exist | Medium |
+| Legacy `workouts` table + `/workout-session/$workoutId` route | Live, 28 orphan sets | Medium |
+| 30 discarded sessions as permanent noise | Cosmetic | Low |
+
+## 5. Legacy Code Report
+
+- `src/routes/_authenticated/workout-session.$workoutId.tsx` — parallel execution UI, no lifecycle, writes to legacy `workouts`.
+- `workouts` table + `workout_sets.workout_id` — dead write path, live read risk in PR/volume queries (they filter by `completed_at`, not by session, so legacy rows leak into PR math).
+- `services/sessions.service.ts`, `services/programs.service.ts` — second API over the same tables.
+- Legacy branch inside `matchSessionsToSlots` (`plan_weekday IS NULL` heuristic).
+- Dead status branches in `workouts.history.tsx`.
+
+## 6. Duplicate Logic Report
+
+| Logic | Duplicated in |
+| --- | --- |
+| Duration estimate | `weekly-planner.estimateMinutes` (max(sets×3.5, ex×8)) vs Hub-local `estimateMinutes` (sets×3.5) — same workout, two numbers |
+| Template meta aggregation | Hub `template_meta` query vs Planner `planner_templates_meta` query |
+| Weekly completed count | Planner (`matchSessionsToSlots`) vs Dashboard (`buildWeeklyProgress`) |
+| Start-of-week | `weekly-planner.startOfWeek` and `workout-occurrence.startOfWeek` |
+| Plan slot write | `setPlanSlot` and `programsService.assignDay` |
+| Active session read | `getActiveSession` and `sessionsService.getActive` |
+| Elapsed-time timer | `ActiveWorkoutBar`, Hub `ActiveSessionCard`, `useWorkoutTimer` |
+
+## 7. Recommended Workout Domain Model
+
+Introduce one persisted object — the missing primitive — and make everything else derive from it.
+
+```text
+WorkoutTemplate      what to train (unchanged)
+WorkoutPlanSlot      recurring intent per weekday (unchanged)
+WorkoutInstance      NEW: one dated occurrence
+                     (user_id, scheduled_date, template_id, plan_weekday,
+                      display_name, status, session_id)
+WorkoutSession       execution record -> instance_id
+WorkoutSet           execution data (unchanged)
+```
+
+`WorkoutInstance.status` is the single lifecycle: `planned → active → completed | skipped`. Exactly one state, one owner, one writer (the session lifecycle transitions it).
+
+Ownership map:
+- Plan slots own recurring intent.
+- Instances own dated planning state and completion linkage.
+- Sessions own performance data.
+- Sets own reps/weight.
+- Templates own exercise content.
+
+Instances are materialised lazily for the visible week from plan slots, so the planner never auto-copies a week and legacy heuristics disappear.
+
+## 8. Recommended Screen Responsibilities
+
+| Screen | Shows | Never shows |
+| --- | --- | --- |
+| Workout Home | Exactly one primary action: resume active → overdue instance → today's instance → next dated instance. Plus a single "remaining this week: n" line | Completion history, weekly editing, duration disagreeing with Planner |
+| Weekly Planner | Dated instances for the week with `planned / active / overdue / rest / empty`, edit + drag | Completion counts, % ring, "הושלם" chips |
+| Session | Execute and finish | Planning, history |
+| History | `status = completed` sessions, chronological | Planned or active workouts, discarded rows |
+
+"Overdue" replaces "missed": the day passed, the instance is still `planned`, and it stays actionable from Home — which is what closes the "Next Workout points to next week" complaint.
+
+## 9. Recommended Integration Improvements
+
+1. One source for dated planning: `workout-instance.ts` replaces `matchSessionsToSlots` heuristics.
+2. One duration formula and one template-meta query, shared by Hub and Planner.
+3. One weekly-progress selector consumed by Planner and Home.
+4. One invalidation helper (`invalidateWorkoutDomain(qc)`) called on start / finish / discard / plan edit.
+5. Split `workout-session.ts` into `workout-plan.ts`, `workout-session.ts` (lifecycle), `workout-sets.ts`, `workout-prs.ts` — move only, no behaviour change.
+6. Retire the legacy execution route and quarantine legacy `workout_id` sets from PR math.
+
+## 10. Implementation Roadmap (Credits 2–5)
+
+**Credit 2 — Instance identity (highest UX return per line changed)**
+- Migration: `workout_instances` table (grants, RLS, unique `(user_id, scheduled_date)`), `workout_sessions.instance_id`.
+- Backfill instances from the 17 completed + 1 active session using `plan_weekday` where present and `started_at` otherwise; this is the one and only time the heuristic runs.
+- New `src/lib/workout-instance.ts`: ensure-week, list-week, transition helpers.
+- Session start/finish/discard writes the instance status.
+- Deliverable: planned and completed can no longer be confused. `workout-occurrence.ts` legacy branch deleted.
+
+**Credit 3 — Screen responsibility cleanup (no redesign)**
+- Planner reads instances; remove completion count, % ring and completed chips; add `overdue`.
+- Hub next-action order: active → overdue → today → next dated instance; delete Hub-local duration/meta logic in favour of shared selectors.
+- Home weekly progress switches to the shared selector.
+- History drops dead status branches.
+
+**Credit 4 — Legacy removal and module split**
+- Remove `/workout-session/$workoutId`, redirect to `/workouts`; migrate or archive the 28 legacy sets and exclude them from PR queries.
+- Delete `services/sessions.service.ts` / `programs.service.ts`.
+- Split `workout-session.ts`; drop `as any` in favour of generated types.
+- Single `invalidateWorkoutDomain` helper.
+
+**Credit 5 — Consistency hardening**
+- Timer logic consolidated into `useWorkoutTimer`.
+- Hide discarded sessions everywhere; optional cleanup job.
+- Lifecycle test matrix: start, resume, background, overdue, week rollover, plan edit mid-week, two slots sharing a template.
+- Update `docs/product-backlog.md` and the dependency map with the new domain model.
+
+Nothing in Credits 2–5 changes the visual language; all work is structural.
