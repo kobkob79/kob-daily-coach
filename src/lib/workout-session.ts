@@ -131,6 +131,11 @@ export async function setPlanSlot(
       { onConflict: "user_id,weekday" },
     );
   if (error) throw error;
+  // Keep today's / future not-yet-started dated instances aligned with the new
+  // plan intent (edits before execution update in place, never duplicate).
+  await syncSlotPlanning(weekday, templateId, displayName).catch((e) =>
+    console.warn("[workout-session] slot planning sync failed", e),
+  );
 }
 
 /* --------------------------- Sessions --------------------------- */
