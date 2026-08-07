@@ -659,6 +659,69 @@ export type Database = {
         }
         Relationships: []
       }
+      workout_instances: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          notes: string | null
+          plan_weekday: number | null
+          scheduled_date: string
+          session_id: string | null
+          skipped_at: string | null
+          status: string
+          template_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          notes?: string | null
+          plan_weekday?: number | null
+          scheduled_date: string
+          session_id?: string | null
+          skipped_at?: string | null
+          status?: string
+          template_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          notes?: string | null
+          plan_weekday?: number | null
+          scheduled_date?: string
+          session_id?: string | null
+          skipped_at?: string | null
+          status?: string
+          template_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_instances_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "workout_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_instances_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "workout_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workout_plans: {
         Row: {
           created_at: string
@@ -706,6 +769,7 @@ export type Database = {
           energy: number | null
           finished_at: string | null
           id: string
+          instance_id: string | null
           name: string | null
           notes: string | null
           pain: string | null
@@ -725,6 +789,7 @@ export type Database = {
           energy?: number | null
           finished_at?: string | null
           id?: string
+          instance_id?: string | null
           name?: string | null
           notes?: string | null
           pain?: string | null
@@ -744,6 +809,7 @@ export type Database = {
           energy?: number | null
           finished_at?: string | null
           id?: string
+          instance_id?: string | null
           name?: string | null
           notes?: string | null
           pain?: string | null
@@ -756,6 +822,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "workout_sessions_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "workout_instances"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "workout_sessions_template_id_fkey"
             columns: ["template_id"]

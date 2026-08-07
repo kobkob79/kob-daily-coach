@@ -8,6 +8,13 @@
  * to the signed-in `user_id` and relies on RLS for safety.
  */
 import { supabase } from "@/integrations/supabase/client";
+import {
+  completeInstanceForSession,
+  linkSessionToInstance,
+  releaseInstanceForSession,
+  resolveInstanceForStart,
+  syncSlotPlanning,
+} from "@/lib/workout-instance";
 
 export type SessionStatus = "in_progress" | "completed" | "discarded" | "abandoned" | "cancelled";
 export type PainLevel = "none" | "mild" | "significant";
@@ -18,6 +25,8 @@ export interface SessionRow {
   template_id: string | null;
   /** Weekly-plan occurrence (0=Sunday) this session was started from. */
   plan_weekday?: number | null;
+  /** Durable dated planning identity this session executes (credit 2). */
+  instance_id?: string | null;
   name: string | null;
   status: SessionStatus;
   started_at: string;
@@ -122,6 +131,11 @@ export async function setPlanSlot(
       { onConflict: "user_id,weekday" },
     );
   if (error) throw error;
+  // Keep today's / future not-yet-started dated instances aligned with the new
+  // plan intent (edits before execution update in place, never duplicate).
+  await syncSlotPlanning(weekday, templateId, displayName).catch((e) =>
+    console.warn("[workout-session] slot planning sync failed", e),
+  );
 }
 
 /* --------------------------- Sessions --------------------------- */
@@ -189,7 +203,12 @@ export async function startOrResumeSessionForTemplate(
     (planWeekday == null || s.plan_weekday == null || s.plan_weekday === planWeekday);
   const active = await getActiveSession();
   if (active) {
-    if (sameOccurrence(active)) return { sessionId: active.id, resumed: true };
+    if (sameOccurrence(active)) {
+      // Resume continues the SAME logical instance; only re-link when the
+      // session predates the instance layer.
+      if (!active.instance_id) await attachInstance(active.id, templateId, templateName, planWeekday);
+      return { sessionId: active.id, resumed: true };
+    }
     throw new ActiveSessionConflictError(active);
   }
   let sessionId: string;
@@ -207,12 +226,37 @@ export async function startOrResumeSessionForTemplate(
     await seedSessionFromTemplate(sessionId, templateId);
     const health = await getSessionHealth(sessionId);
     if (!health.restorable) throw new SessionRestoreError(health.reason ?? "SESSION_NOT_RESTORABLE", health);
+    await attachInstance(sessionId, templateId, templateName, planWeekday);
   } catch (e) {
     // Roll back the empty session so the user isn't stuck with a dud.
     await discardSession(sessionId).catch(() => {});
     throw e;
   }
   return { sessionId, resumed: false };
+}
+
+/**
+ * Resolve + link the dated planning identity for a session. Reuses an open
+ * (planned / partial / overdue) instance so resuming later never duplicates it,
+ * and never rewrites the original scheduled_date.
+ */
+async function attachInstance(
+  sessionId: string,
+  templateId: string,
+  templateName: string,
+  planWeekday?: number | null,
+): Promise<void> {
+  try {
+    const instance = await resolveInstanceForStart({
+      templateId,
+      displayName: templateName,
+      planWeekday: planWeekday ?? null,
+    });
+    await linkSessionToInstance(instance.id, sessionId);
+  } catch (e) {
+    // Planning identity must never block execution.
+    console.warn("[workout-session] instance link failed", e);
+  }
 }
 
 export async function getSession(id: string): Promise<SessionRow | null> {
@@ -293,13 +337,23 @@ export async function finalizeSession(
     pain: feedback.pain,
     notes: feedback.notes ?? null,
   });
+  await completeInstanceForSession(id).catch((e) =>
+    console.warn("[workout-session] instance complete failed", e),
+  );
 }
 
 export async function discardSession(id: string): Promise<void> {
+  // Progress logged? the dated instance becomes `partial` (still resumable),
+  // otherwise it returns to `planned`. Never `skipped` — that needs an explicit
+  // user action.
+  const hadProgress = (await getSessionSets(id).catch(() => [])).some((s) => s.completed_at);
   await updateSession(id, {
     status: "discarded",
     finished_at: new Date().toISOString(),
   });
+  await releaseInstanceForSession(id, hadProgress).catch((e) =>
+    console.warn("[workout-session] instance release failed", e),
+  );
 }
 
 /* --------------------------- Sets --------------------------- */
