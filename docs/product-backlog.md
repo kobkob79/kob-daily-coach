@@ -137,6 +137,23 @@ Future · P3 · L · Deps: CORE-004, AI-008 · Idea · AI
 Queue set writes locally and sync when connectivity returns.
 Must Have · P1 · L · Deps: CORE-003 · Backlog · Platform
 
+**WORKOUT-016 — Persisted workout instance identity**
+Dated `workout_instances` occurrence object (planned/active/completed/skipped) linking plan slots to sessions; removes legacy weekday matching heuristics. Root cause fix documented in `docs/workout-architecture-audit-001.md`.
+Must Have · P0 · M · Deps: WORKOUT-001, PLANNER-001 · Backlog · Platform
+
+**WORKOUT-017 — Screen responsibility cleanup**
+Planner shows planning only (no completion counts/chips), Hub next-action order active → overdue → today → next, Home reuses one weekly-progress selector.
+Must Have · P0 · S · Deps: WORKOUT-016 · Backlog · UX
+
+**WORKOUT-018 — Legacy execution flow removal**
+Retire `/workout-session/$workoutId` and the legacy `workouts` table path, drop duplicate service modules, split the oversized workout-session module.
+Should Have · P1 · M · Deps: WORKOUT-016, WORKOUT-017 · Backlog · Platform
+
+**WORKOUT-019 — Workout lifecycle consistency hardening**
+Single timer source, discarded sessions hidden everywhere, one domain cache-invalidation helper, lifecycle test matrix.
+Should Have · P1 · S · Deps: WORKOUT-018 · Backlog · Platform
+
+
 ### 3.2 PLANNER — Workout Planner
 
 **PLANNER-001 — Weekly program planner**
