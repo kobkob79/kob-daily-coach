@@ -203,7 +203,12 @@ export async function startOrResumeSessionForTemplate(
     (planWeekday == null || s.plan_weekday == null || s.plan_weekday === planWeekday);
   const active = await getActiveSession();
   if (active) {
-    if (sameOccurrence(active)) return { sessionId: active.id, resumed: true };
+    if (sameOccurrence(active)) {
+      // Resume continues the SAME logical instance; only re-link when the
+      // session predates the instance layer.
+      if (!active.instance_id) await attachInstance(active.id, templateId, templateName, planWeekday);
+      return { sessionId: active.id, resumed: true };
+    }
     throw new ActiveSessionConflictError(active);
   }
   let sessionId: string;
@@ -221,12 +226,37 @@ export async function startOrResumeSessionForTemplate(
     await seedSessionFromTemplate(sessionId, templateId);
     const health = await getSessionHealth(sessionId);
     if (!health.restorable) throw new SessionRestoreError(health.reason ?? "SESSION_NOT_RESTORABLE", health);
+    await attachInstance(sessionId, templateId, templateName, planWeekday);
   } catch (e) {
     // Roll back the empty session so the user isn't stuck with a dud.
     await discardSession(sessionId).catch(() => {});
     throw e;
   }
   return { sessionId, resumed: false };
+}
+
+/**
+ * Resolve + link the dated planning identity for a session. Reuses an open
+ * (planned / partial / overdue) instance so resuming later never duplicates it,
+ * and never rewrites the original scheduled_date.
+ */
+async function attachInstance(
+  sessionId: string,
+  templateId: string,
+  templateName: string,
+  planWeekday?: number | null,
+): Promise<void> {
+  try {
+    const instance = await resolveInstanceForStart({
+      templateId,
+      displayName: templateName,
+      planWeekday: planWeekday ?? null,
+    });
+    await linkSessionToInstance(instance.id, sessionId);
+  } catch (e) {
+    // Planning identity must never block execution.
+    console.warn("[workout-session] instance link failed", e);
+  }
 }
 
 export async function getSession(id: string): Promise<SessionRow | null> {
