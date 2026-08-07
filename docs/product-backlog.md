@@ -533,3 +533,11 @@ Should Have · P2 · S · Deps: — · **Shipped (v1)** · Platform
 4. Workout features must comply with `docs/workout-ux-philosophy.md`.
 5. UI redesigns require an explicit product decision; the luxury dark RTL system is the default.
 6. Status changes are recorded in this file in the same change as the implementation.
+
+---
+
+## 6. Architecture Audits
+
+| Audit | Scope | Resulting Feature IDs |
+| --- | --- | --- |
+| `docs/workout-architecture-audit-001.md` | Workout Experience Rebuild, Credit 1/5 — integration & consistency audit | WORKOUT-016, WORKOUT-017, WORKOUT-018, WORKOUT-019 |
