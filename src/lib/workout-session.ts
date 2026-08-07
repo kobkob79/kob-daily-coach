@@ -8,6 +8,13 @@
  * to the signed-in `user_id` and relies on RLS for safety.
  */
 import { supabase } from "@/integrations/supabase/client";
+import {
+  completeInstanceForSession,
+  linkSessionToInstance,
+  releaseInstanceForSession,
+  resolveInstanceForStart,
+  syncSlotPlanning,
+} from "@/lib/workout-instance";
 
 export type SessionStatus = "in_progress" | "completed" | "discarded" | "abandoned" | "cancelled";
 export type PainLevel = "none" | "mild" | "significant";
