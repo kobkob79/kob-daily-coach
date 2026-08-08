@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dumbbell, Image as ImageIcon, Plus, Search, SearchX, X } from "lucide-react";
+import { ExerciseMediaView } from "./ExerciseMediaView";
 import { normalizeMuscleGroup, type MuscleGroup } from "@/lib/muscle-groups";
 import {
   EQUIPMENT_CHIPS,
@@ -92,7 +93,7 @@ export function ExercisePicker({ open, onClose, onSelect, title = "בחר תרג
     queryFn: async () => {
       const { data, error } = await supabase
         .from("exercises")
-        .select("id,name,muscle_group,equipment,category,description")
+        .select("id,name,muscle_group,equipment,category,description,image_path")
         .order("name");
       if (error) throw error;
       return (data ?? []) as PickerExercise[];
@@ -314,9 +315,18 @@ function ExerciseCard({ ex, onPick }: { ex: PickerExercise; onPick: () => void }
       onClick={onPick}
       className="group flex w-full items-stretch gap-3 rounded-2xl border border-border/60 bg-card/40 p-2.5 text-right transition-colors hover:border-primary/50 hover:bg-card/70 [content-visibility:auto] [contain-intrinsic-size:88px]"
     >
-      {/* Reserved media area — future image/GIF slot */}
-      <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl border border-border/50 bg-muted/30">
-        <ImageIcon className="h-5 w-5 text-muted-foreground/60" aria-hidden />
+      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-border/50 bg-muted/30">
+        <ExerciseMediaView
+          exerciseId={ex.id}
+          name={ex.name}
+          fallbackImage={ex.image_path}
+          className="h-full w-full"
+          placeholder={
+            <div className="grid h-full w-full place-items-center">
+              <ImageIcon className="h-5 w-5 text-muted-foreground/60" aria-hidden />
+            </div>
+          }
+        />
       </div>
 
       <div className="min-w-0 flex-1 py-0.5">

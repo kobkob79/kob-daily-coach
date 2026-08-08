@@ -13,6 +13,7 @@ export type PickerExercise = {
   equipment: string | null;
   category: string | null;
   description: string | null;
+  image_path?: string | null;
 };
 
 export type EquipmentKey =
