@@ -3,7 +3,7 @@
  *
  * Opens from the Exercise Picker instead of adding immediately, so the user can
  * inspect the exercise first. The hero area is a reserved 16:9 media slot: when
- * images/GIFs/videos/3D land later they drop straight into `<HeroMedia />`
+ * images/GIFs/videos/3D land later they drop straight into `<HeroMedia exercise={ex} />`
  * without touching the rest of the layout. Info/coaching blocks are separate
  * sections so AI tips, common mistakes and safety notes can be appended.
  */
@@ -30,6 +30,7 @@ import {
   type ExerciseStats,
 } from "@/lib/exercise-stats";
 import { useExerciseIntel } from "@/hooks/useExerciseIntel";
+import { ExerciseMediaView } from "./ExerciseMediaView";
 import { cn } from "@/lib/utils";
 
 
@@ -84,7 +85,7 @@ export function ExerciseDetailsSheet({
           <div className="flex-1 overflow-y-auto overscroll-contain pb-4">
             {/* Hero media — reserved 16:9 slot for future image/GIF/video/3D */}
             <div className="relative">
-              <HeroMedia />
+              <HeroMedia exercise={ex} />
               <button
                 type="button"
                 onClick={onClose}
@@ -358,9 +359,24 @@ function PersonalIntel({
 
 
 /** Reserved 16:9 media area — premium placeholder until assets exist. */
-function HeroMedia() {
+function HeroMedia({ exercise }: { exercise: PickerExercise }) {
   return (
     <div className="relative aspect-video w-full overflow-hidden bg-gradient-to-br from-muted/40 via-card/60 to-muted/20">
+      <ExerciseMediaView
+        exerciseId={exercise.id}
+        name={exercise.name}
+        fallbackImage={exercise.image_path}
+        className="h-full w-full"
+        placeholder={<HeroPlaceholder />}
+      />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background to-transparent" />
+    </div>
+  );
+}
+
+function HeroPlaceholder() {
+  return (
+    <div className="absolute inset-0">
       <div className="absolute inset-0 grid place-items-center">
         <div className="flex flex-col items-center gap-2 text-center">
           <span className="grid h-12 w-12 place-items-center rounded-2xl border border-border/60 bg-background/50 text-primary">
@@ -370,7 +386,6 @@ function HeroMedia() {
           <p className="text-[11px] text-muted-foreground">מדיה תתווסף בקרוב</p>
         </div>
       </div>
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background to-transparent" />
     </div>
   );
 }
