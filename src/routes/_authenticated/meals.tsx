@@ -251,19 +251,24 @@ function MealsPage() {
       <section>
         <SectionHeader title={t("meals.favorites")} subtitle={t("meals.favoritesHint")} />
         <div className="grid grid-cols-3 gap-2.5">
-          {(favoritesQ.data ?? []).map((f) => (
-            <button
-              key={f.id}
-              onClick={() => quickAddFavorite.mutate(f)}
-              className="group flex flex-col items-center gap-1.5 rounded-2xl border border-border/60 bg-card/60 p-3 text-center transition hover:border-primary/50 active:scale-95"
-            >
-              <span className="text-2xl leading-none">{f.emoji ?? "⭐"}</span>
-              <span className="text-xs font-medium leading-tight">{f.name}</span>
-              {f.protein_g != null && (
-                <span className="text-[10px] text-muted-foreground">P{Math.round(Number(f.protein_g))}</span>
-              )}
-            </button>
-          ))}
+          {(favoritesQ.data ?? []).map((f) => {
+            const pending = pendingFavIds.includes(f.id);
+            return (
+              <button
+                key={f.id}
+                onClick={() => runQuickAdd(f)}
+                disabled={pending}
+                aria-busy={pending}
+                className="group flex flex-col items-center gap-1.5 rounded-2xl border border-border/60 bg-card/60 p-3 text-center transition hover:border-primary/50 active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+              >
+                <span className="text-2xl leading-none">{f.emoji ?? "⭐"}</span>
+                <span className="text-xs font-medium leading-tight">{f.name}</span>
+                {f.protein_g != null && (
+                  <span className="text-[10px] text-muted-foreground">P{Math.round(Number(f.protein_g))}</span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </section>
 
