@@ -217,13 +217,15 @@ export function OneTapBar() {
 }
 
 function QuickBtn({
-  emoji, label, sub, onClick,
-}: { emoji: string; label: string; sub?: string; onClick: () => void }) {
+  emoji, label, sub, onClick, disabled,
+}: { emoji: string; label: string; sub?: string; onClick: () => void; disabled?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col items-center gap-0.5 rounded-2xl border border-border/60 bg-card/70 p-2.5 text-center transition hover:border-primary/50 active:scale-95"
+      disabled={disabled}
+      aria-busy={disabled}
+      className="flex flex-col items-center gap-0.5 rounded-2xl border border-border/60 bg-card/70 p-2.5 text-center transition hover:border-primary/50 active:scale-95 disabled:opacity-50 disabled:active:scale-100"
     >
       <span className="text-xl leading-none">{emoji}</span>
       <span className="text-[11px] font-medium leading-tight line-clamp-1">{label}</span>
