@@ -202,7 +202,11 @@ export function OneTapBar() {
                 emoji={f.emoji ?? "⭐"}
                 label={f.name}
                 sub={f.protein_g != null ? `P${Math.round(Number(f.protein_g))}` : undefined}
-                onClick={() => addFavorite.mutate(f)}
+                disabled={pendingFavIds.includes(f.id)}
+                onClick={() => {
+                  if (pendingFavIds.includes(f.id)) return;
+                  addFavorite.mutate(f);
+                }}
               />
             ))}
           </div>
