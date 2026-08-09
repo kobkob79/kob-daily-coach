@@ -19,7 +19,7 @@ import {
   suggestMealType,
   type FoodItem,
 } from "@/lib/meals";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 interface Favorite {
   id: string;
@@ -40,6 +40,8 @@ const WATER_PRESETS = [
 export function OneTapBar() {
   const qc = useQueryClient();
   const bioDay = biologicalDay(new Date());
+  // Per-favorite in-flight guard so repeated taps can't duplicate a meal.
+  const [pendingFavIds, setPendingFavIds] = useState<string[]>([]);
 
   const favoritesQ = useQuery({
     queryKey: ["meal-favorites"],
@@ -103,10 +105,19 @@ export function OneTapBar() {
         source: "favorite",
       });
       if (error) throw error;
+      // Atomic, RLS-scoped usage increment (own row only).
+      await supabase.rpc("increment_meal_favorite_use", { _favorite_id: fav.id });
+    },
+    onMutate: (fav) => {
+      setPendingFavIds((ids) => (ids.includes(fav.id) ? ids : [...ids, fav.id]));
+    },
+    onSettled: (_d, _e, fav) => {
+      setPendingFavIds((ids) => ids.filter((id) => id !== fav.id));
     },
     onSuccess: (_d, fav) => {
       toast.success(`${fav.emoji ?? "⭐"} ${fav.name} · ${t("meals.saved")}`);
       invalidateTimeline();
+      qc.invalidateQueries({ queryKey: ["meal-favorites"] });
     },
     onError: (e) => toast.error(e.message),
   });
@@ -191,7 +202,11 @@ export function OneTapBar() {
                 emoji={f.emoji ?? "⭐"}
                 label={f.name}
                 sub={f.protein_g != null ? `P${Math.round(Number(f.protein_g))}` : undefined}
-                onClick={() => addFavorite.mutate(f)}
+                disabled={pendingFavIds.includes(f.id)}
+                onClick={() => {
+                  if (pendingFavIds.includes(f.id)) return;
+                  addFavorite.mutate(f);
+                }}
               />
             ))}
           </div>
@@ -202,13 +217,15 @@ export function OneTapBar() {
 }
 
 function QuickBtn({
-  emoji, label, sub, onClick,
-}: { emoji: string; label: string; sub?: string; onClick: () => void }) {
+  emoji, label, sub, onClick, disabled,
+}: { emoji: string; label: string; sub?: string; onClick: () => void; disabled?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col items-center gap-0.5 rounded-2xl border border-border/60 bg-card/70 p-2.5 text-center transition hover:border-primary/50 active:scale-95"
+      disabled={disabled}
+      aria-busy={disabled}
+      className="flex flex-col items-center gap-0.5 rounded-2xl border border-border/60 bg-card/70 p-2.5 text-center transition hover:border-primary/50 active:scale-95 disabled:opacity-50 disabled:active:scale-100"
     >
       <span className="text-xl leading-none">{emoji}</span>
       <span className="text-[11px] font-medium leading-tight line-clamp-1">{label}</span>

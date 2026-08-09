@@ -61,6 +61,8 @@ function MealsPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetMode, setSheetMode] = useState<"manual" | "photo" | "favorite">("manual");
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Per-favorite in-flight guard so repeated taps can't duplicate a meal.
+  const [pendingFavIds, setPendingFavIds] = useState<string[]>([]);
 
   const mealsQ = useQuery({
     queryKey: ["meals", bioDay],
@@ -160,14 +162,29 @@ function MealsPage() {
         source: "favorite",
       });
       if (error) throw error;
-      await supabase.from("meal_favorites").update({ use_count: 0 }).eq("id", fav.id); // touch
+      // Atomic, RLS-scoped usage increment (own row only).
+      await supabase.rpc("increment_meal_favorite_use", { _favorite_id: fav.id });
     },
     onSuccess: (_d, fav) => {
       toast.success(`${fav.emoji ?? "⭐"} ${fav.name} · ${t("meals.saved")}`);
       qc.invalidateQueries({ queryKey: ["meals", bioDay] });
+      qc.invalidateQueries({ queryKey: ["timeline"] });
+      qc.invalidateQueries({ queryKey: ["nutrition", bioDay] });
+      qc.invalidateQueries({ queryKey: ["meal-favorites"] });
+    },
+    onMutate: (fav) => {
+      setPendingFavIds((ids) => (ids.includes(fav.id) ? ids : [...ids, fav.id]));
+    },
+    onSettled: (_d, _e, fav) => {
+      setPendingFavIds((ids) => ids.filter((id) => id !== fav.id));
     },
     onError: (e) => toast.error(e.message),
   });
+
+  const runQuickAdd = (fav: Favorite) => {
+    if (pendingFavIds.includes(fav.id)) return;
+    quickAddFavorite.mutate(fav);
+  };
 
   const openSheet = (mode: typeof sheetMode) => {
     setSheetMode(mode);
@@ -234,19 +251,24 @@ function MealsPage() {
       <section>
         <SectionHeader title={t("meals.favorites")} subtitle={t("meals.favoritesHint")} />
         <div className="grid grid-cols-3 gap-2.5">
-          {(favoritesQ.data ?? []).map((f) => (
-            <button
-              key={f.id}
-              onClick={() => quickAddFavorite.mutate(f)}
-              className="group flex flex-col items-center gap-1.5 rounded-2xl border border-border/60 bg-card/60 p-3 text-center transition hover:border-primary/50 active:scale-95"
-            >
-              <span className="text-2xl leading-none">{f.emoji ?? "⭐"}</span>
-              <span className="text-xs font-medium leading-tight">{f.name}</span>
-              {f.protein_g != null && (
-                <span className="text-[10px] text-muted-foreground">P{Math.round(Number(f.protein_g))}</span>
-              )}
-            </button>
-          ))}
+          {(favoritesQ.data ?? []).map((f) => {
+            const pending = pendingFavIds.includes(f.id);
+            return (
+              <button
+                key={f.id}
+                onClick={() => runQuickAdd(f)}
+                disabled={pending}
+                aria-busy={pending}
+                className="group flex flex-col items-center gap-1.5 rounded-2xl border border-border/60 bg-card/60 p-3 text-center transition hover:border-primary/50 active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+              >
+                <span className="text-2xl leading-none">{f.emoji ?? "⭐"}</span>
+                <span className="text-xs font-medium leading-tight">{f.name}</span>
+                {f.protein_g != null && (
+                  <span className="text-[10px] text-muted-foreground">P{Math.round(Number(f.protein_g))}</span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </section>
 

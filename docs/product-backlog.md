@@ -284,7 +284,7 @@ Should Have · P2 · M · Deps: NUTRI-002 · **Shipped (v1)** · AI
 
 **NUTRI-008 — Frequent meals quick-add**
 One-tap re-log of habitual meals (near-zero typing).
-Should Have · P1 · S · Deps: NUTRI-001, AI-001 · Ready · Dev
+Should Have · P1 · S · Deps: NUTRI-001, AI-001 · **Shipped** · Dev
 
 **NUTRI-009 — Protein pacing coach**
 Intra-day protein distribution guidance.

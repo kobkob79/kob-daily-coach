@@ -1030,7 +1030,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_meal_favorite_use: {
+        Args: { _favorite_id: string }
+        Returns: number
+      }
     }
     Enums: {
       body_area: "neck" | "sciatica" | "ac_joint" | "general"
