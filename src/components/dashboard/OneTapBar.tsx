@@ -19,7 +19,7 @@ import {
   suggestMealType,
   type FoodItem,
 } from "@/lib/meals";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 interface Favorite {
   id: string;
