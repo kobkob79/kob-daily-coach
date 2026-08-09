@@ -103,10 +103,19 @@ export function OneTapBar() {
         source: "favorite",
       });
       if (error) throw error;
+      // Atomic, RLS-scoped usage increment (own row only).
+      await supabase.rpc("increment_meal_favorite_use", { _favorite_id: fav.id });
+    },
+    onMutate: (fav) => {
+      setPendingFavIds((ids) => (ids.includes(fav.id) ? ids : [...ids, fav.id]));
+    },
+    onSettled: (_d, _e, fav) => {
+      setPendingFavIds((ids) => ids.filter((id) => id !== fav.id));
     },
     onSuccess: (_d, fav) => {
       toast.success(`${fav.emoji ?? "⭐"} ${fav.name} · ${t("meals.saved")}`);
       invalidateTimeline();
+      qc.invalidateQueries({ queryKey: ["meal-favorites"] });
     },
     onError: (e) => toast.error(e.message),
   });
