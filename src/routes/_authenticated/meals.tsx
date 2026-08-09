@@ -172,8 +172,19 @@ function MealsPage() {
       qc.invalidateQueries({ queryKey: ["nutrition", bioDay] });
       qc.invalidateQueries({ queryKey: ["meal-favorites"] });
     },
+    onMutate: (fav) => {
+      setPendingFavIds((ids) => (ids.includes(fav.id) ? ids : [...ids, fav.id]));
+    },
+    onSettled: (_d, _e, fav) => {
+      setPendingFavIds((ids) => ids.filter((id) => id !== fav.id));
+    },
     onError: (e) => toast.error(e.message),
   });
+
+  const runQuickAdd = (fav: Favorite) => {
+    if (pendingFavIds.includes(fav.id)) return;
+    quickAddFavorite.mutate(fav);
+  };
 
   const openSheet = (mode: typeof sheetMode) => {
     setSheetMode(mode);
