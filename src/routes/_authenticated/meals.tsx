@@ -160,11 +160,15 @@ function MealsPage() {
         source: "favorite",
       });
       if (error) throw error;
-      await supabase.from("meal_favorites").update({ use_count: 0 }).eq("id", fav.id); // touch
+      // Atomic, RLS-scoped usage increment (own row only).
+      await supabase.rpc("increment_meal_favorite_use", { _favorite_id: fav.id });
     },
     onSuccess: (_d, fav) => {
       toast.success(`${fav.emoji ?? "⭐"} ${fav.name} · ${t("meals.saved")}`);
       qc.invalidateQueries({ queryKey: ["meals", bioDay] });
+      qc.invalidateQueries({ queryKey: ["timeline"] });
+      qc.invalidateQueries({ queryKey: ["nutrition", bioDay] });
+      qc.invalidateQueries({ queryKey: ["meal-favorites"] });
     },
     onError: (e) => toast.error(e.message),
   });
