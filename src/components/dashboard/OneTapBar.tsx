@@ -40,6 +40,8 @@ const WATER_PRESETS = [
 export function OneTapBar() {
   const qc = useQueryClient();
   const bioDay = biologicalDay(new Date());
+  // Per-favorite in-flight guard so repeated taps can't duplicate a meal.
+  const [pendingFavIds, setPendingFavIds] = useState<string[]>([]);
 
   const favoritesQ = useQuery({
     queryKey: ["meal-favorites"],
