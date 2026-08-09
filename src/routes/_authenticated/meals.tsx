@@ -61,6 +61,8 @@ function MealsPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetMode, setSheetMode] = useState<"manual" | "photo" | "favorite">("manual");
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Per-favorite in-flight guard so repeated taps can't duplicate a meal.
+  const [pendingFavIds, setPendingFavIds] = useState<string[]>([]);
 
   const mealsQ = useQuery({
     queryKey: ["meals", bioDay],
