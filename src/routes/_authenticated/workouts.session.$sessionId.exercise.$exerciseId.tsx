@@ -45,11 +45,10 @@ import {
   EMPTY_PR_STATS,
   type SessionSet,
 } from "@/lib/workout-session";
-import { useRestTimer } from "@/hooks/useRestTimer";
 import { useWorkoutTimer, formatTotalTime } from "@/hooks/useWorkoutTimer";
 import { ExerciseHero } from "@/components/workouts/ExerciseHero";
 import { formatPerformance } from "@/components/workouts/PreviousVsCurrent";
-import { FloatingRestTimer } from "@/components/workouts/FloatingRestTimer";
+import { useSessionRestTimer } from "@/components/workouts/RestTimerProvider";
 import {
   PRCelebration,
   type PRCelebrationData,
@@ -68,7 +67,7 @@ function ExerciseDetailPage() {
   const { sessionId, exerciseId } = Route.useParams();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const rest = useRestTimer(sessionId);
+  const rest = useSessionRestTimer();
   const [finishOpen, setFinishOpen] = useState(false);
   const [pr, setPr] = useState<PRCelebrationData | null>(null);
   const activeCardRef = useRef<HTMLDivElement | null>(null);
@@ -552,27 +551,6 @@ function ExerciseDetailPage() {
         </div>
       )}
 
-
-      {/* Floating rest timer — never occupies layout space */}
-      {rest.active && (
-        <FloatingRestTimer
-          phase={rest.phase}
-          paused={rest.paused}
-          remainingSec={rest.remainingSec}
-          overtimeSec={rest.overtimeSec}
-          plannedSec={rest.plannedSec}
-          nextSetNumber={activeSet?.set_number ?? null}
-          totalSets={sets.length}
-          soundEnabled={rest.soundEnabled}
-          onToggleSound={rest.toggleSound}
-          onTogglePause={rest.togglePause}
-          onAddSeconds={(d: number) => rest.addSeconds(d)}
-          onSkip={() => {
-            rest.clear();
-            scrollToActive();
-          }}
-        />
-      )}
 
       {/* Floating stack: finish exercise → workout clock */}
       <div
