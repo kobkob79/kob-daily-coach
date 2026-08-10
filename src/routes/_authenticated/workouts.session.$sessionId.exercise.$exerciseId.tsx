@@ -349,6 +349,16 @@ function ExerciseDetailPage() {
     return () => window.clearTimeout(id);
   }, [activeSet?.id, scrollToActive]);
 
+  // Publish optional set context + skip behaviour to the session-level timer.
+  const { setSetContext, registerSkipHandler } = rest;
+  useEffect(() => {
+    setSetContext({ nextSetNumber: activeSet?.set_number ?? null, totalSets: sets.length });
+  }, [activeSet?.set_number, sets.length, setSetContext]);
+  useEffect(() => {
+    registerSkipHandler(scrollToActive);
+    return () => registerSkipHandler(null);
+  }, [registerSkipHandler, scrollToActive]);
+
   const backToOverview = () =>
     navigate({ to: "/workouts/session/$sessionId", params: { sessionId } });
 
