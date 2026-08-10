@@ -66,9 +66,11 @@ export function FloatingRestTimer({
   }, []);
 
   const clampTop = useCallback((y: number) => {
-    const max = (typeof window !== "undefined" ? window.innerHeight : 800) - SIZE - 96;
+    // Keep clear of the bottom floating stack (workout clock / finish buttons).
+    const max = (typeof window !== "undefined" ? window.innerHeight : 800) - SIZE - 170;
     return Math.max(72, Math.min(max, y));
   }, []);
+
 
   const onPointerDown = (e: React.PointerEvent) => {
     dragRef.current = { startY: e.clientY, startTop: top ?? 240, moved: false };
