@@ -59,7 +59,7 @@ export function FloatingRestTimer({
     try {
       const raw = window.sessionStorage.getItem(POS_KEY);
       const parsed = raw ? Number(raw) : NaN;
-      setTop(Number.isFinite(parsed) ? parsed : Math.round(window.innerHeight * 0.45));
+      setTop(Number.isFinite(parsed) ? parsed : Math.round(window.innerHeight * 0.32));
     } catch {
       setTop(240);
     }
