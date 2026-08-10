@@ -59,16 +59,18 @@ export function FloatingRestTimer({
     try {
       const raw = window.sessionStorage.getItem(POS_KEY);
       const parsed = raw ? Number(raw) : NaN;
-      setTop(Number.isFinite(parsed) ? parsed : Math.round(window.innerHeight * 0.45));
+      setTop(Number.isFinite(parsed) ? parsed : Math.round(window.innerHeight * 0.32));
     } catch {
       setTop(240);
     }
   }, []);
 
   const clampTop = useCallback((y: number) => {
-    const max = (typeof window !== "undefined" ? window.innerHeight : 800) - SIZE - 96;
+    // Keep clear of the bottom floating stack (workout clock / finish buttons).
+    const max = (typeof window !== "undefined" ? window.innerHeight : 800) - SIZE - 170;
     return Math.max(72, Math.min(max, y));
   }, []);
+
 
   const onPointerDown = (e: React.PointerEvent) => {
     dragRef.current = { startY: e.clientY, startTop: top ?? 240, moved: false };

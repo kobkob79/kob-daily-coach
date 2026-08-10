@@ -8,10 +8,19 @@
  */
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 
+import { RestTimerProvider } from "@/components/workouts/RestTimerProvider";
+
 export const Route = createFileRoute("/_authenticated/workouts/session/$sessionId")({
   component: WorkoutSessionLayout,
 });
 
 function WorkoutSessionLayout() {
-  return <Outlet />;
+  const { sessionId } = Route.useParams();
+  // The rest timer runtime is owned here, so it keeps running (and keeps
+  // alerting) while the athlete moves between the overview and exercises.
+  return (
+    <RestTimerProvider sessionId={sessionId}>
+      <Outlet />
+    </RestTimerProvider>
+  );
 }
