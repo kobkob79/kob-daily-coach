@@ -13,6 +13,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { playRestChime, prepareRestAudio } from "@/lib/rest-audio";
+
 interface StoredTimer {
   startedAt: number;
   plannedSec: number;
@@ -45,6 +47,9 @@ function write(sessionId: string, val: StoredTimer | null) {
 
 const SOUND_KEY = "viora:rest:sound";
 
+/** Marks that we already asked for notification permission once. */
+const PERM_ASKED_KEY = "viora:rest:notif-asked";
+
 /** Interval between repeat "rest is over" reminders, in ms. */
 const REMINDER_MS = 30_000;
 
@@ -57,33 +62,6 @@ export function isRestSoundEnabled(): boolean {
 export function setRestSoundEnabled(enabled: boolean) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(SOUND_KEY, enabled ? "1" : "0");
-}
-
-/** Short two-tone chime via WebAudio — no asset, no autoplay policy issues. */
-function playChime() {
-  try {
-    const Ctx =
-      window.AudioContext ??
-      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    const now = ctx.currentTime;
-    [880, 1174, 880].forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0, now + i * 0.18);
-      gain.gain.linearRampToValueAtTime(0.22, now + i * 0.18 + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.18 + 0.16);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(now + i * 0.18);
-      osc.stop(now + i * 0.18 + 0.18);
-    });
-    window.setTimeout(() => ctx.close().catch(() => {}), 1000);
-  } catch {
-    /* ignore */
-  }
 }
 
 export interface RestTimerState {
@@ -123,6 +101,9 @@ export function useRestTimer(sessionId: string): RestTimerState {
   const toggleSound = useCallback(() => {
     setSoundEnabled((prev) => {
       const next = !prev;
+      // Enabling sound is a user gesture — the only reliable moment to unlock
+      // the shared AudioContext on mobile browsers.
+      if (next) prepareRestAudio();
       setRestSoundEnabled(next);
       soundRef.current = next;
       return next;
@@ -147,7 +128,7 @@ export function useRestTimer(sessionId: string): RestTimerState {
       if (typeof navigator !== "undefined" && "vibrate" in navigator) {
         (navigator as Navigator).vibrate?.([400, 120, 400, 120, 400]);
       }
-      if (soundRef.current) playChime();
+      if (soundRef.current) playRestChime();
       if (typeof Notification !== "undefined" && Notification.permission === "granted") {
         new Notification("Viora", {
           body: "המנוחה הסתיימה — לסט הבא",
@@ -220,12 +201,17 @@ export function useRestTimer(sessionId: string): RestTimerState {
       write(sessionId, val);
       setStored(val);
       vibrateRef.current = false;
-      // Request notification permission on first start (best-effort)
+      // Starting a rest always happens inside a user gesture (completing a
+      // set) — unlock audio here so the chime at zero is actually audible.
+      prepareRestAudio();
+      // Ask for notification permission at most once per device.
       try {
         if (
           typeof Notification !== "undefined" &&
-          Notification.permission === "default"
+          Notification.permission === "default" &&
+          window.localStorage.getItem(PERM_ASKED_KEY) !== "1"
         ) {
+          window.localStorage.setItem(PERM_ASKED_KEY, "1");
           Notification.requestPermission().catch(() => {});
         }
       } catch {
