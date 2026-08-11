@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
@@ -27,8 +27,11 @@ import {
 
 
 export const Route = createFileRoute("/_authenticated/capture")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    type: typeof search.type === "string" ? (search.type as CaptureType) : undefined,
+  validateSearch: (search: Record<string, unknown>): { type?: CaptureType; returnTo?: string } => ({
+    type:
+      typeof search.type === "string" && search.type in CAPTURE_TYPE_BY_KEY
+        ? (search.type as CaptureType)
+        : undefined,
     returnTo:
       typeof search.returnTo === "string" && search.returnTo.startsWith("/")
         ? search.returnTo
