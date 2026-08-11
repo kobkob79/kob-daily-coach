@@ -201,6 +201,14 @@ function MealsPage() {
 
   const editingMeal = mealsQ.data?.find((m) => m.id === editingId) ?? null;
 
+  const totals = useMemo(() => {
+    const meals = mealsQ.data ?? [];
+    return {
+      calories: meals.reduce((s, m) => s + (m.calories ?? 0), 0),
+      protein: meals.reduce((s, m) => s + (m.protein_g ?? 0), 0),
+    };
+  }, [mealsQ.data]);
+
   return (
     <div className="space-y-6 pb-2">
       <section className="pt-2">
@@ -211,6 +219,25 @@ function MealsPage() {
           <span className="gradient-text">{t("meals.title")}</span>
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("meals.today")}</p>
+      </section>
+
+      {/* Daily nutrition summary */}
+      <section>
+        <PremiumCard className="p-4">
+          <div className="grid grid-cols-2 gap-3">
+            <DailyKpi
+              label={t("meals.kcal")}
+              value={mealsQ.isLoading ? null : Math.round(totals.calories)}
+              unit="kcal"
+            />
+            <DailyKpi
+              label={t("meals.protein")}
+              value={mealsQ.isLoading ? null : Math.round(totals.protein)}
+              unit="g"
+              accent
+            />
+          </div>
+        </PremiumCard>
       </section>
 
       {/* Smart add tiles */}
@@ -306,6 +333,21 @@ function MealsPage() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+/* ---------- Daily KPI ---------- */
+function DailyKpi({
+  label, value, unit, accent,
+}: { label: string; value: number | null; unit: string; accent?: boolean }) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-border/40 bg-card/40 py-3 text-center">
+      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className={cn("mt-1 text-2xl font-bold tabular-nums", accent ? "text-primary" : "text-foreground")}>
+        {value == null ? "–" : value}
+      </span>
+      <span className="text-[10px] text-muted-foreground">{unit}</span>
     </div>
   );
 }
