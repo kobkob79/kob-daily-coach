@@ -50,7 +50,11 @@ type CaptureRow = {
 
 function CapturePage() {
   const qc = useQueryClient();
-  const [activeType, setActiveType] = useState<CaptureType | null>(null);
+  const navigate = useNavigate();
+  const { type: initialType, returnTo } = Route.useSearch();
+  const [activeType, setActiveType] = useState<CaptureType | null>(
+    initialType && CAPTURE_TYPE_BY_KEY[initialType] ? initialType : null,
+  );
 
   const historyQ = useQuery({
     queryKey: ["vision-captures"],
@@ -65,11 +69,13 @@ function CapturePage() {
     },
   });
 
+  const backTo = returnTo ?? "/dashboard";
+
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-2">
         <Link
-          to="/dashboard"
+          to={backTo}
           className="grid h-9 w-9 place-items-center rounded-full border border-border/60 text-muted-foreground transition hover:text-foreground"
           aria-label={t("common.close")}
         >
@@ -87,12 +93,20 @@ function CapturePage() {
           onDone={() => {
             setActiveType(null);
             qc.invalidateQueries({ queryKey: ["vision-captures"] });
+            qc.invalidateQueries({ queryKey: ["meals"] });
+            qc.invalidateQueries({ queryKey: ["nutrition"] });
+            qc.invalidateQueries({ queryKey: ["timeline"] });
+            if (returnTo) navigate({ to: returnTo });
           }}
-          onCancel={() => setActiveType(null)}
+          onCancel={() => {
+            setActiveType(null);
+            if (returnTo) navigate({ to: returnTo });
+          }}
         />
       ) : (
         <CaptureTypeGrid onPick={setActiveType} />
       )}
+
 
       <section>
         <SectionHeader
