@@ -27,8 +27,16 @@ import {
 
 
 export const Route = createFileRoute("/_authenticated/capture")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    type: typeof search.type === "string" ? (search.type as CaptureType) : undefined,
+    returnTo:
+      typeof search.returnTo === "string" && search.returnTo.startsWith("/")
+        ? search.returnTo
+        : undefined,
+  }),
   component: CapturePage,
 });
+
 
 type CaptureRow = {
   id: string;
