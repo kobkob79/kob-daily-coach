@@ -309,20 +309,46 @@ function CaptureComposer({
       // shows up in the daily protein total, meals list and timeline.
       if (def.key === "meal") {
         const dish = (extracted.dish as string) || "ארוחה";
+        const now = new Date();
+        const mt = suggestMealType(now);
+        // Mirror the photo into meal-photos so the Meals card can render it.
+        let mealPhotoPath: string | null = null;
+        if (file) {
+          const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+          const p = `${userRes.user.id}/${Date.now()}-meal.${ext}`;
+          const { error: mErr } = await supabase.storage
+            .from("meal-photos")
+            .upload(p, file, { upsert: false, contentType: file.type || "image/jpeg" });
+          if (!mErr) mealPhotoPath = p;
+        }
+        const foods: FoodItem[] = ingredients.map((i) => ({
+          name: i.name,
+          qty: i.quantity,
+          calories: i.calories,
+          protein_g: i.protein_g,
+          carbs_g: i.carbs_g,
+          fat_g: i.fat_g,
+        }));
         await supabase.from("nutrition_entries").insert({
           user_id: userRes.user.id,
           date: today(),
-          meal_time: format(new Date(), "HH:mm:ss"),
-          meal: "snack",
+          biological_day: biologicalDay(now),
+          meal_time: format(now, "HH:mm:ss"),
+          meal: mt.enum,
           food_name: dish,
-          meal_type: "snack",
+          meal_type: mt.label,
+          foods: foods as unknown as never,
           calories: Number(extracted.calories ?? 0),
           protein_g: Number(extracted.protein_g ?? 0),
           carbs_g: Number(extracted.carbs_g ?? 0),
           fat_g: Number(extracted.fat_g ?? 0),
+          fiber_g: Number(extracted.fiber_g ?? 0),
           notes: (extracted.ingredients as string) ?? null,
+          photo_url: mealPhotoPath,
+          source: "photo",
         });
       }
+
 
       // Persist user corrections so future analyses learn per-user.
       if (def.key === "meal" && originalIngredients.length > 0) {
