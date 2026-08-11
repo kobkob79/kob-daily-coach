@@ -332,24 +332,27 @@ function CaptureComposer({
           carbs_g: i.carbs_g,
           fat_g: i.fat_g,
         }));
-        await supabase.from("nutrition_entries").insert({
-          user_id: userRes.user.id,
-          date: today(),
-          biological_day: biologicalDay(now),
-          meal_time: format(now, "HH:mm:ss"),
-          meal: mt.enum,
-          food_name: dish,
-          meal_type: mt.label,
-          foods: foods as unknown as never,
-          calories: Number(extracted.calories ?? 0),
-          protein_g: Number(extracted.protein_g ?? 0),
-          carbs_g: Number(extracted.carbs_g ?? 0),
-          fat_g: Number(extracted.fat_g ?? 0),
-          fiber_g: Number(extracted.fiber_g ?? 0),
-          notes: (extracted.ingredients as string) ?? null,
-          photo_url: mealPhotoPath,
-          source: "photo",
-        });
+        const { error: nutritionError } = await supabase
+          .from("nutrition_entries")
+          .insert({
+            user_id: userRes.user.id,
+            date: today(),
+            biological_day: biologicalDay(now),
+            meal_time: format(now, "HH:mm:ss"),
+            meal: mt.enum,
+            food_name: dish,
+            meal_type: mt.label,
+            foods: foods as unknown as never,
+            calories: Number(extracted.calories ?? 0),
+            protein_g: Number(extracted.protein_g ?? 0),
+            carbs_g: Number(extracted.carbs_g ?? 0),
+            fat_g: Number(extracted.fat_g ?? 0),
+            fiber_g: Number(extracted.fiber_g ?? 0),
+            notes: (extracted.ingredients as string) ?? null,
+            photo_url: mealPhotoPath,
+            source: "photo",
+          });
+        if (nutritionError) throw nutritionError;
       }
 
 
