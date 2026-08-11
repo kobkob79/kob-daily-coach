@@ -337,6 +337,21 @@ function MealsPage() {
   );
 }
 
+/* ---------- Daily KPI ---------- */
+function DailyKpi({
+  label, value, unit, accent,
+}: { label: string; value: number | null; unit: string; accent?: boolean }) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-border/40 bg-card/40 py-3 text-center">
+      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className={cn("mt-1 text-2xl font-bold tabular-nums", accent ? "text-primary" : "text-foreground")}>
+        {value == null ? "–" : value}
+      </span>
+      <span className="text-[10px] text-muted-foreground">{unit}</span>
+    </div>
+  );
+}
+
 /* ---------- Smart tile ---------- */
 function SmartTile({
   icon: Icon, label, onClick,
