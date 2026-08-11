@@ -201,6 +201,14 @@ function MealsPage() {
 
   const editingMeal = mealsQ.data?.find((m) => m.id === editingId) ?? null;
 
+  const totals = useMemo(() => {
+    const meals = mealsQ.data ?? [];
+    return {
+      calories: meals.reduce((s, m) => s + (m.calories ?? 0), 0),
+      protein: meals.reduce((s, m) => s + (m.protein_g ?? 0), 0),
+    };
+  }, [mealsQ.data]);
+
   return (
     <div className="space-y-6 pb-2">
       <section className="pt-2">
@@ -211,6 +219,25 @@ function MealsPage() {
           <span className="gradient-text">{t("meals.title")}</span>
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("meals.today")}</p>
+      </section>
+
+      {/* Daily nutrition summary */}
+      <section>
+        <PremiumCard className="p-4">
+          <div className="grid grid-cols-2 gap-3">
+            <DailyKpi
+              label={t("meals.kcal")}
+              value={mealsQ.isLoading ? null : Math.round(totals.calories)}
+              unit="kcal"
+            />
+            <DailyKpi
+              label={t("meals.protein")}
+              value={mealsQ.isLoading ? null : Math.round(totals.protein)}
+              unit="g"
+              accent
+            />
+          </div>
+        </PremiumCard>
       </section>
 
       {/* Smart add tiles */}
