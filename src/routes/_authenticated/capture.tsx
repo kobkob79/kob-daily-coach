@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { today } from "@/lib/date";
+import { biologicalDay, suggestMealType, type FoodItem } from "@/lib/meals";
 import {
   analyzeMealImage, appendCorrections,
   type MealIngredient, type MealQuality, type MealDiagnostics,
@@ -27,8 +28,19 @@ import {
 
 
 export const Route = createFileRoute("/_authenticated/capture")({
+  validateSearch: (search: Record<string, unknown>): { type?: CaptureType; returnTo?: string } => ({
+    type:
+      typeof search.type === "string" && search.type in CAPTURE_TYPE_BY_KEY
+        ? (search.type as CaptureType)
+        : undefined,
+    returnTo:
+      typeof search.returnTo === "string" && search.returnTo.startsWith("/")
+        ? search.returnTo
+        : undefined,
+  }),
   component: CapturePage,
 });
+
 
 type CaptureRow = {
   id: string;
@@ -42,7 +54,13 @@ type CaptureRow = {
 
 function CapturePage() {
   const qc = useQueryClient();
-  const [activeType, setActiveType] = useState<CaptureType | null>(null);
+  const navigate = useNavigate();
+  const { type: initialType, returnTo } = Route.useSearch();
+  const [activeType, setActiveType] = useState<CaptureType | null>(
+    initialType && CAPTURE_TYPE_BY_KEY[initialType as CaptureType]
+      ? (initialType as CaptureType)
+      : null,
+  );
 
   const historyQ = useQuery({
     queryKey: ["vision-captures"],
@@ -57,11 +75,13 @@ function CapturePage() {
     },
   });
 
+  const backTo = returnTo ?? "/dashboard";
+
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-2">
         <Link
-          to="/dashboard"
+          to={backTo}
           className="grid h-9 w-9 place-items-center rounded-full border border-border/60 text-muted-foreground transition hover:text-foreground"
           aria-label={t("common.close")}
         >
@@ -79,12 +99,20 @@ function CapturePage() {
           onDone={() => {
             setActiveType(null);
             qc.invalidateQueries({ queryKey: ["vision-captures"] });
+            qc.invalidateQueries({ queryKey: ["meals"] });
+            qc.invalidateQueries({ queryKey: ["nutrition"] });
+            qc.invalidateQueries({ queryKey: ["timeline"] });
+            if (returnTo) navigate({ to: returnTo });
           }}
-          onCancel={() => setActiveType(null)}
+          onCancel={() => {
+            setActiveType(null);
+            if (returnTo) navigate({ to: returnTo });
+          }}
         />
       ) : (
         <CaptureTypeGrid onPick={setActiveType} />
       )}
+
 
       <section>
         <SectionHeader
@@ -284,20 +312,46 @@ function CaptureComposer({
       // shows up in the daily protein total, meals list and timeline.
       if (def.key === "meal") {
         const dish = (extracted.dish as string) || "ארוחה";
+        const now = new Date();
+        const mt = suggestMealType(now);
+        // Mirror the photo into meal-photos so the Meals card can render it.
+        let mealPhotoPath: string | null = null;
+        if (file) {
+          const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+          const p = `${userRes.user.id}/${Date.now()}-meal.${ext}`;
+          const { error: mErr } = await supabase.storage
+            .from("meal-photos")
+            .upload(p, file, { upsert: false, contentType: file.type || "image/jpeg" });
+          if (!mErr) mealPhotoPath = p;
+        }
+        const foods: FoodItem[] = ingredients.map((i) => ({
+          name: i.name,
+          qty: i.quantity,
+          calories: i.calories,
+          protein_g: i.protein_g,
+          carbs_g: i.carbs_g,
+          fat_g: i.fat_g,
+        }));
         await supabase.from("nutrition_entries").insert({
           user_id: userRes.user.id,
           date: today(),
-          meal_time: format(new Date(), "HH:mm:ss"),
-          meal: "snack",
+          biological_day: biologicalDay(now),
+          meal_time: format(now, "HH:mm:ss"),
+          meal: mt.enum,
           food_name: dish,
-          meal_type: "snack",
+          meal_type: mt.label,
+          foods: foods as unknown as never,
           calories: Number(extracted.calories ?? 0),
           protein_g: Number(extracted.protein_g ?? 0),
           carbs_g: Number(extracted.carbs_g ?? 0),
           fat_g: Number(extracted.fat_g ?? 0),
+          fiber_g: Number(extracted.fiber_g ?? 0),
           notes: (extracted.ingredients as string) ?? null,
+          photo_url: mealPhotoPath,
+          source: "photo",
         });
       }
+
 
       // Persist user corrections so future analyses learn per-user.
       if (def.key === "meal" && originalIngredients.length > 0) {
