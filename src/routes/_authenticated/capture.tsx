@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { today } from "@/lib/date";
+import { biologicalDay, suggestMealType, type FoodItem } from "@/lib/meals";
 import {
   analyzeMealImage, appendCorrections,
   type MealIngredient, type MealQuality, type MealDiagnostics,
@@ -56,7 +57,9 @@ function CapturePage() {
   const navigate = useNavigate();
   const { type: initialType, returnTo } = Route.useSearch();
   const [activeType, setActiveType] = useState<CaptureType | null>(
-    initialType && CAPTURE_TYPE_BY_KEY[initialType] ? initialType : null,
+    initialType && CAPTURE_TYPE_BY_KEY[initialType as CaptureType]
+      ? (initialType as CaptureType)
+      : null,
   );
 
   const historyQ = useQuery({
