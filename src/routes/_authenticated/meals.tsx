@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
@@ -56,6 +56,7 @@ type Favorite = {
 
 function MealsPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const bioDay = biologicalDay(new Date());
 
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -214,7 +215,13 @@ function MealsPage() {
 
       {/* Smart add tiles */}
       <section className="grid grid-cols-3 gap-3">
-        <SmartTile icon={Camera} label={t("meals.addPhoto")} onClick={() => openSheet("photo")} />
+        <SmartTile
+          icon={Camera}
+          label={t("meals.addPhoto")}
+          onClick={() =>
+            navigate({ to: "/capture", search: { type: "meal", returnTo: "/meals" } })
+          }
+        />
         <SmartTile icon={Star}   label={t("meals.addFavorite")} onClick={() => openSheet("favorite")} />
         <SmartTile icon={Pencil} label={t("meals.addManual")} onClick={() => openSheet("manual")} />
       </section>
@@ -285,30 +292,6 @@ function MealsPage() {
           </div>
         </div>
       </PremiumCard>
-
-      {/* Inline "add meal" card — replaces the previous floating "+" button.
-          Opens the existing bottom sheet with all four entry modes visible. */}
-      <button
-        type="button"
-        onClick={() => openSheet("manual")}
-        className="glass-card w-full p-4 text-right transition active:scale-[0.99]"
-      >
-        <div className="flex items-center gap-3">
-          <span
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-primary-foreground"
-            style={{ background: "var(--gradient-primary)" }}
-          >
-            <Plus className="h-5 w-5" strokeWidth={2.4} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-[15px] font-bold leading-tight">{t("meals.add")}</p>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
-              צילום · הזנה בקול · הוספה ידנית · מועדפים
-            </p>
-          </div>
-          <ChevronLeft className="h-5 w-5 text-muted-foreground rtl:rotate-180" />
-        </div>
-      </button>
 
       {sheetOpen && (
         <AddMealSheet
