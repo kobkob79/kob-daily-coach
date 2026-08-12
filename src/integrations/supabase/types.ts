@@ -410,6 +410,54 @@ export type Database = {
         }
         Relationships: []
       }
+      medical_issues: {
+        Row: {
+          confidence: string | null
+          created_at: string
+          id: string
+          importance: string
+          source_date: string | null
+          source_type: string
+          started_on: string | null
+          status: string
+          summary: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          verification_status: string
+        }
+        Insert: {
+          confidence?: string | null
+          created_at?: string
+          id?: string
+          importance?: string
+          source_date?: string | null
+          source_type?: string
+          started_on?: string | null
+          status?: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          verification_status?: string
+        }
+        Update: {
+          confidence?: string | null
+          created_at?: string
+          id?: string
+          importance?: string
+          source_date?: string | null
+          source_type?: string
+          started_on?: string | null
+          status?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          verification_status?: string
+        }
+        Relationships: []
+      }
       nutrition_entries: {
         Row: {
           biological_day: string | null
