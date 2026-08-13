@@ -458,6 +458,42 @@ export type Database = {
         }
         Relationships: []
       }
+      nutrient_definitions: {
+        Row: {
+          active: boolean
+          canonical_name: string
+          category: string
+          created_at: string
+          default_unit: string
+          display_name_he: string
+          key: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          canonical_name: string
+          category: string
+          created_at?: string
+          default_unit: string
+          display_name_he: string
+          key: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          canonical_name?: string
+          category?: string
+          created_at?: string
+          default_unit?: string
+          display_name_he?: string
+          key?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       nutrition_entries: {
         Row: {
           biological_day: string | null
@@ -523,6 +559,128 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      nutrition_entry_nutrients: {
+        Row: {
+          amount: number | null
+          confidence: string
+          created_at: string
+          estimated_max: number | null
+          estimated_min: number | null
+          id: string
+          nutrient_key: string
+          nutrition_entry_id: string
+          source_ref: string | null
+          source_type: string
+          unit: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          confidence: string
+          created_at?: string
+          estimated_max?: number | null
+          estimated_min?: number | null
+          id?: string
+          nutrient_key: string
+          nutrition_entry_id: string
+          source_ref?: string | null
+          source_type: string
+          unit: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number | null
+          confidence?: string
+          created_at?: string
+          estimated_max?: number | null
+          estimated_min?: number | null
+          id?: string
+          nutrient_key?: string
+          nutrition_entry_id?: string
+          source_ref?: string | null
+          source_type?: string
+          unit?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nutrition_entry_nutrients_nutrient_key_fkey"
+            columns: ["nutrient_key"]
+            isOneToOne: false
+            referencedRelation: "nutrient_definitions"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "nutrition_entry_nutrients_parent_owner_fk"
+            columns: ["nutrition_entry_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "nutrition_entries"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      nutrition_nutrient_targets: {
+        Row: {
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          id: string
+          is_active: boolean
+          nutrient_key: string
+          reason: string | null
+          source_ref: string
+          target_amount: number
+          target_type: string
+          unit: string
+          updated_at: string
+          upper_limit: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          is_active?: boolean
+          nutrient_key: string
+          reason?: string | null
+          source_ref: string
+          target_amount: number
+          target_type: string
+          unit: string
+          updated_at?: string
+          upper_limit?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          is_active?: boolean
+          nutrient_key?: string
+          reason?: string | null
+          source_ref?: string
+          target_amount?: number
+          target_type?: string
+          unit?: string
+          updated_at?: string
+          upper_limit?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nutrition_nutrient_targets_nutrient_key_fkey"
+            columns: ["nutrient_key"]
+            isOneToOne: false
+            referencedRelation: "nutrient_definitions"
+            referencedColumns: ["key"]
+          },
+        ]
       }
       profiles: {
         Row: {
