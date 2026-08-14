@@ -10,6 +10,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { aggregateNutrientValues } from "./aggregate";
 import {
+  NUTRIENT_TARGET_PRIORITY,
+  normalizeTargetType,
+  type NutrientTargetRow,
+  type NutrientTargetType,
   type DailyNutrientSnapshot,
   type NutrientConfidence,
   type NutrientDefinition,
