@@ -39,7 +39,7 @@ import { getAllMemory } from "@/lib/ai-memory";
 import { fetchLifeProfile } from "@/lib/life-profile";
 import { QAToolsCard } from "@/components/qa/QAToolsCard";
 import { ThemeSelector } from "@/components/ThemeSelector";
-
+import { MediaInboxCard } from "@/components/media/MediaInboxCard";
 export const Route = createFileRoute("/_authenticated/profile")({
   component: ProfilePage,
 });
@@ -91,7 +91,7 @@ function ProfilePage() {
       )}
 
       <ThemeSelector />
-
+      <MediaInboxCard />
       <BodyPhotosSection
         photos={photosQ.data ?? []}
         onChanged={() => qc.invalidateQueries({ queryKey: ["body-photos"] })}
