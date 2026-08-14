@@ -19,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-
+import { DailyNutrientPanel } from "@/components/nutrition/DailyNutrientPanel";
 export const Route = createFileRoute("/_authenticated/meals")({
   component: MealsPage,
 });
@@ -239,7 +239,7 @@ function MealsPage() {
           </div>
         </PremiumCard>
       </section>
-
+<DailyNutrientPanel bioDay={bioDay} />
       {/* Smart add tiles */}
       <section className="grid grid-cols-3 gap-3">
         <SmartTile
