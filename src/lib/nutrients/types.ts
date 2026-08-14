@@ -25,7 +25,31 @@ export type NutrientSourceType = (typeof NUTRIENT_SOURCE_TYPES)[number];
 export const NUTRIENT_CONFIDENCE_LEVELS = ["high", "medium", "low"] as const;
 export type NutrientConfidence = (typeof NUTRIENT_CONFIDENCE_LEVELS)[number];
 
-export type NutrientTargetType = "RDA" | "AI" | "personalized" | (string & {});
+/** Application-level target types. DB values are lowercase; capitalization
+ *  (RDA / AI) is display formatting only. */
+export const NUTRIENT_TARGET_TYPES = ["personalized", "rda", "ai"] as const;
+export type NutrientTargetType = (typeof NUTRIENT_TARGET_TYPES)[number];
+
+/** Deterministic priority: personalized > rda > ai. */
+export const NUTRIENT_TARGET_PRIORITY: Record<NutrientTargetType, number> = {
+  personalized: 0,
+  rda: 1,
+  ai: 2,
+};
+
+export function normalizeTargetType(raw: string | null | undefined): NutrientTargetType | null {
+  const v = (raw ?? "").trim().toLowerCase();
+  return (NUTRIENT_TARGET_TYPES as readonly string[]).includes(v)
+    ? (v as NutrientTargetType)
+    : null;
+}
+
+/** Display label for a target type (capitalization is presentation only). */
+export function targetTypeLabel(type: NutrientTargetType): string {
+  if (type === "rda") return "RDA";
+  if (type === "ai") return "AI";
+  return "מותאם אישית";
+}
 
 /** A single stored nutrient value attached to one nutrition entry. */
 export interface NutrientValue {

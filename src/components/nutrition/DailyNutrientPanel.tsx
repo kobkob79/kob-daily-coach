@@ -8,12 +8,13 @@ import { ChevronDown, FlaskConical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDailyNutrients } from "@/lib/nutrients/service";
 import { targetProgress } from "@/lib/nutrients/aggregate";
+import { targetTypeLabel } from "@/lib/nutrients/types";
 import type { DailyNutrientTotal, NutrientConfidence } from "@/lib/nutrients/types";
 
 const CONFIDENCE_HE: Record<NutrientConfidence, string> = {
-  high: "מדידה מדויקת",
-  medium: "הערכה",
-  low: "טווח מוערך",
+  high: "מהימנות גבוהה",
+  medium: "מהימנות בינונית",
+  low: "מהימנות נמוכה",
 };
 
 const SOURCE_HE: Record<string, string> = {
@@ -45,9 +46,9 @@ export function DailyNutrientPanel({ bioDay }: { bioDay: string }) {
   const [open, setOpen] = useState(false);
   const { snapshot, isLoading, error } = useDailyNutrients(bioDay);
 
-  const micros = (snapshot?.totals ?? []).filter(
-    (t) => (t.definition?.category ?? "micro") !== "macro" && t.definition?.category !== "energy",
-  );
+  // Vitamins & minerals only: hydration, macro and energy nutrients never
+  // belong in this panel, and an unknown/missing category is not assumed.
+  const micros = (snapshot?.totals ?? []).filter((t) => t.definition?.category === "micro");
 
   return (
     <div className="mt-3 rounded-2xl border border-border/40 bg-card/40">
@@ -128,10 +129,14 @@ function NutrientRow({ total }: { total: DailyNutrientTotal }) {
             {progress.minPct === progress.maxPct
               ? `${Math.round(progress.maxPct)}%`
               : `${Math.round(progress.minPct)}–${Math.round(progress.maxPct)}%`}
-            {" "}מהיעד ({total.target.type} · {fmt(total.target.amount)} {total.target.unit})
-            {total.target.upperLimit != null &&
-              ` · גבול עליון ${fmt(total.target.upperLimit)} ${total.target.unit}`}
+            {" "}מהיעד ({targetTypeLabel(total.target.type)} · {fmt(total.target.amount)}{" "}
+            {total.target.unit})
           </p>
+          {total.target.upperLimit != null && (
+            <p className="mt-0.5 text-[10px] text-muted-foreground">
+              גבול עליון (UL): {fmt(total.target.upperLimit)} {total.target.unit}
+            </p>
+          )}
           {progress.overUpperLimit && (
             <p className="mt-0.5 text-[10px] text-amber-400">מעל הגבול העליון המומלץ</p>
           )}

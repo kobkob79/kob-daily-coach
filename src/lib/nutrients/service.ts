@@ -10,6 +10,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { aggregateNutrientValues } from "./aggregate";
 import {
+  NUTRIENT_TARGET_PRIORITY,
+  normalizeTargetType,
+  type NutrientTargetRow,
+  type NutrientTargetType,
   type DailyNutrientSnapshot,
   type NutrientConfidence,
   type NutrientDefinition,
@@ -51,7 +55,13 @@ export async function fetchNutrientValuesForDay(bioDay: string): Promise<Nutrien
   }));
 }
 
-/** Active, currently effective stored targets. Never invented in code. */
+/**
+ * Active, currently effective stored targets. Never invented in code.
+ *
+ * Selection is deterministic when several active targets exist for the same
+ * nutrient: personalized > rda > ai, then the most recent effective_from,
+ * then updated_at, created_at and finally id as a stable tie-breaker.
+ */
 export async function fetchActiveNutrientTargets(
   onDate: string,
 ): Promise<Map<string, NutrientTarget>> {
@@ -61,16 +71,37 @@ export async function fetchActiveNutrientTargets(
     .eq("is_active", true)
     .lte("effective_from", onDate);
   if (error) throw error;
-  const map = new Map<string, NutrientTarget>();
-  for (const r of data ?? []) {
+
+  const candidates = new Map<string, { row: NutrientTargetRow; type: NutrientTargetType }>();
+  const cmpDesc = (a: string | null, b: string | null) => (b ?? "").localeCompare(a ?? "");
+
+  for (const r of (data ?? []) as NutrientTargetRow[]) {
     if (r.effective_to && r.effective_to < onDate) continue;
-    map.set(r.nutrient_key, {
-      amount: Number(r.target_amount),
-      unit: r.unit,
-      type: r.target_type,
-      sourceRef: r.source_ref,
-      reason: r.reason,
-      upperLimit: r.upper_limit == null ? null : Number(r.upper_limit),
+    const type = normalizeTargetType(r.target_type);
+    if (!type) continue; // unknown target type: never guessed
+    const cur = candidates.get(r.nutrient_key);
+    if (!cur) {
+      candidates.set(r.nutrient_key, { row: r, type });
+      continue;
+    }
+    const better =
+      NUTRIENT_TARGET_PRIORITY[type] - NUTRIENT_TARGET_PRIORITY[cur.type] ||
+      cmpDesc(r.effective_from, cur.row.effective_from) ||
+      cmpDesc(r.updated_at, cur.row.updated_at) ||
+      cmpDesc(r.created_at, cur.row.created_at) ||
+      cmpDesc(r.id, cur.row.id);
+    if (better < 0) candidates.set(r.nutrient_key, { row: r, type });
+  }
+
+  const map = new Map<string, NutrientTarget>();
+  for (const [key, { row, type }] of candidates) {
+    map.set(key, {
+      amount: Number(row.target_amount),
+      unit: row.unit,
+      type,
+      sourceRef: row.source_ref,
+      reason: row.reason,
+      upperLimit: row.upper_limit == null ? null : Number(row.upper_limit),
     });
   }
   return map;
