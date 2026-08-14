@@ -5,8 +5,10 @@
  *  - exact values may be summed;
  *  - ranges stay ranges (they widen the daily min/max);
  *  - mixed exact + estimated produces a daily range;
- *  - units are never silently converted: a unit clash surfaces as a conflict.
+ *  - units are converted only through explicit numeric conversions; anything
+ *    else is a real unit conflict and is never aggregated as if compatible.
  */
+import { convertUnit, sameUnit } from "./units";
 import {
   NUTRIENT_CONFIDENCE_LEVELS,
   type DailyNutrientTotal,
@@ -20,11 +22,6 @@ import {
 function weakest(a: NutrientConfidence, b: NutrientConfidence): NutrientConfidence {
   const rank = (c: NutrientConfidence) => NUTRIENT_CONFIDENCE_LEVELS.indexOf(c);
   return rank(a) >= rank(b) ? a : b;
-}
-
-/** Normalized unit comparison — case/space insensitive only, never converting. */
-function sameUnit(a: string, b: string): boolean {
-  return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
 
 export function aggregateNutrientValues(
@@ -43,9 +40,17 @@ export function aggregateNutrientValues(
 
   for (const [key, rows] of byKey) {
     const def = definitions.get(key) ?? null;
-    const baseUnit = rows[0].unit;
+    // Display/aggregation unit: the catalog default when every stored value can
+    // be converted into it; otherwise the first stored unit.
+    const preferred = def?.default_unit ?? rows[0].unit;
+    const targetUnit = rows.every((r) => convertUnit(1, r.unit, preferred) != null)
+      ? preferred
+      : rows[0].unit;
+
     const units = Array.from(new Set(rows.map((r) => r.unit.trim())));
-    const conflict = rows.some((r) => !sameUnit(r.unit, baseUnit));
+    const conflict = rows.some(
+      (r) => !sameUnit(r.unit, targetUnit) && convertUnit(1, r.unit, targetUnit) == null,
+    );
 
     let exact: number | null = null;
     let min = 0;
@@ -54,26 +59,35 @@ export function aggregateNutrientValues(
     let confidence: NutrientConfidence = "high";
     const sources = new Set<NutrientSourceType>();
 
-    for (const r of rows) {
-      sources.add(r.sourceType);
-      confidence = weakest(confidence, r.confidence);
-      if (r.amount != null) {
-        exact = (exact ?? 0) + r.amount;
-        min += r.amount;
-        max += r.amount;
-      } else if (r.estimatedMin != null || r.estimatedMax != null) {
-        hasRange = true;
-        const lo = r.estimatedMin ?? r.estimatedMax ?? 0;
-        const hi = r.estimatedMax ?? r.estimatedMin ?? 0;
-        min += Math.min(lo, hi);
-        max += Math.max(lo, hi);
+    if (!conflict) {
+      for (const r of rows) {
+        sources.add(r.sourceType);
+        confidence = weakest(confidence, r.confidence);
+        const conv = (n: number) => convertUnit(n, r.unit, targetUnit) ?? n;
+        if (r.amount != null) {
+          const v = conv(r.amount);
+          exact = (exact ?? 0) + v;
+          min += v;
+          max += v;
+        } else if (r.estimatedMin != null || r.estimatedMax != null) {
+          hasRange = true;
+          const lo = conv(r.estimatedMin ?? r.estimatedMax ?? 0);
+          const hi = conv(r.estimatedMax ?? r.estimatedMin ?? 0);
+          min += Math.min(lo, hi);
+          max += Math.max(lo, hi);
+        }
+      }
+    } else {
+      for (const r of rows) {
+        sources.add(r.sourceType);
+        confidence = weakest(confidence, r.confidence);
       }
     }
 
     totals.push({
       key,
       definition: def,
-      unit: def?.default_unit ?? baseUnit,
+      unit: targetUnit,
       exact: conflict ? null : exact,
       min: conflict ? 0 : min,
       max: conflict ? 0 : max,
@@ -107,10 +121,13 @@ export function targetProgress(total: DailyNutrientTotal): {
 } | null {
   const target = total.target;
   if (!target || total.conflict || target.amount <= 0) return null;
-  if (!sameUnit(target.unit, total.unit)) return null;
+  const amount = convertUnit(target.amount, target.unit, total.unit);
+  if (amount == null || amount <= 0) return null;
+  const ul =
+    target.upperLimit == null ? null : convertUnit(target.upperLimit, target.unit, total.unit);
   return {
-    minPct: (total.min / target.amount) * 100,
-    maxPct: (total.max / target.amount) * 100,
-    overUpperLimit: target.upperLimit != null && total.min > target.upperLimit,
+    minPct: (total.min / amount) * 100,
+    maxPct: (total.max / amount) * 100,
+    overUpperLimit: ul != null && total.min > ul,
   };
 }
