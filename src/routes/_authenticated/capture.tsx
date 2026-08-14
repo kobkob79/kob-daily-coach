@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { compressImageFile } from "@/lib/image-compress";
 import { t } from "@/lib/i18n";
 import { PremiumCard, SectionHeader, EmptyState } from "@/components/ui-kit/Section";
 import { Button } from "@/components/ui/button";
@@ -197,16 +198,20 @@ function CaptureComposer({
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const Icon = def.icon;
 
-  const pickFile = (f: File | null) => {
-    if (!f) return;
+  const pickFile = async (raw: File | null) => {
+    if (!raw) return;
+    // Downscale immediately: the full-resolution camera file is never retained.
+    const f = await compressImageFile(raw);
     setFile(f);
     setConfidence(null);
     setIngredients([]);
     setOriginalIngredients([]);
     setQuality(null);
     setVisionError(null);
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(URL.createObjectURL(f));
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(f);
+    });
   };
 
   const runAnalyze = async () => {
@@ -319,6 +324,7 @@ function CaptureComposer({
         if (file) {
           const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
           const p = `${userRes.user.id}/${Date.now()}-meal.${ext}`;
+          // Re-upload the same compressed blob; no second in-memory copy is made.
           const { error: mErr } = await supabase.storage
             .from("meal-photos")
             .upload(p, file, { upsert: false, contentType: file.type || "image/jpeg" });
@@ -438,14 +444,22 @@ function CaptureComposer({
           accept="image/*"
           capture={def.cameraFacing}
           className="hidden"
-          onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+          onChange={(e) => {
+            const f = e.target.files?.[0] ?? null;
+            e.target.value = "";
+            void pickFile(f);
+          }}
         />
         <input
           ref={uploadRef}
           type="file"
           accept="image/*"
           className="hidden"
-          onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+          onChange={(e) => {
+            const f = e.target.files?.[0] ?? null;
+            e.target.value = "";
+            void pickFile(f);
+          }}
         />
       </div>
 
