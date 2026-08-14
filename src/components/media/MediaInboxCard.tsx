@@ -1,6 +1,7 @@
 ﻿import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Camera, ImagePlus, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { PremiumCard, SectionHeader } from "@/components/ui-kit/Section";
@@ -34,6 +35,8 @@ export function MediaInboxCard() {
       await qc.invalidateQueries({
         queryKey: ["media-tree", MEDIA_INBOX_BUCKET, id],
       });
+          } catch (error) {
+      toast.error(error instanceof Error ? error.message : "ההעלאה נכשלה");
     } finally {
       setUploading(false);
       if (galleryRef.current) galleryRef.current.value = "";
