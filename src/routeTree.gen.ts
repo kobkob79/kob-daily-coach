@@ -19,6 +19,7 @@ import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedProgressRouteImport } from './routes/_authenticated/progress'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedNutritionRouteImport } from './routes/_authenticated/nutrition'
+import { Route as AuthenticatedMediaInboxRouteImport } from './routes/_authenticated/media-inbox'
 import { Route as AuthenticatedMealsRouteImport } from './routes/_authenticated/meals'
 import { Route as AuthenticatedJournalRouteImport } from './routes/_authenticated/journal'
 import { Route as AuthenticatedHydrationRouteImport } from './routes/_authenticated/hydration'
@@ -35,6 +36,7 @@ import { Route as AuthenticatedDevIndexRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedWorkoutsProgramRouteImport } from './routes/_authenticated/workouts.program'
 import { Route as AuthenticatedWorkoutsHistoryRouteImport } from './routes/_authenticated/workouts.history'
 import { Route as AuthenticatedWorkoutSessionWorkoutIdRouteImport } from './routes/_authenticated/workout-session.$workoutId'
+import { Route as AuthenticatedDevMediaRouteImport } from './routes/_authenticated/dev.media'
 import { Route as AuthenticatedDevCharactersRouteImport } from './routes/_authenticated/dev.characters'
 import { Route as AuthenticatedDevAssetsRouteImport } from './routes/_authenticated/dev.assets'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
@@ -95,6 +97,11 @@ const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
 const AuthenticatedNutritionRoute = AuthenticatedNutritionRouteImport.update({
   id: '/nutrition',
   path: '/nutrition',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMediaInboxRoute = AuthenticatedMediaInboxRouteImport.update({
+  id: '/media-inbox',
+  path: '/media-inbox',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedMealsRoute = AuthenticatedMealsRouteImport.update({
@@ -183,6 +190,11 @@ const AuthenticatedWorkoutSessionWorkoutIdRoute =
     path: '/workout-session/$workoutId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedDevMediaRoute = AuthenticatedDevMediaRouteImport.update({
+  id: '/media',
+  path: '/media',
+  getParentRoute: () => AuthenticatedDevRoute,
+} as any)
 const AuthenticatedDevCharactersRoute =
   AuthenticatedDevCharactersRouteImport.update({
     id: '/characters',
@@ -263,6 +275,7 @@ export interface FileRoutesByFullPath {
   '/hydration': typeof AuthenticatedHydrationRoute
   '/journal': typeof AuthenticatedJournalRoute
   '/meals': typeof AuthenticatedMealsRoute
+  '/media-inbox': typeof AuthenticatedMediaInboxRoute
   '/nutrition': typeof AuthenticatedNutritionRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/progress': typeof AuthenticatedProgressRoute
@@ -273,6 +286,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/dev/assets': typeof AuthenticatedDevAssetsRoute
   '/dev/characters': typeof AuthenticatedDevCharactersRoute
+  '/dev/media': typeof AuthenticatedDevMediaRoute
   '/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
   '/workouts/history': typeof AuthenticatedWorkoutsHistoryRouteWithChildren
   '/workouts/program': typeof AuthenticatedWorkoutsProgramRoute
@@ -300,6 +314,7 @@ export interface FileRoutesByTo {
   '/hydration': typeof AuthenticatedHydrationRoute
   '/journal': typeof AuthenticatedJournalRoute
   '/meals': typeof AuthenticatedMealsRoute
+  '/media-inbox': typeof AuthenticatedMediaInboxRoute
   '/nutrition': typeof AuthenticatedNutritionRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/progress': typeof AuthenticatedProgressRoute
@@ -309,6 +324,7 @@ export interface FileRoutesByTo {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/dev/assets': typeof AuthenticatedDevAssetsRoute
   '/dev/characters': typeof AuthenticatedDevCharactersRoute
+  '/dev/media': typeof AuthenticatedDevMediaRoute
   '/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
   '/workouts/history': typeof AuthenticatedWorkoutsHistoryRouteWithChildren
   '/workouts/program': typeof AuthenticatedWorkoutsProgramRoute
@@ -338,6 +354,7 @@ export interface FileRoutesById {
   '/_authenticated/hydration': typeof AuthenticatedHydrationRoute
   '/_authenticated/journal': typeof AuthenticatedJournalRoute
   '/_authenticated/meals': typeof AuthenticatedMealsRoute
+  '/_authenticated/media-inbox': typeof AuthenticatedMediaInboxRoute
   '/_authenticated/nutrition': typeof AuthenticatedNutritionRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/progress': typeof AuthenticatedProgressRoute
@@ -348,6 +365,7 @@ export interface FileRoutesById {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/dev/assets': typeof AuthenticatedDevAssetsRoute
   '/_authenticated/dev/characters': typeof AuthenticatedDevCharactersRoute
+  '/_authenticated/dev/media': typeof AuthenticatedDevMediaRoute
   '/_authenticated/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
   '/_authenticated/workouts/history': typeof AuthenticatedWorkoutsHistoryRouteWithChildren
   '/_authenticated/workouts/program': typeof AuthenticatedWorkoutsProgramRoute
@@ -378,6 +396,7 @@ export interface FileRouteTypes {
     | '/hydration'
     | '/journal'
     | '/meals'
+    | '/media-inbox'
     | '/nutrition'
     | '/profile'
     | '/progress'
@@ -388,6 +407,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/dev/assets'
     | '/dev/characters'
+    | '/dev/media'
     | '/workout-session/$workoutId'
     | '/workouts/history'
     | '/workouts/program'
@@ -415,6 +435,7 @@ export interface FileRouteTypes {
     | '/hydration'
     | '/journal'
     | '/meals'
+    | '/media-inbox'
     | '/nutrition'
     | '/profile'
     | '/progress'
@@ -424,6 +445,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/dev/assets'
     | '/dev/characters'
+    | '/dev/media'
     | '/workout-session/$workoutId'
     | '/workouts/history'
     | '/workouts/program'
@@ -452,6 +474,7 @@ export interface FileRouteTypes {
     | '/_authenticated/hydration'
     | '/_authenticated/journal'
     | '/_authenticated/meals'
+    | '/_authenticated/media-inbox'
     | '/_authenticated/nutrition'
     | '/_authenticated/profile'
     | '/_authenticated/progress'
@@ -462,6 +485,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/dev/assets'
     | '/_authenticated/dev/characters'
+    | '/_authenticated/dev/media'
     | '/_authenticated/workout-session/$workoutId'
     | '/_authenticated/workouts/history'
     | '/_authenticated/workouts/program'
@@ -557,6 +581,13 @@ declare module '@tanstack/react-router' {
       path: '/nutrition'
       fullPath: '/nutrition'
       preLoaderRoute: typeof AuthenticatedNutritionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/media-inbox': {
+      id: '/_authenticated/media-inbox'
+      path: '/media-inbox'
+      fullPath: '/media-inbox'
+      preLoaderRoute: typeof AuthenticatedMediaInboxRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/meals': {
@@ -671,6 +702,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWorkoutSessionWorkoutIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/dev/media': {
+      id: '/_authenticated/dev/media'
+      path: '/media'
+      fullPath: '/dev/media'
+      preLoaderRoute: typeof AuthenticatedDevMediaRouteImport
+      parentRoute: typeof AuthenticatedDevRoute
+    }
     '/_authenticated/dev/characters': {
       id: '/_authenticated/dev/characters'
       path: '/characters'
@@ -754,12 +792,14 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedDevRouteChildren {
   AuthenticatedDevAssetsRoute: typeof AuthenticatedDevAssetsRoute
   AuthenticatedDevCharactersRoute: typeof AuthenticatedDevCharactersRoute
+  AuthenticatedDevMediaRoute: typeof AuthenticatedDevMediaRoute
   AuthenticatedDevIndexRoute: typeof AuthenticatedDevIndexRoute
 }
 
 const AuthenticatedDevRouteChildren: AuthenticatedDevRouteChildren = {
   AuthenticatedDevAssetsRoute: AuthenticatedDevAssetsRoute,
   AuthenticatedDevCharactersRoute: AuthenticatedDevCharactersRoute,
+  AuthenticatedDevMediaRoute: AuthenticatedDevMediaRoute,
   AuthenticatedDevIndexRoute: AuthenticatedDevIndexRoute,
 }
 
@@ -839,6 +879,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedHydrationRoute: typeof AuthenticatedHydrationRoute
   AuthenticatedJournalRoute: typeof AuthenticatedJournalRoute
   AuthenticatedMealsRoute: typeof AuthenticatedMealsRoute
+  AuthenticatedMediaInboxRoute: typeof AuthenticatedMediaInboxRoute
   AuthenticatedNutritionRoute: typeof AuthenticatedNutritionRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedProgressRoute: typeof AuthenticatedProgressRoute
@@ -858,6 +899,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHydrationRoute: AuthenticatedHydrationRoute,
   AuthenticatedJournalRoute: AuthenticatedJournalRoute,
   AuthenticatedMealsRoute: AuthenticatedMealsRoute,
+  AuthenticatedMediaInboxRoute: AuthenticatedMediaInboxRoute,
   AuthenticatedNutritionRoute: AuthenticatedNutritionRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedProgressRoute: AuthenticatedProgressRoute,
