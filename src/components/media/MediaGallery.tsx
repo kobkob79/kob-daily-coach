@@ -40,6 +40,7 @@ type MediaGalleryProps = {
   className?: string;
   /** Grid columns on mobile. */
   columns?: 2 | 3;
+  onSelectItem?: (item: MediaItem) => void;
 } & (
   | { characterId: CharacterId; category: AssetCategory; bucket?: string; prefix?: never }
   | { bucket: string; prefix: string; characterId?: never; category?: never }
@@ -49,7 +50,7 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 6;
 
 export function MediaGallery(props: MediaGalleryProps) {
-  const { title, className, columns = 2 } = props;
+  const { title, className, columns = 2, onSelectItem } = props;
   const bucket = props.bucket ?? ASSETS_BUCKET;
   const prefix =
     props.prefix ?? characterAssetPrefix(props.characterId!, props.category!);
@@ -150,8 +151,11 @@ export function MediaGallery(props: MediaGalleryProps) {
                 <MediaThumb
                   key={item.path}
                   item={item}
-                  onOpen={() => setActiveIndex(items.indexOf(item))}
-                />
+  onOpen={() =>
+  onSelectItem
+    ? onSelectItem(item)
+    : setActiveIndex(items.indexOf(item))
+}                />
               ))}
             </div>
           </div>

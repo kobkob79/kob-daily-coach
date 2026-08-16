@@ -5,15 +5,37 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { PremiumCard, SectionHeader } from "@/components/ui-kit/Section";
+import type { MediaItem } from "@/services/media.service";
 import { MediaGallery } from "@/components/media/MediaGallery";
+import { ExercisePicker } from "@/components/workouts/ExercisePicker";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   MEDIA_INBOX_BUCKET,
   uploadMediaInboxFile,
 } from "@/services/media-inbox.service";
-
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 export function MediaInboxCard() {
   const [userId, setUserId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
+  const [assignmentRole, setAssignmentRole] = useState<
+   "thumbnail" | "main" | "demo" | null >(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
@@ -96,8 +118,104 @@ export function MediaInboxCard() {
           bucket={MEDIA_INBOX_BUCKET}
           prefix={userId}
           columns={2}
+          onSelectItem={(item) => setSelectedItem(item)}
         />
       )}
-    </section>
+      <Sheet
+  open={!!selectedItem}
+  onOpenChange={(open) => {
+    if (!open) setSelectedItem(null);
+  }}
+>
+  <SheetContent side="bottom" dir="rtl">
+    <SheetHeader>
+      <SheetTitle>מה לעשות עם המדיה?</SheetTitle>
+    </SheetHeader>
+<div className="mt-4 grid gap-3">
+  {selectedItem?.kind === "image" && (
+    <>
+      <Button
+       onClick={() => { 
+        setAssignmentRole("thumbnail");
+        setPickerOpen(true);
+      }}
+      >
+        שייך כתמונה ממוזערת
+      </Button>
+
+       <Button
+        onClick={() => {
+          setAssignmentRole("main");
+          setPickerOpen(true);
+        }}
+      >
+        הגדר כתמונה ראשית לתרגיל
+      </Button>
+    </>
+  )}
+ {selectedItem?.kind === "video" && (
+    <Button
+      onClick={() => {
+        setAssignmentRole("demo");
+        setPickerOpen(true);
+      }}
+    >
+      שייך כסרטון הדגמה לתרגיל
+    </Button>
+  )}
+
+</div>
+  </SheetContent>
+</Sheet>
+
+<ExercisePicker
+  open={pickerOpen}
+  onClose={() => setPickerOpen(false)}
+ onSelect={(exerciseId) => {
+  setSelectedExerciseId(exerciseId);
+  setPickerOpen(false);
+ }}
+  title="בחר תרגיל לשיוך המדיה"
+/>
+
+<AlertDialog
+  open={!!selectedExerciseId}
+  onOpenChange={(open) => {
+    if (!open) setSelectedExerciseId(null);
+  }}
+>
+  <AlertDialogContent dir="rtl">
+    <AlertDialogHeader>
+      <AlertDialogTitle>אישור שיוך מדיה</AlertDialogTitle>
+
+      <AlertDialogDescription>
+        לשייך את המדיה לתרגיל שנבחר כ־
+        {assignmentRole === "thumbnail"
+          ? "תמונה ממוזערת"
+          : assignmentRole === "main"
+            ? "תמונה ראשית"
+            : "סרטון הדגמה"}
+        ?
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+
+    <AlertDialogFooter>
+      <AlertDialogCancel>ביטול</AlertDialogCancel>
+
+      <AlertDialogAction
+        onClick={() => {
+          console.log("Confirmed exercise:", selectedExerciseId);
+          console.log("Confirmed role:", assignmentRole);
+          setSelectedExerciseId(null);
+        }}
+      >
+        אישור
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+
+</section>
+
   );
 }
