@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { PremiumCard, SectionHeader } from "@/components/ui-kit/Section";
 import { MediaGallery } from "@/components/media/MediaGallery";
+import { ExerciseAssignSheet } from "@/components/media/ExerciseAssignSheet";
+import type { MediaItem } from "@/services/media.service";
 import {
   MEDIA_INBOX_BUCKET,
   uploadMediaInboxFile,
@@ -14,6 +16,7 @@ import {
 export function MediaInboxCard() {
   const [userId, setUserId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
