@@ -8,6 +8,7 @@
 import { useState } from "react";
 
 import { useExerciseMedia } from "@/hooks/useExerciseMedia";
+import { pickRoleMedia } from "@/lib/exercise-media";
 import { cn } from "@/lib/utils";
 
 export interface ExerciseMediaViewProps {
@@ -18,6 +19,12 @@ export interface ExerciseMediaViewProps {
   className?: string;
   /** Rendered when nothing resolves. */
   placeholder: React.ReactNode;
+  /**
+   * Prefer an explicitly assigned canonical role file (`thumbnail.*`,
+   * `main.*`, `demo.*`). Falls back to the default hero priority when the
+   * exercise has no file for that role. Omit to keep legacy behavior.
+   */
+  preferRole?: "thumbnail" | "main" | "demo";
 }
 
 export function ExerciseMediaView({
@@ -26,11 +33,13 @@ export function ExerciseMediaView({
   fallbackImage,
   className,
   placeholder,
+  preferRole,
 }: ExerciseMediaViewProps) {
-  const { hero, isPending } = useExerciseMedia({ exerciseId, exerciseName: name });
+  const { hero, items, isPending } = useExerciseMedia({ exerciseId, exerciseName: name });
   const [failed, setFailed] = useState(false);
 
-  const usableHero = hero && !failed ? hero : null;
+  const resolved = (preferRole ? pickRoleMedia(items, preferRole) : null) ?? hero;
+  const usableHero = resolved && !failed ? resolved : null;
   const still = !usableHero && fallbackImage ? fallbackImage : null;
 
   if (isPending) return <div className={cn("animate-pulse bg-muted/50", className)} />;
