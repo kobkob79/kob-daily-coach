@@ -93,6 +93,19 @@ export function pickHeroMedia(items: MediaItem[]): ExerciseHeroMedia | null {
   return best;
 }
 
+/**
+ * Explicit canonical-role lookup (`thumbnail.*` / `main.*` / `demo.*`),
+ * written by the Media Inbox assignment flow. Returns null when the exercise
+ * has no file for that role, so callers can fall back to `pickHeroMedia`.
+ */
+export function pickRoleMedia(
+  items: MediaItem[],
+  role: "thumbnail" | "main" | "demo",
+): ExerciseHeroMedia | null {
+  const hit = items.find((item) => item.name.toLowerCase().startsWith(`${role}.`));
+  return hit ? { item: hit, role: classifyExerciseMedia(hit) } : null;
+}
+
 export const EXERCISE_MEDIA_ROLE_LABEL: Record<ExerciseMediaRole, string> = {
   video: "וידאו",
   animation: "אנימציה",
