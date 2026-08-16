@@ -1,9 +1,8 @@
 /**
  * ExerciseMediaView — the shared read-only media frame for an exercise.
  *
- * Uses the single existing resolution priority (Storage video → animation →
- * image → `exercises.image_path` → placeholder) via `useExerciseMedia`, so the
- * picker card, the details sheet and the session hero all behave identically.
+ * Can render either the legacy hero resolution or an explicitly assigned
+ * media role such as thumbnail, main image or demo video.
  */
 import { useState } from "react";
 
@@ -18,6 +17,7 @@ export interface ExerciseMediaViewProps {
   className?: string;
   /** Rendered when nothing resolves. */
   placeholder: React.ReactNode;
+  mediaRole?: "hero" | "thumbnail" | "main" | "demo";
 }
 
 export function ExerciseMediaView({
@@ -26,20 +26,36 @@ export function ExerciseMediaView({
   fallbackImage,
   className,
   placeholder,
+  mediaRole = "hero",
 }: ExerciseMediaViewProps) {
-  const { hero, isPending } = useExerciseMedia({ exerciseId, exerciseName: name });
+  const { hero, thumbnail, main, demo, isPending } = useExerciseMedia({
+    exerciseId,
+    exerciseName: name,
+  });
+
   const [failed, setFailed] = useState(false);
 
-  const usableHero = hero && !failed ? hero : null;
-  const still = !usableHero && fallbackImage ? fallbackImage : null;
+  const selectedMedia =
+    mediaRole === "thumbnail"
+      ? thumbnail
+      : mediaRole === "main"
+        ? main
+        : mediaRole === "demo"
+          ? demo
+          : hero?.item ?? null;
 
-  if (isPending) return <div className={cn("animate-pulse bg-muted/50", className)} />;
+  const usableMedia = selectedMedia && !failed ? selectedMedia : null;
+  const still = !usableMedia && fallbackImage ? fallbackImage : null;
 
-  if (usableHero) {
-    return usableHero.role === "video" ? (
+  if (isPending) {
+    return <div className={cn("animate-pulse bg-muted/50", className)} />;
+  }
+
+  if (usableMedia) {
+    return usableMedia.kind === "video" ? (
       <video
-        key={usableHero.item.path}
-        src={usableHero.item.url}
+        key={usableMedia.path}
+        src={usableMedia.url}
         className={cn("object-cover", className)}
         autoPlay
         loop
@@ -50,8 +66,8 @@ export function ExerciseMediaView({
       />
     ) : (
       <img
-        key={usableHero.item.path}
-        src={usableHero.item.url}
+        key={usableMedia.path}
+        src={usableMedia.url}
         alt={name ?? "תרגיל"}
         className={cn("object-cover", className)}
         loading="lazy"

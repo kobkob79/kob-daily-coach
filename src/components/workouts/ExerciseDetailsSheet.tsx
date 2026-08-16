@@ -366,6 +366,7 @@ function HeroMedia({ exercise }: { exercise: PickerExercise }) {
         exerciseId={exercise.id}
         name={exercise.name}
         fallbackImage={exercise.image_path}
+        mediaRole="main"
         className="h-full w-full"
         placeholder={<HeroPlaceholder />}
       />

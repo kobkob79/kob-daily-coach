@@ -15,6 +15,11 @@ export const EXERCISE_MEDIA_ROOT = "exercises";
 
 export type ExerciseMediaRole = "video" | "animation" | "image";
 
+export type ExerciseMediaAssignmentRole =
+  | "thumbnail"
+  | "main"
+  | "demo";
+
 /** Folder-name hints used to classify animations. */
 const ANIMATION_HINTS = ["anim", "animation", "animations", "loop", "gif"];
 /** Filename hints that mark a still as the preferred hero frame. */
@@ -91,6 +96,17 @@ export function pickHeroMedia(items: MediaItem[]): ExerciseHeroMedia | null {
     }
   }
   return best;
+}
+
+export function pickAssignedExerciseMedia(
+  items: MediaItem[],
+  role: ExerciseMediaAssignmentRole,
+): MediaItem | null {
+  const prefix = `${role}.`;
+
+  return items.find((item) =>
+    item.name.toLowerCase().startsWith(prefix),
+  ) ?? null;
 }
 
 export const EXERCISE_MEDIA_ROLE_LABEL: Record<ExerciseMediaRole, string> = {

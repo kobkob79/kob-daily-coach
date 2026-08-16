@@ -15,6 +15,7 @@ import {
 import { ASSETS_BUCKET } from "@/lib/media-paths";
 import {
   exerciseMediaPrefixes,
+  pickAssignedExerciseMedia,
   pickHeroMedia,
   type ExerciseHeroMedia,
 } from "@/lib/exercise-media";
@@ -66,5 +67,16 @@ export function useExerciseMedia({
   const items = query.data ?? [];
   const hero: ExerciseHeroMedia | null = pickHeroMedia(items);
 
-  return { ...query, items, hero };
+  const thumbnail = pickAssignedExerciseMedia(items, "thumbnail");
+  const main = pickAssignedExerciseMedia(items, "main");
+  const demo = pickAssignedExerciseMedia(items, "demo");
+
+  return {
+    ...query,
+    items,
+    hero,
+    thumbnail,
+    main,
+    demo,
+  };
 }
