@@ -40,6 +40,11 @@ type MediaGalleryProps = {
   className?: string;
   /** Grid columns on mobile. */
   columns?: 2 | 3;
+  /**
+   * When provided, tapping a tile hands the item to the caller instead of
+   * opening the fullscreen viewer (used by the assignment flow).
+   */
+  onSelectItem?: (item: MediaItem) => void;
 } & (
   | { characterId: CharacterId; category: AssetCategory; bucket?: string; prefix?: never }
   | { bucket: string; prefix: string; characterId?: never; category?: never }
