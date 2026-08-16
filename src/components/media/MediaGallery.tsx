@@ -54,7 +54,7 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 6;
 
 export function MediaGallery(props: MediaGalleryProps) {
-  const { title, className, columns = 2 } = props;
+  const { title, className, columns = 2, onSelectItem } = props;
   const bucket = props.bucket ?? ASSETS_BUCKET;
   const prefix =
     props.prefix ?? characterAssetPrefix(props.characterId!, props.category!);
