@@ -8,6 +8,7 @@ import { PremiumCard, SectionHeader } from "@/components/ui-kit/Section";
 import type { MediaItem } from "@/services/media.service";
 import { MediaGallery } from "@/components/media/MediaGallery";
 import { ExercisePicker } from "@/components/workouts/ExercisePicker";
+import { assignExerciseMediaServer } from "@/lib/exercise-media-assignment.functions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +37,8 @@ export function MediaInboxCard() {
    "thumbnail" | "main" | "demo" | null >(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
+  const [assigning, setAssigning] = useState(false);
+  const [replaceConfirmOpen, setReplaceConfirmOpen] = useState(false);
   const galleryRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
@@ -124,8 +127,11 @@ export function MediaInboxCard() {
       <Sheet
   open={!!selectedItem}
   onOpenChange={(open) => {
-    if (!open) setSelectedItem(null);
-  }}
+  if (!open && !replaceConfirmOpen) {
+    setSelectedExerciseId(null);
+  }
+}}
+
 >
   <SheetContent side="bottom" dir="rtl">
     <SheetHeader>
@@ -179,8 +185,7 @@ export function MediaInboxCard() {
 />
 
 <AlertDialog
-  open={!!selectedExerciseId}
-  onOpenChange={(open) => {
+  open={!!selectedExerciseId && !replaceConfirmOpen}  onOpenChange={(open) => {
     if (!open) setSelectedExerciseId(null);
   }}
 >
@@ -202,14 +207,111 @@ export function MediaInboxCard() {
     <AlertDialogFooter>
       <AlertDialogCancel>ביטול</AlertDialogCancel>
 
+     <AlertDialogAction
+  disabled={assigning}
+  onClick={async () => {
+    if (!selectedItem || !selectedExerciseId || !assignmentRole) return;
+
+    setAssigning(true);
+
+    try {
+      const result = await assignExerciseMediaServer({
+        data: {
+          sourcePath: selectedItem.path,
+          exerciseId: selectedExerciseId,
+          role: assignmentRole,
+          replace: false,
+        },
+      });
+
+    if (result.status === "exists") {
+    setReplaceConfirmOpen(true);
+    return;
+    }      
+
+    await qc.invalidateQueries({
+        queryKey: ["exercise-media", selectedExerciseId],
+  });
+
+      toast.success("המדיה שויכה לתרגיל");
+
+      setSelectedExerciseId(null);
+      setAssignmentRole(null);
+      setSelectedItem(null);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "שיוך המדיה נכשל",
+      );
+    } finally {
+      setAssigning(false);
+    }
+  }}
+>
+  {assigning ? "משייך..." : "אישור"}
+</AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+
+<AlertDialog
+  open={replaceConfirmOpen}
+  onOpenChange={(open) => {
+    setReplaceConfirmOpen(open);
+
+    if (!open) {
+      setSelectedExerciseId(null);
+    }
+  }}
+>
+  <AlertDialogContent dir="rtl">
+    <AlertDialogHeader>
+      <AlertDialogTitle>להחליף את המדיה הקיימת?</AlertDialogTitle>
+
+      <AlertDialogDescription>
+        כבר קיימת מדיה מסוג זה לתרגיל. הפעולה תחליף אותה במדיה החדשה.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+
+    <AlertDialogFooter>
+      <AlertDialogCancel>ביטול</AlertDialogCancel>
+
       <AlertDialogAction
-        onClick={() => {
-          console.log("Confirmed exercise:", selectedExerciseId);
-          console.log("Confirmed role:", assignmentRole);
-          setSelectedExerciseId(null);
+        disabled={assigning}
+        onClick={async () => {
+          if (!selectedItem || !selectedExerciseId || !assignmentRole) return;
+
+          setAssigning(true);
+
+          try {
+            await assignExerciseMediaServer({
+              data: {
+                sourcePath: selectedItem.path,
+                exerciseId: selectedExerciseId,
+                role: assignmentRole,
+                replace: true,
+              },
+            });
+
+            await qc.invalidateQueries({
+              queryKey: ["exercise-media", selectedExerciseId],
+            });
+
+            toast.success("המדיה הוחלפה בהצלחה");
+
+            setReplaceConfirmOpen(false);
+            setSelectedExerciseId(null);
+            setAssignmentRole(null);
+            setSelectedItem(null);
+          } catch (error) {
+            toast.error(
+              error instanceof Error ? error.message : "החלפת המדיה נכשלה",
+            );
+          } finally {
+            setAssigning(false);
+          }
         }}
       >
-        אישור
+        {assigning ? "מחליף..." : "החלף"}
       </AlertDialogAction>
     </AlertDialogFooter>
   </AlertDialogContent>
