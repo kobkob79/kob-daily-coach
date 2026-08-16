@@ -155,7 +155,11 @@ export function MediaGallery(props: MediaGalleryProps) {
                 <MediaThumb
                   key={item.path}
                   item={item}
-                  onOpen={() => setActiveIndex(items.indexOf(item))}
+                  onOpen={() =>
+                    onSelectItem
+                      ? onSelectItem(item)
+                      : setActiveIndex(items.indexOf(item))
+                  }
                 />
               ))}
             </div>
