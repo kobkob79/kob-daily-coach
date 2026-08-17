@@ -796,6 +796,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       vision_captures: {
         Row: {
           ai_status: string
@@ -1236,12 +1257,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       increment_meal_favorite_use: {
         Args: { _favorite_id: string }
         Returns: number
       }
     }
     Enums: {
+      app_role: "admin" | "user"
       body_area: "neck" | "sciatica" | "ac_joint" | "general"
       exercise_category:
         | "push"
@@ -1379,6 +1408,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "user"],
       body_area: ["neck", "sciatica", "ac_joint", "general"],
       exercise_category: [
         "push",
