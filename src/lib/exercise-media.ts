@@ -18,6 +18,7 @@ export type ExerciseMediaRole = "video" | "animation" | "image";
 export type ExerciseMediaAssignmentRole =
   | "thumbnail"
   | "main"
+  | "guide"
   | "demo";
 
 /** Folder-name hints used to classify animations. */

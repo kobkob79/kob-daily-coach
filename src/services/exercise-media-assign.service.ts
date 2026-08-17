@@ -1,10 +1,10 @@
 import { EXERCISE_MEDIA_ROOT } from "@/lib/exercise-media";
 
-export type ExerciseAssignRole = "thumbnail" | "main" | "demo";
-
+export type ExerciseAssignRole = "thumbnail" | "main" | "guide" | "demo";
 export const EXERCISE_ASSIGN_ROLE_LABEL: Record<ExerciseAssignRole, string> = {
   thumbnail: "תמונה ממוזערת",
   main: "תמונה ראשית",
+  guide: "מדריך מלא",
   demo: "סרטון הדגמה",
 };
 

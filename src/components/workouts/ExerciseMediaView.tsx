@@ -17,8 +17,7 @@ export interface ExerciseMediaViewProps {
   className?: string;
   /** Rendered when nothing resolves. */
   placeholder: React.ReactNode;
-  mediaRole?: "hero" | "thumbnail" | "main" | "demo";
-}
+  mediaRole?: "hero" | "thumbnail" | "main" | "guide" | "demo";}
 
 export function ExerciseMediaView({
   exerciseId,
@@ -28,7 +27,7 @@ export function ExerciseMediaView({
   placeholder,
   mediaRole = "hero",
 }: ExerciseMediaViewProps) {
-  const { hero, thumbnail, main, demo, isPending } = useExerciseMedia({
+  const { hero, thumbnail, main, guide, demo, isPending } = useExerciseMedia({
     exerciseId,
     exerciseName: name,
   });
@@ -36,10 +35,12 @@ export function ExerciseMediaView({
   const [failed, setFailed] = useState(false);
 
   const selectedMedia =
-    mediaRole === "thumbnail"
-      ? thumbnail
-      : mediaRole === "main"
-        ? main
+  mediaRole === "thumbnail"
+    ? thumbnail
+    : mediaRole === "main"
+      ? main
+      : mediaRole === "guide"
+        ? guide
         : mediaRole === "demo"
           ? demo
           : hero?.item ?? null;

@@ -4,8 +4,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { ASSETS_BUCKET } from "@/lib/media-paths";
 import { MEDIA_INBOX_BUCKET } from "@/services/media-inbox.service";
 
-type AssignmentRole = "thumbnail" | "main" | "demo";
-
+type AssignmentRole = "thumbnail" | "main" | "guide" | "demo";
 function extensionOf(path: string): string {
   const fileName = path.split("/").pop() ?? "";
   const dot = fileName.lastIndexOf(".");
@@ -25,8 +24,8 @@ export const assignExerciseMediaServer = createServerFn({ method: "POST" })
     if (!sourcePath) throw new Error("Missing source media path");
     if (!exerciseId) throw new Error("Missing exercise id");
 
-    if (!["thumbnail", "main", "demo"].includes(role)) {
-      throw new Error("Invalid media role");
+if (!["thumbnail", "main", "guide", "demo"].includes(role)) {
+          throw new Error("Invalid media role");
     }
 
     return {

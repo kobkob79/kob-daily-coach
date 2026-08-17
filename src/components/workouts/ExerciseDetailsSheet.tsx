@@ -360,7 +360,10 @@ function PersonalIntel({
 
 /** Reserved 16:9 media area — premium placeholder until assets exist. */
 function HeroMedia({ exercise }: { exercise: PickerExercise }) {
-  return (
+  const [guideOpen, setGuideOpen] = useState(false);
+
+  rreturn (
+  <>
     <div className="relative aspect-video w-full overflow-hidden bg-gradient-to-br from-muted/40 via-card/60 to-muted/20">
       <ExerciseMediaView
         exerciseId={exercise.id}
@@ -370,9 +373,64 @@ function HeroMedia({ exercise }: { exercise: PickerExercise }) {
         className="h-full w-full"
         placeholder={<HeroPlaceholder />}
       />
+
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background to-transparent" />
+
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        className="absolute bottom-3 left-3 z-10 h-8 rounded-full px-3 text-xs shadow-lg"
+        onClick={() => setGuideOpen(true)}
+      >
+        הראה עוד
+      </Button>
     </div>
-  );
+
+    <Sheet open={guideOpen} onOpenChange={setGuideOpen}>
+      <SheetContent
+        side="bottom"
+        dir="rtl"
+        className="h-[96dvh] overflow-hidden rounded-t-3xl border-border/60 p-0"
+      >
+        <div className="flex h-full flex-col">
+          <SheetHeader className="shrink-0 border-b border-border/50 px-4 py-3 text-right">
+            <div className="flex items-center justify-between gap-3">
+              <SheetTitle className="text-base">
+                {exercise.name}
+              </SheetTitle>
+
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-9 w-9 shrink-0"
+                onClick={() => setGuideOpen(false)}
+                aria-label="סגור מדריך"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </SheetHeader>
+
+          <div className="min-h-0 flex-1 overflow-auto bg-black">
+            <ExerciseMediaView
+              exerciseId={exercise.id}
+              name={exercise.name}
+              mediaRole="guide"
+              className="h-auto w-full object-contain"
+              placeholder={
+                <div className="grid min-h-[60vh] place-items-center p-6 text-center text-sm text-muted-foreground">
+                  מדריך מלא יתווסף בקרוב
+                </div>
+              }
+            />
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  </>
+);
 }
 
 function HeroPlaceholder() {

@@ -67,9 +67,10 @@ export function useExerciseMedia({
   const items = query.data ?? [];
   const hero: ExerciseHeroMedia | null = pickHeroMedia(items);
 
-  const thumbnail = pickAssignedExerciseMedia(items, "thumbnail");
-  const main = pickAssignedExerciseMedia(items, "main");
-  const demo = pickAssignedExerciseMedia(items, "demo");
+const thumbnail = pickAssignedExerciseMedia(items, "thumbnail");
+const main = pickAssignedExerciseMedia(items, "main");
+const guide = pickAssignedExerciseMedia(items, "guide");
+const demo = pickAssignedExerciseMedia(items, "demo");
 
   return {
     ...query,
@@ -77,6 +78,7 @@ export function useExerciseMedia({
     hero,
     thumbnail,
     main,
-    demo,
+    guide,
+demo,
   };
 }
