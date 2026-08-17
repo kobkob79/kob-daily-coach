@@ -1,13 +1,14 @@
 /**
- * Media Inbox → exercise assignment flow (Phase 1).
+ * Media Inbox → exercise assignment flow.
  *
  * Bottom action sheet → existing ExercisePicker → confirmation → copy into
  * `exercise-assets/exercises/<id>/<role>.<ext>`. No new schema, no picker
- * duplication, and the original inbox file is never deleted.
+ * duplication. After a successful assignment the admin decides whether the
+ * original Inbox file stays or is deleted; nothing is deleted automatically.
  */
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Image as ImageIcon, Loader2, Star, Video } from "lucide-react";
+import { Image as ImageIcon, Loader2, Star, Trash2, Video } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,10 @@ import {
 import { ExercisePicker } from "@/components/workouts/ExercisePicker";
 import { supabase } from "@/integrations/supabase/client";
 import type { MediaItem } from "@/services/media.service";
+import {
+  MEDIA_INBOX_BUCKET,
+  deleteMediaInboxFile,
+} from "@/services/media-inbox.service";
 import {
   assignInboxMediaToExercise,
   destinationPath,
@@ -39,8 +44,11 @@ const IMAGE_ACTIONS: { role: ExerciseAssignRole; label: string; icon: typeof Sta
   { role: "main", label: "הגדר כתמונה ראשית לתרגיל", icon: Star },
 ];
 
+type Step = "actions" | "confirm" | "replace" | "post-assign" | "delete";
+
 export function ExerciseAssignSheet({ item, onClose }: Props) {
   const qc = useQueryClient();
+  const [step, setStep] = useState<Step>("actions");
   const [role, setRole] = useState<ExerciseAssignRole | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [target, setTarget] = useState<{ id: string; name: string } | null>(null);
@@ -53,6 +61,7 @@ export function ExerciseAssignSheet({ item, onClose }: Props) {
     : IMAGE_ACTIONS;
 
   function reset() {
+    setStep("actions");
     setRole(null);
     setPickerOpen(false);
     setTarget(null);
@@ -65,6 +74,11 @@ export function ExerciseAssignSheet({ item, onClose }: Props) {
     onClose();
   }
 
+  async function refreshGallery() {
+    await qc.invalidateQueries({ queryKey: ["exercise-media"] });
+    await qc.invalidateQueries({ queryKey: ["media-tree"] });
+  }
+
   async function pickExercise(exerciseId: string) {
     setPickerOpen(false);
     const { data } = await supabase
@@ -73,6 +87,7 @@ export function ExerciseAssignSheet({ item, onClose }: Props) {
       .eq("id", exerciseId)
       .maybeSingle();
     setTarget({ id: exerciseId, name: data?.name ?? "תרגיל" });
+    setStep("confirm");
   }
 
   async function confirm(allowReplace = false) {
@@ -83,6 +98,7 @@ export function ExerciseAssignSheet({ item, onClose }: Props) {
         const existing = await findExistingRoleMedia(target.id, role);
         if (existing) {
           setReplacePath(existing);
+          setStep("replace");
           setBusy(false);
           return;
         }
@@ -95,20 +111,34 @@ export function ExerciseAssignSheet({ item, onClose }: Props) {
         allowReplace: true,
       });
 
-      await qc.invalidateQueries({ queryKey: ["exercise-media"] });
-      await qc.invalidateQueries({ queryKey: ["media-tree"] });
+      await refreshGallery();
       toast.success(
         `המדיה שויכה ל-${target.name} כ${EXERCISE_ASSIGN_ROLE_LABEL[role]}`,
       );
-      closeAll();
+      setBusy(false);
+      setStep("post-assign");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "השיוך נכשל");
       setBusy(false);
     }
   }
 
+  async function removeFromInbox() {
+    if (!item) return;
+    setBusy(true);
+    try {
+      await deleteMediaInboxFile(item.path);
+      await qc.invalidateQueries({ queryKey: ["media-tree", MEDIA_INBOX_BUCKET] });
+      await qc.invalidateQueries({ queryKey: ["media-tree"] });
+      toast.success("הקובץ נמחק מה-Inbox");
+      closeAll();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "המחיקה נכשלה");
+      setBusy(false);
+    }
+  }
+
   const open = !!item;
-  const showConfirm = !!target && !!role;
 
   return (
     <>
@@ -118,7 +148,10 @@ export function ExerciseAssignSheet({ item, onClose }: Props) {
           if (!next) closeAll();
         }}
       >
-        <SheetContent side="bottom" className="rounded-t-3xl">
+        <SheetContent
+          side="bottom"
+          className="max-h-[85vh] overflow-y-auto rounded-t-3xl pb-[max(1rem,env(safe-area-inset-bottom))]"
+        >
           <SheetHeader className="text-start">
             <SheetTitle>מה לעשות עם המדיה?</SheetTitle>
             <SheetDescription dir="ltr" className="truncate text-start">
@@ -126,13 +159,13 @@ export function ExerciseAssignSheet({ item, onClose }: Props) {
             </SheetDescription>
           </SheetHeader>
 
-          {!showConfirm && (
+          {step === "actions" && (
             <div className="mt-4 space-y-2 pb-4">
               {actions.map(({ role: r, label, icon: Icon }) => (
                 <Button
                   key={r}
                   variant="outline"
-                  className="w-full justify-start"
+                  className="h-12 w-full justify-start"
                   onClick={() => {
                     setRole(r);
                     setPickerOpen(true);
@@ -142,30 +175,39 @@ export function ExerciseAssignSheet({ item, onClose }: Props) {
                   {label}
                 </Button>
               ))}
+
+              <Button
+                variant="ghost"
+                className="h-12 w-full justify-start text-destructive hover:text-destructive"
+                onClick={() => setStep("delete")}
+              >
+                <Trash2 className="ml-2 h-4 w-4" />
+                מחק מה-Inbox
+              </Button>
             </div>
           )}
 
-          {showConfirm && !replacePath && (
+          {step === "confirm" && target && role && (
             <div className="mt-4 space-y-4 pb-4">
               <p className="text-sm">
-                לשייך את המדיה ל-{target!.name} כ{EXERCISE_ASSIGN_ROLE_LABEL[role!]}?
+                לשייך את המדיה ל-{target.name} כ{EXERCISE_ASSIGN_ROLE_LABEL[role]}?
               </p>
               <p dir="ltr" className="text-[11px] text-muted-foreground">
-                {destinationPath(target!.id, role!, item!.path)}
+                {destinationPath(target.id, role, item!.path)}
               </p>
               <div className="grid grid-cols-2 gap-3">
-                <Button disabled={busy} onClick={() => void confirm(false)}>
+                <Button className="h-12" disabled={busy} onClick={() => void confirm(false)}>
                   {busy && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
                   אישור
                 </Button>
-                <Button variant="outline" disabled={busy} onClick={closeAll}>
+                <Button className="h-12" variant="outline" disabled={busy} onClick={closeAll}>
                   ביטול
                 </Button>
               </div>
             </div>
           )}
 
-          {showConfirm && replacePath && (
+          {step === "replace" && replacePath && (
             <div className="mt-4 space-y-4 pb-4">
               <p className="text-sm">כבר קיימת מדיה מסוג זה לתרגיל. להחליף אותה?</p>
               <p dir="ltr" className="text-[11px] text-muted-foreground">
@@ -173,6 +215,7 @@ export function ExerciseAssignSheet({ item, onClose }: Props) {
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <Button
+                  className="h-12"
                   variant="destructive"
                   disabled={busy}
                   onClick={() => void confirm(true)}
@@ -180,8 +223,56 @@ export function ExerciseAssignSheet({ item, onClose }: Props) {
                   {busy && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
                   החלף
                 </Button>
-                <Button variant="outline" disabled={busy} onClick={closeAll}>
+                <Button className="h-12" variant="outline" disabled={busy} onClick={closeAll}>
                   ביטול
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {step === "post-assign" && (
+            <div className="mt-4 space-y-4 pb-4">
+              <p className="text-sm">השיוך הושלם. מה לעשות עם הקובץ המקורי ב-Inbox?</p>
+              <div className="grid gap-3">
+                <Button className="h-12" variant="outline" disabled={busy} onClick={closeAll}>
+                  השאר ב-Inbox
+                </Button>
+                <Button
+                  className="h-12"
+                  variant="destructive"
+                  disabled={busy}
+                  onClick={() => void removeFromInbox()}
+                >
+                  {busy && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                  מחק מה-Inbox
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {step === "delete" && (
+            <div className="mt-4 space-y-4 pb-4">
+              <p className="text-sm">למחוק את הקובץ מה-Inbox? הפעולה אינה ניתנת לשחזור.</p>
+              <p dir="ltr" className="text-[11px] text-muted-foreground">
+                {item?.path}
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  className="h-12"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => setStep("actions")}
+                >
+                  ביטול
+                </Button>
+                <Button
+                  className="h-12"
+                  variant="destructive"
+                  disabled={busy}
+                  onClick={() => void removeFromInbox()}
+                >
+                  {busy && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                  מחק
                 </Button>
               </div>
             </div>
