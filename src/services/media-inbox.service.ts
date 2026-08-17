@@ -30,3 +30,20 @@ export async function uploadMediaInboxFile(file: File): Promise<string> {
 
   return path;
 }
+
+/**
+ * Deletes one Inbox object. Ownership is enforced by Storage RLS
+ * (`(storage.foldername(name))[1] = auth.uid()::text`); the client-side check
+ * below only avoids pointless requests.
+ */
+export async function deleteMediaInboxFile(path: string): Promise<void> {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
+  if (!user) throw new Error("Not signed in");
+  if (!path.startsWith(`${user.id}/`)) {
+    throw new Error("אין הרשאה למחוק את הקובץ הזה");
+  }
+
+  const { error } = await supabase.storage.from(MEDIA_INBOX_BUCKET).remove([path]);
+  if (error) throw error;
+}
