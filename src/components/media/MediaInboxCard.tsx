@@ -1,5 +1,5 @@
-﻿import { useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Camera, ImagePlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,31 +14,41 @@ import {
 } from "@/services/media-inbox.service";
 
 export function MediaInboxCard() {
-  const [userId, setUserId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
 
-  async function ensureUser() {
-    const { data } = await supabase.auth.getUser();
-    const id = data.user?.id ?? null;
-    setUserId(id);
-    return id;
-  }
+  /**
+   * Root cause of the "inbox looks empty until you upload" bug: the user id was
+   * only resolved inside `upload()`, so the gallery (which is keyed by the
+   * user's folder prefix) never mounted on first visit. Resolve it on mount.
+   */
+  const userQ = useQuery({
+    queryKey: ["media-inbox-user"],
+    queryFn: async () => {
+      const { data } = await supabase.auth.getUser();
+      return data.user?.id ?? null;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const userId = userQ.data ?? null;
+
+  useEffect(() => {
+    if (userQ.isError) toast.error("לא הצלחנו לזהות את המשתמש");
+  }, [userQ.isError]);
 
   async function upload(file?: File) {
     if (!file || uploading) return;
     setUploading(true);
     try {
-      const id = userId ?? (await ensureUser());
-      if (!id) return;
+      if (!userId) return;
       await uploadMediaInboxFile(file);
       await qc.invalidateQueries({
-        queryKey: ["media-tree", MEDIA_INBOX_BUCKET, id],
+        queryKey: ["media-tree", MEDIA_INBOX_BUCKET, userId],
       });
-          } catch (error) {
+    } catch (error) {
       toast.error(error instanceof Error ? error.message : "ההעלאה נכשלה");
     } finally {
       setUploading(false);
@@ -78,7 +88,7 @@ export function MediaInboxCard() {
         <input
           ref={galleryRef}
           type="file"
-          accept="image/*"
+          accept="image/*,video/*"
           className="hidden"
           onChange={(e) => void upload(e.target.files?.[0])}
         />
@@ -92,6 +102,12 @@ export function MediaInboxCard() {
           onChange={(e) => void upload(e.target.files?.[0])}
         />
       </PremiumCard>
+
+      {userQ.isPending && (
+        <PremiumCard className="grid place-items-center py-8">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </PremiumCard>
+      )}
 
       {userId && (
         <MediaGallery

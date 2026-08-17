@@ -39,7 +39,8 @@ import { getAllMemory } from "@/lib/ai-memory";
 import { fetchLifeProfile } from "@/lib/life-profile";
 import { QAToolsCard } from "@/components/qa/QAToolsCard";
 import { ThemeSelector } from "@/components/ThemeSelector";
-import { MediaInboxCard } from "@/components/media/MediaInboxCard";
+import { useQuery as useAdminQuery } from "@tanstack/react-query";
+import { fetchIsAdmin } from "@/lib/admin";
 export const Route = createFileRoute("/_authenticated/profile")({
   component: ProfilePage,
 });
@@ -91,7 +92,7 @@ function ProfilePage() {
       )}
 
       <ThemeSelector />
-      <MediaInboxCard />
+      <AdminEntry />
       <BodyPhotosSection
         photos={photosQ.data ?? []}
         onChanged={() => qc.invalidateQueries({ queryKey: ["body-photos"] })}
@@ -104,6 +105,24 @@ function ProfilePage() {
 
       <QAToolsCard />
     </div>
+  );
+}
+
+/* ---------------- Admin entry (admins only) ---------------- */
+
+function AdminEntry() {
+  const adminQ = useAdminQuery({ queryKey: ["is-admin"], queryFn: fetchIsAdmin });
+  if (!adminQ.data) return null;
+  return (
+    <Link to="/admin" className="block">
+      <PremiumCard className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">Viora Admin</p>
+          <p className="text-xs text-muted-foreground">ניהול מדיה ותכנים</p>
+        </div>
+        <Sparkles className="h-4 w-4 text-primary" aria-hidden />
+      </PremiumCard>
+    </Link>
   );
 }
 
