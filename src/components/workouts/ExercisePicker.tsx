@@ -320,6 +320,7 @@ function ExerciseCard({ ex, onPick }: { ex: PickerExercise; onPick: () => void }
           exerciseId={ex.id}
           name={ex.name}
           fallbackImage={ex.image_path}
+          preferRole="thumbnail"
           className="h-full w-full"
           placeholder={
             <div className="grid h-full w-full place-items-center">
