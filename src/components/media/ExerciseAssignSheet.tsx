@@ -26,11 +26,10 @@ import {
   MEDIA_INBOX_BUCKET,
   deleteMediaInboxFile,
 } from "@/services/media-inbox.service";
+import { assignExerciseMediaServer } from "@/lib/exercise-media-assignment.functions";
 import {
-  assignInboxMediaToExercise,
   destinationPath,
   EXERCISE_ASSIGN_ROLE_LABEL,
-  findExistingRoleMedia,
   type ExerciseAssignRole,
 } from "@/services/exercise-media-assign.service";
 
@@ -90,38 +89,43 @@ export function ExerciseAssignSheet({ item, onClose }: Props) {
     setStep("confirm");
   }
 
-  async function confirm(allowReplace = false) {
-    if (!item || !role || !target) return;
-    setBusy(true);
-    try {
-      if (!allowReplace) {
-        const existing = await findExistingRoleMedia(target.id, role);
-        if (existing) {
-          setReplacePath(existing);
-          setStep("replace");
-          setBusy(false);
-          return;
-        }
-      }
+ async function confirm(allowReplace = false) {
+  if (!item || !role || !target) return;
 
-      await assignInboxMediaToExercise({
-        inboxPath: item.path,
+  setBusy(true);
+
+  try {
+    const result = await assignExerciseMediaServer({
+      data: {
+        sourcePath: item.path,
         exerciseId: target.id,
         role,
-        allowReplace: true,
-      });
+        replace: allowReplace,
+      },
+    });
 
-      await refreshGallery();
-      toast.success(
-        `המדיה שויכה ל-${target.name} כ${EXERCISE_ASSIGN_ROLE_LABEL[role]}`,
-      );
+    if (result.status === "exists") {
+      setReplacePath(result.existingPath);
+      setStep("replace");
       setBusy(false);
-      setStep("post-assign");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "השיוך נכשל");
-      setBusy(false);
+      return;
     }
+
+    await refreshGallery();
+
+    toast.success(
+      `המדיה שויכה ל-${target.name} כ${EXERCISE_ASSIGN_ROLE_LABEL[role]}`,
+    );
+
+    setBusy(false);
+    setStep("post-assign");
+  } catch (error) {
+    toast.error(
+      error instanceof Error ? error.message : "השיוך נכשל",
+    );
+    setBusy(false);
   }
+}
 
   async function removeFromInbox() {
     if (!item) return;
