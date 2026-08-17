@@ -1,66 +1,54 @@
-﻿import { useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Camera, ImagePlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { PremiumCard, SectionHeader } from "@/components/ui-kit/Section";
-import type { MediaItem } from "@/services/media.service";
 import { MediaGallery } from "@/components/media/MediaGallery";
-import { ExercisePicker } from "@/components/workouts/ExercisePicker";
-import { assignExerciseMediaServer } from "@/lib/exercise-media-assignment.functions";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ExerciseAssignSheet } from "@/components/media/ExerciseAssignSheet";
+import type { MediaItem } from "@/services/media.service";
 import {
   MEDIA_INBOX_BUCKET,
   uploadMediaInboxFile,
 } from "@/services/media-inbox.service";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+
 export function MediaInboxCard() {
-  const [userId, setUserId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
-  const [assignmentRole, setAssignmentRole] = useState<
-   "thumbnail" | "main" | "demo" | null >(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
-  const [assigning, setAssigning] = useState(false);
-  const [replaceConfirmOpen, setReplaceConfirmOpen] = useState(false);
   const galleryRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
 
-  async function ensureUser() {
-    const { data } = await supabase.auth.getUser();
-    const id = data.user?.id ?? null;
-    setUserId(id);
-    return id;
-  }
+  /**
+   * Root cause of the "inbox looks empty until you upload" bug: the user id was
+   * only resolved inside `upload()`, so the gallery (which is keyed by the
+   * user's folder prefix) never mounted on first visit. Resolve it on mount.
+   */
+  const userQ = useQuery({
+    queryKey: ["media-inbox-user"],
+    queryFn: async () => {
+      const { data } = await supabase.auth.getUser();
+      return data.user?.id ?? null;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const userId = userQ.data ?? null;
+
+  useEffect(() => {
+    if (userQ.isError) toast.error("לא הצלחנו לזהות את המשתמש");
+  }, [userQ.isError]);
 
   async function upload(file?: File) {
     if (!file || uploading) return;
     setUploading(true);
     try {
-      const id = userId ?? (await ensureUser());
-      if (!id) return;
+      if (!userId) return;
       await uploadMediaInboxFile(file);
       await qc.invalidateQueries({
-        queryKey: ["media-tree", MEDIA_INBOX_BUCKET, id],
+        queryKey: ["media-tree", MEDIA_INBOX_BUCKET, userId],
       });
-          } catch (error) {
+    } catch (error) {
       toast.error(error instanceof Error ? error.message : "ההעלאה נכשלה");
     } finally {
       setUploading(false);
@@ -100,7 +88,7 @@ export function MediaInboxCard() {
         <input
           ref={galleryRef}
           type="file"
-          accept="image/*"
+          accept="image/*,video/*"
           className="hidden"
           onChange={(e) => void upload(e.target.files?.[0])}
         />
@@ -115,209 +103,23 @@ export function MediaInboxCard() {
         />
       </PremiumCard>
 
+      {userQ.isPending && (
+        <PremiumCard className="grid place-items-center py-8">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </PremiumCard>
+      )}
+
       {userId && (
         <MediaGallery
           title="התמונות שהעליתי"
           bucket={MEDIA_INBOX_BUCKET}
           prefix={userId}
           columns={2}
-          onSelectItem={(item) => setSelectedItem(item)}
+          onSelectItem={setSelectedItem}
         />
       )}
-      <Sheet
-  open={!!selectedItem}
-  onOpenChange={(open) => {
-  if (!open && !replaceConfirmOpen) {
-    setSelectedExerciseId(null);
-  }
-}}
 
->
-  <SheetContent side="bottom" dir="rtl">
-    <SheetHeader>
-      <SheetTitle>מה לעשות עם המדיה?</SheetTitle>
-    </SheetHeader>
-<div className="mt-4 grid gap-3">
-  {selectedItem?.kind === "image" && (
-    <>
-      <Button
-       onClick={() => { 
-        setAssignmentRole("thumbnail");
-        setPickerOpen(true);
-      }}
-      >
-        שייך כתמונה ממוזערת
-      </Button>
-
-       <Button
-        onClick={() => {
-          setAssignmentRole("main");
-          setPickerOpen(true);
-        }}
-      >
-        הגדר כתמונה ראשית לתרגיל
-      </Button>
-    </>
-  )}
- {selectedItem?.kind === "video" && (
-    <Button
-      onClick={() => {
-        setAssignmentRole("demo");
-        setPickerOpen(true);
-      }}
-    >
-      שייך כסרטון הדגמה לתרגיל
-    </Button>
-  )}
-
-</div>
-  </SheetContent>
-</Sheet>
-
-<ExercisePicker
-  open={pickerOpen}
-  onClose={() => setPickerOpen(false)}
- onSelect={(exerciseId) => {
-  setSelectedExerciseId(exerciseId);
-  setPickerOpen(false);
- }}
-  title="בחר תרגיל לשיוך המדיה"
-/>
-
-<AlertDialog
-  open={!!selectedExerciseId && !replaceConfirmOpen}  onOpenChange={(open) => {
-    if (!open) setSelectedExerciseId(null);
-  }}
->
-  <AlertDialogContent dir="rtl">
-    <AlertDialogHeader>
-      <AlertDialogTitle>אישור שיוך מדיה</AlertDialogTitle>
-
-      <AlertDialogDescription>
-        לשייך את המדיה לתרגיל שנבחר כ־
-        {assignmentRole === "thumbnail"
-          ? "תמונה ממוזערת"
-          : assignmentRole === "main"
-            ? "תמונה ראשית"
-            : "סרטון הדגמה"}
-        ?
-      </AlertDialogDescription>
-    </AlertDialogHeader>
-
-    <AlertDialogFooter>
-      <AlertDialogCancel>ביטול</AlertDialogCancel>
-
-     <AlertDialogAction
-  disabled={assigning}
-  onClick={async () => {
-    if (!selectedItem || !selectedExerciseId || !assignmentRole) return;
-
-    setAssigning(true);
-
-    try {
-      const result = await assignExerciseMediaServer({
-        data: {
-          sourcePath: selectedItem.path,
-          exerciseId: selectedExerciseId,
-          role: assignmentRole,
-          replace: false,
-        },
-      });
-
-    if (result.status === "exists") {
-    setReplaceConfirmOpen(true);
-    return;
-    }      
-
-    await qc.invalidateQueries({
-        queryKey: ["exercise-media", selectedExerciseId],
-  });
-
-      toast.success("המדיה שויכה לתרגיל");
-
-      setSelectedExerciseId(null);
-      setAssignmentRole(null);
-      setSelectedItem(null);
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "שיוך המדיה נכשל",
-      );
-    } finally {
-      setAssigning(false);
-    }
-  }}
->
-  {assigning ? "משייך..." : "אישור"}
-</AlertDialogAction>
-    </AlertDialogFooter>
-  </AlertDialogContent>
-</AlertDialog>
-
-<AlertDialog
-  open={replaceConfirmOpen}
-  onOpenChange={(open) => {
-    setReplaceConfirmOpen(open);
-
-    if (!open) {
-      setSelectedExerciseId(null);
-    }
-  }}
->
-  <AlertDialogContent dir="rtl">
-    <AlertDialogHeader>
-      <AlertDialogTitle>להחליף את המדיה הקיימת?</AlertDialogTitle>
-
-      <AlertDialogDescription>
-        כבר קיימת מדיה מסוג זה לתרגיל. הפעולה תחליף אותה במדיה החדשה.
-      </AlertDialogDescription>
-    </AlertDialogHeader>
-
-    <AlertDialogFooter>
-      <AlertDialogCancel>ביטול</AlertDialogCancel>
-
-      <AlertDialogAction
-        disabled={assigning}
-        onClick={async () => {
-          if (!selectedItem || !selectedExerciseId || !assignmentRole) return;
-
-          setAssigning(true);
-
-          try {
-            await assignExerciseMediaServer({
-              data: {
-                sourcePath: selectedItem.path,
-                exerciseId: selectedExerciseId,
-                role: assignmentRole,
-                replace: true,
-              },
-            });
-
-            await qc.invalidateQueries({
-              queryKey: ["exercise-media", selectedExerciseId],
-            });
-
-            toast.success("המדיה הוחלפה בהצלחה");
-
-            setReplaceConfirmOpen(false);
-            setSelectedExerciseId(null);
-            setAssignmentRole(null);
-            setSelectedItem(null);
-          } catch (error) {
-            toast.error(
-              error instanceof Error ? error.message : "החלפת המדיה נכשלה",
-            );
-          } finally {
-            setAssigning(false);
-          }
-        }}
-      >
-        {assigning ? "מחליף..." : "החלף"}
-      </AlertDialogAction>
-    </AlertDialogFooter>
-  </AlertDialogContent>
-</AlertDialog>
-
-</section>
-
+      <ExerciseAssignSheet item={selectedItem} onClose={() => setSelectedItem(null)} />
+    </section>
   );
 }
