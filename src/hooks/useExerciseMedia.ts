@@ -15,9 +15,11 @@ import {
 import { ASSETS_BUCKET } from "@/lib/media-paths";
 import {
   exerciseMediaPrefixes,
-  pickAssignedExerciseMedia,
   pickHeroMedia,
+  pickRoleMedia,
+  resolveExerciseMedia,
   type ExerciseHeroMedia,
+  type ExerciseMediaSlot,
 } from "@/lib/exercise-media";
 
 export function exerciseMediaQueryKey(exerciseId: string, slugSource?: string | null) {
@@ -67,18 +69,16 @@ export function useExerciseMedia({
   const items = query.data ?? [];
   const hero: ExerciseHeroMedia | null = pickHeroMedia(items);
 
-const thumbnail = pickAssignedExerciseMedia(items, "thumbnail");
-const main = pickAssignedExerciseMedia(items, "main");
-const guide = pickAssignedExerciseMedia(items, "guide");
-const demo = pickAssignedExerciseMedia(items, "demo");
-
   return {
     ...query,
     items,
     hero,
-    thumbnail,
-    main,
-    guide,
-demo,
+    thumbnail: pickRoleMedia(items, "thumbnail"),
+    main: pickRoleMedia(items, "main"),
+    guide: pickRoleMedia(items, "guide"),
+    demo: pickRoleMedia(items, "demo"),
+    /** Slot resolution with fallbacks (thumbnail→main→hero, guide→main→hero). */
+    resolve: (slot: ExerciseMediaSlot = "hero"): ExerciseHeroMedia | null =>
+      resolveExerciseMedia(items, slot),
   };
 }

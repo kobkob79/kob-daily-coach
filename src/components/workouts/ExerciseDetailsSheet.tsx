@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dumbbell, Play, Plus, Sparkles, Star, Trophy, X } from "lucide-react";
+import { Dumbbell, Maximize2, Play, Plus, Sparkles, Star, Trophy, X } from "lucide-react";
 import { normalizeMuscleGroup } from "@/lib/muscle-groups";
 import {
   difficultyOf,
@@ -51,6 +51,8 @@ export function ExerciseDetailsSheet({
 }: Props) {
   const [favorites, setFavorites] = useState<string[]>([]);
   useEffect(() => setFavorites(readFavorites()), [open]);
+  const [guideOpen, setGuideOpen] = useState(false);
+  useEffect(() => { if (!open) setGuideOpen(false); }, [open]);
   const intel = useExerciseIntel(exercise?.id, open);
 
   if (!exercise) return null;
@@ -85,7 +87,7 @@ export function ExerciseDetailsSheet({
           <div className="flex-1 overflow-y-auto overscroll-contain pb-4">
             {/* Hero media — reserved 16:9 slot for future image/GIF/video/3D */}
             <div className="relative">
-              <HeroMedia exercise={ex} />
+              <HeroMedia exercise={ex} onShowMore={() => setGuideOpen(true)} />
               <button
                 type="button"
                 onClick={onClose}
@@ -203,6 +205,7 @@ export function ExerciseDetailsSheet({
           </div>
         </div>
       </SheetContent>
+      <GuideViewer exercise={ex} open={guideOpen} onClose={() => setGuideOpen(false)} />
     </Sheet>
   );
 }
@@ -359,78 +362,82 @@ function PersonalIntel({
 
 
 /** Reserved 16:9 media area — premium placeholder until assets exist. */
-function HeroMedia({ exercise }: { exercise: PickerExercise }) {
-  const [guideOpen, setGuideOpen] = useState(false);
-
-  rreturn (
-  <>
-    <div className="relative aspect-video w-full overflow-hidden bg-gradient-to-br from-muted/40 via-card/60 to-muted/20">
+function HeroMedia({
+  exercise,
+  onShowMore,
+}: {
+  exercise: PickerExercise;
+  onShowMore: () => void;
+}) {
+  return (
+    <div className="relative aspect-[4/3] w-full overflow-hidden bg-gradient-to-br from-muted/40 via-card/60 to-muted/20">
       <ExerciseMediaView
         exerciseId={exercise.id}
         name={exercise.name}
         fallbackImage={exercise.image_path}
         mediaRole="main"
+        fit="contain"
         className="h-full w-full"
         placeholder={<HeroPlaceholder />}
       />
-
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background to-transparent" />
-
-      <Button
+      <button
         type="button"
-        size="sm"
-        variant="secondary"
-        className="absolute bottom-3 left-3 z-10 h-8 rounded-full px-3 text-xs shadow-lg"
-        onClick={() => setGuideOpen(true)}
+        onClick={onShowMore}
+        className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/80 px-3 py-1.5 text-[11px] font-medium backdrop-blur-md"
       >
-        הראה עוד
-      </Button>
+        <Maximize2 className="h-3.5 w-3.5" aria-hidden /> הראה עוד
+      </button>
     </div>
+  );
+}
 
-    <Sheet open={guideOpen} onOpenChange={setGuideOpen}>
-      <SheetContent
-        side="bottom"
-        dir="rtl"
-        className="h-[96dvh] overflow-hidden rounded-t-3xl border-border/60 p-0"
-      >
+/** Full-screen scrollable guide viewer (guide → main → hero). */
+function GuideViewer({
+  exercise,
+  open,
+  onClose,
+}: {
+  exercise: PickerExercise;
+  open: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="bottom" dir="rtl" className="h-[100dvh] border-0 p-0">
+        <SheetHeader className="sr-only">
+          <SheetTitle>{exercise.name}</SheetTitle>
+        </SheetHeader>
         <div className="flex h-full flex-col">
-          <SheetHeader className="shrink-0 border-b border-border/50 px-4 py-3 text-right">
-            <div className="flex items-center justify-between gap-3">
-              <SheetTitle className="text-base">
-                {exercise.name}
-              </SheetTitle>
-
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="h-9 w-9 shrink-0"
-                onClick={() => setGuideOpen(false)}
-                aria-label="סגור מדריך"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </SheetHeader>
-
-          <div className="min-h-0 flex-1 overflow-auto bg-black">
+          <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
+            <p className="truncate text-sm font-semibold">{exercise.name}</p>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="סגור"
+              className="grid h-9 w-9 place-items-center rounded-full border border-border/60 bg-background/70"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto overscroll-contain p-3">
             <ExerciseMediaView
               exerciseId={exercise.id}
               name={exercise.name}
+              fallbackImage={exercise.image_path}
               mediaRole="guide"
-              className="h-auto w-full object-contain"
+              fit="contain"
+              className="h-auto w-full rounded-2xl"
               placeholder={
-                <div className="grid min-h-[60vh] place-items-center p-6 text-center text-sm text-muted-foreground">
-                  מדריך מלא יתווסף בקרוב
-                </div>
+                <p className="py-16 text-center text-sm text-muted-foreground">
+                  טרם שויכה תמונת מדריך לתרגיל הזה.
+                </p>
               }
             />
           </div>
         </div>
       </SheetContent>
     </Sheet>
-  </>
-);
+  );
 }
 
 function HeroPlaceholder() {

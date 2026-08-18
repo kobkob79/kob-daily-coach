@@ -15,12 +15,6 @@ export const EXERCISE_MEDIA_ROOT = "exercises";
 
 export type ExerciseMediaRole = "video" | "animation" | "image";
 
-export type ExerciseMediaAssignmentRole =
-  | "thumbnail"
-  | "main"
-  | "guide"
-  | "demo";
-
 /** Folder-name hints used to classify animations. */
 const ANIMATION_HINTS = ["anim", "animation", "animations", "loop", "gif"];
 /** Filename hints that mark a still as the preferred hero frame. */
@@ -99,15 +93,44 @@ export function pickHeroMedia(items: MediaItem[]): ExerciseHeroMedia | null {
   return best;
 }
 
-export function pickAssignedExerciseMedia(
-  items: MediaItem[],
-  role: ExerciseMediaAssignmentRole,
-): MediaItem | null {
-  const prefix = `${role}.`;
+/** Canonical assigned file names inside the exercise folder. */
+export type ExerciseAssignedRole = "thumbnail" | "main" | "guide" | "demo";
 
-  return items.find((item) =>
-    item.name.toLowerCase().startsWith(prefix),
-  ) ?? null;
+/** Logical media slots requested by the UI. */
+export type ExerciseMediaSlot = "hero" | ExerciseAssignedRole;
+
+/**
+ * Explicit canonical-role lookup (`thumbnail.*` / `main.*` / `guide.*` /
+ * `demo.*`), written by the Media Inbox assignment flow. Returns null when the
+ * exercise has no file for that role, so callers can fall back.
+ */
+export function pickRoleMedia(
+  items: MediaItem[],
+  role: ExerciseAssignedRole,
+): ExerciseHeroMedia | null {
+  const hit = items.find((item) => item.name.toLowerCase().startsWith(`${role}.`));
+  return hit ? { item: hit, role: classifyExerciseMedia(hit) } : null;
+}
+
+/** Fallback chains per slot; anything unresolved ends at the hero priority. */
+export const EXERCISE_SLOT_FALLBACKS: Record<ExerciseMediaSlot, ExerciseAssignedRole[]> = {
+  hero: [],
+  thumbnail: ["thumbnail", "main"],
+  main: ["main"],
+  guide: ["guide", "main"],
+  demo: ["demo"],
+};
+
+/** Resolves a slot with its fallback chain, then the generic hero priority. */
+export function resolveExerciseMedia(
+  items: MediaItem[],
+  slot: ExerciseMediaSlot = "hero",
+): ExerciseHeroMedia | null {
+  for (const role of EXERCISE_SLOT_FALLBACKS[slot]) {
+    const hit = pickRoleMedia(items, role);
+    if (hit) return hit;
+  }
+  return pickHeroMedia(items);
 }
 
 export const EXERCISE_MEDIA_ROLE_LABEL: Record<ExerciseMediaRole, string> = {
