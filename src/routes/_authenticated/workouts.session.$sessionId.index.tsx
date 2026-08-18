@@ -300,12 +300,12 @@ function OverviewPage() {
                     }`}
                   >
 
-                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-muted">
+                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-muted">
                       <ExerciseMediaView
                         exerciseId={exerciseId}
                         name={ex?.name}
                         fallbackImage={ex?.image_path ?? null}
-                        preferRole="thumbnail"
+                        mediaRole="thumbnail"
                         className={`h-full w-full ${isDone ? "opacity-40" : ""}`}
                         placeholder={
                           <div className="grid h-full w-full place-items-center text-lg">
