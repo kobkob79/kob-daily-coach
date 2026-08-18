@@ -16,7 +16,10 @@ import { ASSETS_BUCKET } from "@/lib/media-paths";
 import {
   exerciseMediaPrefixes,
   pickHeroMedia,
+  pickRoleMedia,
+  resolveExerciseMedia,
   type ExerciseHeroMedia,
+  type ExerciseMediaSlot,
 } from "@/lib/exercise-media";
 
 export function exerciseMediaQueryKey(exerciseId: string, slugSource?: string | null) {
