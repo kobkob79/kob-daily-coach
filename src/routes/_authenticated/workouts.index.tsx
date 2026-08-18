@@ -53,7 +53,7 @@ export const Route = createFileRoute("/_authenticated/workouts/")({
 });
 
 type Template = { id: string; name: string };
-type TemplateMeta = { image: string | null; exercises: number; sets: number };
+type TemplateMeta = { exercises: number; sets: number; focus: string | null };
 
 interface Upcoming {
   weekday: number;
@@ -77,6 +77,11 @@ function formatDate(d: Date): string {
 function estimateMinutes(meta: TemplateMeta | undefined): number | null {
   if (!meta || meta.sets <= 0) return null;
   return Math.max(15, Math.round((meta.sets * 3.5) / 5) * 5);
+}
+
+function workoutLetter(name: string): "A" | "B" | "C" | null {
+  const match = name.match(/(?:^|[\s(/-])([abc])(?:$|[\s)/-])/i);
+  return match ? (match[1]!.toUpperCase() as "A" | "B" | "C") : null;
 }
 
 function WorkoutHub() {
@@ -118,19 +123,31 @@ function WorkoutHub() {
     queryFn: async () => {
       const { data } = await supabase
         .from("workout_template_exercises")
-        .select("template_id, position, target_sets, exercises(image_path)");
+        .select("template_id, target_sets, exercises(muscle_group,category)");
       const map = new Map<string, TemplateMeta>();
+      const groupsByTemplate = new Map<string, Map<string, number>>();
       for (const row of (data ?? []) as unknown as {
         template_id: string;
-        position: number;
         target_sets: number | null;
-        exercises: { image_path: string | null } | null;
+        exercises: { muscle_group: string | null; category: string | null } | null;
       }[]) {
-        const cur = map.get(row.template_id) ?? { image: null, exercises: 0, sets: 0 };
+        const cur = map.get(row.template_id) ?? { exercises: 0, sets: 0, focus: null };
         cur.exercises += 1;
         cur.sets += row.target_sets ?? 3;
-        if (!cur.image && row.exercises?.image_path) cur.image = row.exercises.image_path;
         map.set(row.template_id, cur);
+
+        const group = row.exercises?.muscle_group ?? row.exercises?.category;
+        if (group) {
+          const groups = groupsByTemplate.get(row.template_id) ?? new Map<string, number>();
+          groups.set(group, (groups.get(group) ?? 0) + 1);
+          groupsByTemplate.set(row.template_id, groups);
+        }
+      }
+      for (const [templateId, groups] of groupsByTemplate) {
+        const meta = map.get(templateId);
+        if (!meta) continue;
+        const top = [...groups.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2);
+        meta.focus = top.length ? top.map(([group]) => group).join(" · ") : null;
       }
       return map;
     },
@@ -391,12 +408,35 @@ function MetaLine({ item }: { item: Upcoming }) {
         יום {WEEKDAY_HE[item.weekday]} · {formatDate(item.date)}
       </span>
       {item.meta?.exercises ? <span>· {item.meta.exercises} תרגילים</span> : null}
+      {item.meta?.focus ? <span>· {item.meta.focus}</span> : null}
       {minutes ? (
         <span className="inline-flex items-center gap-1">
           · <Clock className="h-3 w-3" /> ~{minutes}׳
         </span>
       ) : null}
     </p>
+  );
+}
+
+function WorkoutIdentity({ name, compact = false }: { name: string; compact?: boolean }) {
+  const letter = workoutLetter(name);
+  return (
+    <div
+      className={`relative grid shrink-0 place-items-center overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/20 via-primary/8 to-sky-500/10 text-primary ${
+        compact ? "h-14 w-14" : "h-16 w-16"
+      }`}
+      aria-hidden
+    >
+      <div className="absolute -end-4 -top-4 h-10 w-10 rounded-full bg-primary/15 blur-xl" />
+      {letter ? (
+        <div className="relative flex items-end gap-1">
+          <span className={`${compact ? "text-2xl" : "text-3xl"} font-black leading-none`}>{letter}</span>
+          <Dumbbell className="mb-0.5 h-3.5 w-3.5 opacity-75" />
+        </div>
+      ) : (
+        <Dumbbell className={compact ? "h-5 w-5" : "h-6 w-6"} />
+      )}
+    </div>
   );
 }
 
@@ -412,15 +452,7 @@ function NextWorkoutCard({
   return (
     <div className="rounded-3xl border-2 border-primary bg-card p-4 shadow-glow">
       <div className="flex items-center gap-3">
-        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-muted">
-          {item.meta?.image ? (
-            <img src={item.meta.image} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <div className="grid h-full w-full place-items-center">
-              <Dumbbell className="h-6 w-6 text-muted-foreground" />
-            </div>
-          )}
-        </div>
+        <WorkoutIdentity name={item.name} />
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
             האימון הבא
@@ -462,15 +494,7 @@ function UpcomingRow({
         disabled ? "opacity-70" : ""
       }`}
     >
-      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-muted">
-        {item.meta?.image ? (
-          <img src={item.meta.image} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <div className="grid h-full w-full place-items-center">
-            <Dumbbell className="h-5 w-5 text-muted-foreground" />
-          </div>
-        )}
-      </div>
+      <WorkoutIdentity name={item.name} compact />
       <div className="min-w-0 flex-1 text-right">
         <p className="truncate text-base font-bold">{item.name}</p>
         <MetaLine item={item} />
