@@ -9,11 +9,12 @@
  * without ever breaking the layout.
  */
 import { useState } from "react";
-import { Dumbbell, ImageOff } from "lucide-react";
+import { Dumbbell, ImageOff, Maximize2, X } from "lucide-react";
 
 import { useExerciseMedia } from "@/hooks/useExerciseMedia";
 import { EXERCISE_MEDIA_ROLE_LABEL } from "@/lib/exercise-media";
 import { cn } from "@/lib/utils";
+import { ExerciseMediaView } from "./ExerciseMediaView";
 
 export interface ExerciseHeroProps {
   exerciseId: string;
@@ -42,6 +43,9 @@ export function ExerciseHero({
   titleAdornment,
   footer,
 }: ExerciseHeroProps) {
+  const [guideOpen, setGuideOpen] = useState(false);
+  const showMoreLabel = "\u05d4\u05e8\u05d0\u05d4 \u05e2\u05d5\u05d3";
+  const guideUnavailableLabel = "\u05d8\u05e8\u05dd \u05e9\u05d5\u05d9\u05db\u05d4 \u05ea\u05de\u05d5\u05e0\u05ea \u05de\u05d3\u05e8\u05d9\u05da \u05dc\u05ea\u05e8\u05d2\u05d9\u05dc";
   const { hero, isPending } = useExerciseMedia({ exerciseId, exerciseName: name });
   const [failed, setFailed] = useState(false);
 
@@ -50,7 +54,7 @@ export function ExerciseHero({
 
   return (
     <div className="surface-card overflow-hidden p-0">
-      <div className="relative aspect-[2/1] w-full overflow-hidden bg-muted/30">
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted/30">
 
         {isPending ? (
           <div className="h-full w-full animate-pulse bg-muted/50" />
@@ -59,7 +63,7 @@ export function ExerciseHero({
             <video
               key={usableHero.item.path}
               src={usableHero.item.url}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-contain"
               autoPlay
               loop
               muted
@@ -72,7 +76,7 @@ export function ExerciseHero({
               key={usableHero.item.path}
               src={usableHero.item.url}
               alt={name ?? "תרגיל"}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-contain"
               loading="lazy"
               onError={() => setFailed(true)}
             />
@@ -81,7 +85,7 @@ export function ExerciseHero({
           <img
             src={stillFallback}
             alt={name ?? "תרגיל"}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-contain"
             loading="lazy"
           />
         ) : (
@@ -89,7 +93,6 @@ export function ExerciseHero({
         )}
 
         {/* Legibility scrim + media-type pill */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-card via-card/10 to-transparent" />
         {usableHero && (
           <span className="absolute left-2 top-2 rounded-full border border-border/50 bg-background/70 px-2 py-0.5 text-[9px] font-bold text-muted-foreground backdrop-blur-md">
             {EXERCISE_MEDIA_ROLE_LABEL[usableHero.role]}
@@ -100,6 +103,15 @@ export function ExerciseHero({
             תרגיל {exerciseIndex}/{exerciseTotal}
           </span>
         ) : null}
+
+        <button
+          type="button"
+          onClick={() => setGuideOpen(true)}
+          className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/90 px-3 py-1.5 text-[11px] font-semibold backdrop-blur-md"
+        >
+          <Maximize2 className="h-3.5 w-3.5" />
+          {showMoreLabel}
+        </button>
       </div>
 
       <div className="px-3 pb-3 pt-2">
@@ -116,6 +128,37 @@ export function ExerciseHero({
         {footer ? <div className="mt-1.5">{footer}</div> : null}
 
       </div>
+
+      {guideOpen && (
+        <div className="fixed inset-0 z-[100] flex flex-col bg-background">
+          <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
+            <p className="truncate text-sm font-semibold">{name}</p>
+            <button
+              type="button"
+              onClick={() => setGuideOpen(false)}
+              className="grid h-9 w-9 place-items-center rounded-full border border-border/60"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-3">
+            <ExerciseMediaView
+              exerciseId={exerciseId}
+              name={name}
+              fallbackImage={fallbackImage}
+              mediaRole="guide"
+              fit="contain"
+              className="h-auto w-full rounded-2xl"
+              placeholder={
+                <div className="py-16 text-center text-sm text-muted-foreground">
+                  {guideUnavailableLabel}
+                </div>
+              }
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
