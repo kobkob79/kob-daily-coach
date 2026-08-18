@@ -6,6 +6,7 @@
  * total-workout timer + "סיים". The single-exercise focused UI lives at
  * `/workouts/session/$sessionId/exercise/$exerciseId`.
  */
+import { ExerciseMediaView } from "@/components/workouts/ExerciseMediaView";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -300,18 +301,18 @@ function OverviewPage() {
                   >
 
                     <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-muted">
-                      {ex?.image_path ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={ex.image_path}
-                          alt=""
-                          className={`h-full w-full object-cover ${isDone ? "opacity-40" : ""}`}
-                        />
-                      ) : (
-                        <div className="grid h-full w-full place-items-center text-lg">
-                          🏋️
-                        </div>
-                      )}
+                      <ExerciseMediaView
+                        exerciseId={exerciseId}
+                        name={ex?.name}
+                        fallbackImage={ex?.image_path ?? null}
+                        preferRole="thumbnail"
+                        className={`h-full w-full ${isDone ? "opacity-40" : ""}`}
+                        placeholder={
+                          <div className="grid h-full w-full place-items-center text-lg">
+                            🏋️
+                          </div>
+                        }
+                      />
                       {isDone && (
                         <div className="absolute inset-0 grid place-items-center bg-primary/25">
                           <span className="grid h-7 w-7 place-items-center rounded-full bg-primary text-primary-foreground shadow-glow">
