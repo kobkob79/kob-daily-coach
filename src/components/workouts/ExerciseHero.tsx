@@ -9,7 +9,7 @@
  * without ever breaking the layout.
  */
 import { useState } from "react";
-import { Dumbbell, ImageOff, Maximize2, X } from "lucide-react";
+import { ArrowUpRight, Dumbbell, ImageOff, X } from "lucide-react";
 
 import { useExerciseMedia } from "@/hooks/useExerciseMedia";
 import { EXERCISE_MEDIA_ROLE_LABEL } from "@/lib/exercise-media";
@@ -44,7 +44,7 @@ export function ExerciseHero({
   footer,
 }: ExerciseHeroProps) {
   const [guideOpen, setGuideOpen] = useState(false);
-  const showMoreLabel = "\u05d4\u05e8\u05d0\u05d4 \u05e2\u05d5\u05d3";
+  const showMoreLabel = "מדריך מלא";
   const guideUnavailableLabel = "\u05d8\u05e8\u05dd \u05e9\u05d5\u05d9\u05db\u05d4 \u05ea\u05de\u05d5\u05e0\u05ea \u05de\u05d3\u05e8\u05d9\u05da \u05dc\u05ea\u05e8\u05d2\u05d9\u05dc";
   const { hero, isPending } = useExerciseMedia({ exerciseId, exerciseName: name });
   const [failed, setFailed] = useState(false);
@@ -107,9 +107,9 @@ export function ExerciseHero({
         <button
           type="button"
           onClick={() => setGuideOpen(true)}
-          className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/90 px-3 py-1.5 text-[11px] font-semibold backdrop-blur-md"
-        >
-          <Maximize2 className="h-3.5 w-3.5" />
+          className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground shadow-lg"
+>
+          <ArrowUpRight className="h-3.5 w-3.5" />
           {showMoreLabel}
         </button>
       </div>
@@ -130,35 +130,49 @@ export function ExerciseHero({
       </div>
 
       {guideOpen && (
-        <div className="fixed inset-0 z-[100] flex flex-col bg-background">
-          <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
-            <p className="truncate text-sm font-semibold">{name}</p>
-            <button
-              type="button"
-              onClick={() => setGuideOpen(false)}
-              className="grid h-9 w-9 place-items-center rounded-full border border-border/60"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
+  <div className="fixed inset-0 z-[100] bg-background">
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
+        <p className="truncate text-sm font-semibold">{name}</p>
 
-          <div className="flex-1 overflow-y-auto p-3">
-            <ExerciseMediaView
-              exerciseId={exerciseId}
-              name={name}
-              fallbackImage={fallbackImage}
-              mediaRole="guide"
-              fit="contain"
-              className="h-auto w-full rounded-2xl"
-              placeholder={
-                <div className="py-16 text-center text-sm text-muted-foreground">
-                  {guideUnavailableLabel}
-                </div>
-              }
-            />
-          </div>
-        </div>
-      )}
+        <button
+          type="button"
+          onClick={() => setGuideOpen(false)}
+          aria-label="סגור"
+          className="grid h-10 w-10 place-items-center rounded-full border border-border/60 bg-background"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="min-h-0 flex-1 bg-black">
+        <ExerciseMediaView
+          exerciseId={exerciseId}
+          name={name}
+          fallbackImage={fallbackImage}
+          mediaRole="guide"
+          fit="contain"
+          className="h-full w-full"
+          placeholder={
+            <div className="flex h-full items-center justify-center px-6 text-center text-sm text-white/70">
+              {guideUnavailableLabel}
+            </div>
+          }
+        />
+      </div>
+
+      <div className="border-t border-border/60 bg-background p-3">
+        <button
+          type="button"
+          onClick={() => setGuideOpen(false)}
+          className="h-12 w-full rounded-2xl bg-primary text-sm font-bold text-primary-foreground"
+        >
+          סגור ולחזור לתרגיל
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
