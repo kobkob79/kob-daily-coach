@@ -10,11 +10,12 @@ import { ASSETS_BUCKET } from "@/lib/media-paths";
 import { EXERCISE_MEDIA_ROOT } from "@/lib/exercise-media";
 import { MEDIA_INBOX_BUCKET } from "./media-inbox.service";
 
-export type ExerciseAssignRole = "thumbnail" | "main" | "demo";
+export type ExerciseAssignRole = "thumbnail" | "main" | "guide" | "demo";
 
 export const EXERCISE_ASSIGN_ROLE_LABEL: Record<ExerciseAssignRole, string> = {
   thumbnail: "תמונה ממוזערת",
   main: "תמונה ראשית",
+  guide: "תמונת מדריך",
   demo: "סרטון הדגמה",
 };
 

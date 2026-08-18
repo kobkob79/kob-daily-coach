@@ -42,6 +42,7 @@ interface Props {
 const IMAGE_ACTIONS: { role: ExerciseAssignRole; label: string; icon: typeof Star }[] = [
   { role: "thumbnail", label: "שייך כתמונה ממוזערת", icon: ImageIcon },
   { role: "main", label: "הגדר כתמונה ראשית לתרגיל", icon: Star },
+  { role: "guide", label: "שייך כתמונת מדריך מפורטת", icon: ImageIcon },
 ];
 
 type Step = "actions" | "confirm" | "replace" | "post-assign" | "delete";
