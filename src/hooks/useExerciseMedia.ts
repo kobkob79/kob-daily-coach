@@ -69,5 +69,16 @@ export function useExerciseMedia({
   const items = query.data ?? [];
   const hero: ExerciseHeroMedia | null = pickHeroMedia(items);
 
-  return { ...query, items, hero };
+  return {
+    ...query,
+    items,
+    hero,
+    thumbnail: pickRoleMedia(items, "thumbnail"),
+    main: pickRoleMedia(items, "main"),
+    guide: pickRoleMedia(items, "guide"),
+    demo: pickRoleMedia(items, "demo"),
+    /** Slot resolution with fallbacks (thumbnail→main→hero, guide→main→hero). */
+    resolve: (slot: ExerciseMediaSlot = "hero"): ExerciseHeroMedia | null =>
+      resolveExerciseMedia(items, slot),
+  };
 }
