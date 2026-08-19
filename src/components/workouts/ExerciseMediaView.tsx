@@ -40,8 +40,27 @@ export function ExerciseMediaView({
   preferRole,
   fit,
 }: ExerciseMediaViewProps) {
-  const { items, isPending } = useExerciseMedia({ exerciseId, exerciseName: name });
+  const { items, isPending, refetch } = useExerciseMedia({
+    exerciseId,
+    exerciseName: name,
+  });
   const [failed, setFailed] = useState(false);
+  const retriedRef = useRef(false);
+
+  /**
+   * Root cause of "assigned thumbnail falls back to the emoji placeholder":
+   * the media list is cached with the signed-URL lifetime, so a URL that
+   * expired (or a transient 4xx) permanently marked the slot as failed. Retry
+   * once with fresh signed URLs before giving up on real media.
+   */
+  function handleError() {
+    if (!retriedRef.current) {
+      retriedRef.current = true;
+      void refetch();
+      return;
+    }
+    setFailed(true);
+  }
 
   const slot: ExerciseMediaSlot = mediaRole ?? preferRole ?? "hero";
   const resolved = resolveExerciseMedia(items, slot);
