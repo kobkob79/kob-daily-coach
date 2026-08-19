@@ -22,6 +22,7 @@ export const Route = createFileRoute("/_authenticated/media-inbox")({
 function MediaInboxPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
