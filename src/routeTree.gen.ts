@@ -25,9 +25,9 @@ import { Route as AuthenticatedJournalRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedHydrationRouteImport } from './routes/_authenticated/hydration'
 import { Route as AuthenticatedHealthRouteImport } from './routes/_authenticated/health'
 import { Route as AuthenticatedExportRouteImport } from './routes/_authenticated/export'
+import { Route as AuthenticatedExercisesRouteImport } from './routes/_authenticated/exercises'
 import { Route as AuthenticatedDevRouteImport } from './routes/_authenticated/dev'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedExercisesRouteImport } from './routes/_authenticated/exercises'
 import { Route as AuthenticatedCaptureRouteImport } from './routes/_authenticated/capture'
 import { Route as AuthenticatedAskRouteImport } from './routes/_authenticated/ask'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
@@ -131,6 +131,11 @@ const AuthenticatedExportRoute = AuthenticatedExportRouteImport.update({
   path: '/export',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedExercisesRoute = AuthenticatedExercisesRouteImport.update({
+  id: '/exercises',
+  path: '/exercises',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDevRoute = AuthenticatedDevRouteImport.update({
   id: '/dev',
   path: '/dev',
@@ -139,11 +144,6 @@ const AuthenticatedDevRoute = AuthenticatedDevRouteImport.update({
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedExercisesRoute = AuthenticatedExercisesRouteImport.update({
-  id: '/exercises',
-  path: '/exercises',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedCaptureRoute = AuthenticatedCaptureRouteImport.update({
@@ -282,8 +282,8 @@ export interface FileRoutesByFullPath {
   '/ask': typeof AuthenticatedAskRoute
   '/capture': typeof AuthenticatedCaptureRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/exercises': typeof AuthenticatedExercisesRoute
   '/dev': typeof AuthenticatedDevRouteWithChildren
+  '/exercises': typeof AuthenticatedExercisesRoute
   '/export': typeof AuthenticatedExportRoute
   '/health': typeof AuthenticatedHealthRoute
   '/hydration': typeof AuthenticatedHydrationRoute
@@ -365,8 +365,8 @@ export interface FileRoutesById {
   '/_authenticated/ask': typeof AuthenticatedAskRoute
   '/_authenticated/capture': typeof AuthenticatedCaptureRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
-  '/_authenticated/exercises': typeof AuthenticatedExercisesRoute
   '/_authenticated/dev': typeof AuthenticatedDevRouteWithChildren
+  '/_authenticated/exercises': typeof AuthenticatedExercisesRoute
   '/_authenticated/export': typeof AuthenticatedExportRoute
   '/_authenticated/health': typeof AuthenticatedHealthRoute
   '/_authenticated/hydration': typeof AuthenticatedHydrationRoute
@@ -409,8 +409,8 @@ export interface FileRouteTypes {
     | '/ask'
     | '/capture'
     | '/dashboard'
-    | '/exercises'
     | '/dev'
+    | '/exercises'
     | '/export'
     | '/health'
     | '/hydration'
@@ -491,8 +491,8 @@ export interface FileRouteTypes {
     | '/_authenticated/ask'
     | '/_authenticated/capture'
     | '/_authenticated/dashboard'
-    | '/_authenticated/exercises'
     | '/_authenticated/dev'
+    | '/_authenticated/exercises'
     | '/_authenticated/export'
     | '/_authenticated/health'
     | '/_authenticated/hydration'
@@ -649,6 +649,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExportRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/exercises': {
+      id: '/_authenticated/exercises'
+      path: '/exercises'
+      fullPath: '/exercises'
+      preLoaderRoute: typeof AuthenticatedExercisesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dev': {
       id: '/_authenticated/dev'
       path: '/dev'
@@ -661,13 +668,6 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/exercises': {
-      id: '/_authenticated/exercises'
-      path: '/exercises'
-      fullPath: '/exercises'
-      preLoaderRoute: typeof AuthenticatedExercisesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/capture': {
@@ -912,8 +912,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAskRoute: typeof AuthenticatedAskRoute
   AuthenticatedCaptureRoute: typeof AuthenticatedCaptureRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
-  AuthenticatedExercisesRoute: typeof AuthenticatedExercisesRoute
   AuthenticatedDevRoute: typeof AuthenticatedDevRouteWithChildren
+  AuthenticatedExercisesRoute: typeof AuthenticatedExercisesRoute
   AuthenticatedExportRoute: typeof AuthenticatedExportRoute
   AuthenticatedHealthRoute: typeof AuthenticatedHealthRoute
   AuthenticatedHydrationRoute: typeof AuthenticatedHydrationRoute
@@ -934,8 +934,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAskRoute: AuthenticatedAskRoute,
   AuthenticatedCaptureRoute: AuthenticatedCaptureRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
-  AuthenticatedExercisesRoute: AuthenticatedExercisesRoute,
   AuthenticatedDevRoute: AuthenticatedDevRouteWithChildren,
+  AuthenticatedExercisesRoute: AuthenticatedExercisesRoute,
   AuthenticatedExportRoute: AuthenticatedExportRoute,
   AuthenticatedHealthRoute: AuthenticatedHealthRoute,
   AuthenticatedHydrationRoute: AuthenticatedHydrationRoute,
