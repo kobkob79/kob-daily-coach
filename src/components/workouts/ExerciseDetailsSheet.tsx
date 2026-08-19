@@ -39,7 +39,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   /** Adds the exercise to the workout/routine. */
-  onAdd: (exerciseId: string) => void;
+  onAdd?: (exerciseId: string) => void;
   /** Full library, used to suggest related exercises. */
   library: PickerExercise[];
   /** Switches the sheet to another exercise (related list). */
@@ -190,9 +190,11 @@ export function ExerciseDetailsSheet({
 
           {/* Actions */}
           <div className="space-y-2 border-t border-border/60 bg-background/85 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-            <Button className="h-12 w-full text-base" onClick={() => onAdd(ex.id)}>
-              <Plus className="ml-1 h-5 w-5" /> הוסף לאימון
-            </Button>
+            {onAdd && (
+              <Button className="h-12 w-full text-base" onClick={() => onAdd(ex.id)}>
+                <Plus className="ml-1 h-5 w-5" /> הוסף לאימון
+              </Button>
+            )}
             <div className="flex gap-2">
               <Button variant="outline" className="h-11 flex-1" onClick={toggleFav}>
                 <Star className={cn("ml-1 h-4 w-4", isFav && "fill-current text-primary")} />

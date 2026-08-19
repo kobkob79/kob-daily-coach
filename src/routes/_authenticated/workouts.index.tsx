@@ -30,6 +30,7 @@ import {
   Clock,
   Flame,
   Loader2,
+  Library,
 } from "lucide-react";
 import { toast } from "sonner";
 import { t } from "@/lib/i18n";
@@ -349,6 +350,21 @@ function WorkoutHub() {
           <span className="text-sm font-bold">היסטוריית אימונים</span>
         </Link>
       </div>
+      <Link
+        to="/exercises"
+        className="flex items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 to-card p-4"
+      >
+        <div className="flex items-center gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/15 text-primary">
+            <Library className="h-5 w-5" aria-hidden />
+          </span>
+          <div>
+            <p className="text-sm font-extrabold">מאגר תרגילים</p>
+            <p className="text-xs text-muted-foreground">גלישה ב־150 תרגילי הליבה</p>
+          </div>
+        </div>
+        <span className="text-primary" aria-hidden>←</span>
+      </Link>
 
       {conflict && (
         <ConflictDialog

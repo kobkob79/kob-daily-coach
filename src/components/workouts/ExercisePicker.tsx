@@ -29,6 +29,7 @@ import {
 } from "@/lib/exercise-meta";
 import { ExerciseDetailsSheet } from "./ExerciseDetailsSheet";
 import { cn } from "@/lib/utils";
+import { CORE_150_EXERCISE_NAME_SET } from "@/lib/core-150-exercises";
 
 export type { PickerExercise };
 
@@ -77,6 +78,47 @@ function searchHaystack(ex: PickerExercise): string {
 
 const PAGE = 24;
 
+type ExerciseRow = PickerExercise & { owner_id: string | null };
+
+export function useExerciseLibrary({ enabled = true, coreOnly = false } = {}) {
+  const q = useQuery({
+    enabled,
+    queryKey: ["exercises", "library", coreOnly ? "core-150" : "all"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("exercises")
+        .select("id,name,muscle_group,equipment,category,description,image_path,owner_id")
+        .order("name");
+      if (error) throw error;
+      const rows = (data ?? []) as ExerciseRow[];
+      return coreOnly
+        ? rows.filter((exercise) =>
+            exercise.owner_id === null && CORE_150_EXERCISE_NAME_SET.has(exercise.name),
+          )
+        : rows;
+    },
+  });
+  const [term, setTerm] = useState("");
+  const [muscle, setMuscle] = useState<MuscleGroup | null>(null);
+  const [equip, setEquip] = useState<EquipmentKey | null>(null);
+  const all = q.data ?? [];
+  const indexed = useMemo(
+    () => all.map((ex) => ({ ex, hay: searchHaystack(ex), group: normalizeMuscleGroup(ex.muscle_group), eq: equipmentKey(ex.equipment) })),
+    [all],
+  );
+  const results = useMemo(() => {
+    const needle = term.trim().toLowerCase();
+    return indexed
+      .filter((r) => (muscle ? r.group === muscle : true))
+      .filter((r) => (equip ? r.eq === equip : true))
+      .filter((r) => (needle ? needle.split(/\s+/).every((word) => r.hay.includes(word)) : true))
+      .map((r) => r.ex);
+  }, [indexed, term, muscle, equip]);
+
+  return { q, all, results, term, setTerm, muscle, setMuscle, equip, setEquip };
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -86,42 +128,10 @@ interface Props {
 }
 
 export function ExercisePicker({ open, onClose, onSelect, title = "בחר תרגיל" }: Props) {
-  const q = useQuery({
-    enabled: open,
-    queryKey: ["exercises", "picker"],
-    staleTime: 5 * 60_000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("exercises")
-        .select("id,name,muscle_group,equipment,category,description,image_path")
-        .order("name");
-      if (error) throw error;
-      return (data ?? []) as PickerExercise[];
-    },
-  });
-
-  const [term, setTerm] = useState("");
-  const [muscle, setMuscle] = useState<MuscleGroup | null>(null);
-  const [equip, setEquip] = useState<EquipmentKey | null>(null);
+  const { q, all, results, term, setTerm, muscle, setMuscle, equip, setEquip } =
+    useExerciseLibrary({ enabled: open });
   const [visible, setVisible] = useState(PAGE);
   const [details, setDetails] = useState<PickerExercise | null>(null);
-
-
-  const all = q.data ?? [];
-
-  const indexed = useMemo(
-    () => all.map((ex) => ({ ex, hay: searchHaystack(ex), group: normalizeMuscleGroup(ex.muscle_group), eq: equipmentKey(ex.equipment) })),
-    [all],
-  );
-
-  const results = useMemo(() => {
-    const needle = term.trim().toLowerCase();
-    return indexed
-      .filter((r) => (muscle ? r.group === muscle : true))
-      .filter((r) => (equip ? r.eq === equip : true))
-      .filter((r) => (needle ? needle.split(/\s+/).every((w) => r.hay.includes(w)) : true))
-      .map((r) => r.ex);
-  }, [indexed, term, muscle, equip]);
 
   // Reset the render window whenever the result set changes.
   useEffect(() => setVisible(PAGE), [term, muscle, equip, all.length]);
@@ -307,7 +317,15 @@ function Chip({
   );
 }
 
-function ExerciseCard({ ex, onPick }: { ex: PickerExercise; onPick: () => void }) {
+export function ExerciseCard({
+  ex,
+  onPick,
+  action = "add",
+}: {
+  ex: PickerExercise;
+  onPick: () => void;
+  action?: "add" | "open";
+}) {
   const diff = difficultyOf(ex);
   return (
     <button
@@ -348,7 +366,7 @@ function ExerciseCard({ ex, onPick }: { ex: PickerExercise; onPick: () => void }
 
       <div className="grid w-8 shrink-0 place-items-center">
         <span className="grid h-7 w-7 place-items-center rounded-full bg-primary/15 text-primary">
-          <Plus className="h-4 w-4" />
+          {action === "add" ? <Plus className="h-4 w-4" /> : <span aria-hidden>←</span>}
         </span>
       </div>
     </button>
