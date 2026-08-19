@@ -85,7 +85,7 @@ export function ExerciseMediaView({
         muted
         playsInline
         preload="metadata"
-        onError={() => setFailed(true)}
+        onError={handleError}
       />
     ) : (
       <img
@@ -94,7 +94,7 @@ export function ExerciseMediaView({
         alt={name ?? "תרגיל"}
         className={cn(fitClass, className)}
         loading="lazy"
-        onError={() => setFailed(true)}
+        onError={handleError}
       />
     );
   }
