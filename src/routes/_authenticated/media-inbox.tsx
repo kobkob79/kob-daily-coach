@@ -104,8 +104,11 @@ function MediaInboxPage() {
           bucket={MEDIA_INBOX_BUCKET}
           prefix={userId}
           columns={2}
+          onSelectItem={setSelectedItem}
         />
       )}
+
+      <ExerciseAssignSheet item={selectedItem} onClose={() => setSelectedItem(null)} />
     </DevConsoleShell>
   );
 }
