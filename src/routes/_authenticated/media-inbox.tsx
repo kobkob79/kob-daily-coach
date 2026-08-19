@@ -5,9 +5,11 @@ import { Camera, ImagePlus, Loader2 } from "lucide-react";
 
 import { DevConsoleShell } from "@/components/dev/DevConsoleShell";
 import { MediaGallery } from "@/components/media/MediaGallery";
+import { ExerciseAssignSheet } from "@/components/media/ExerciseAssignSheet";
 import { Button } from "@/components/ui/button";
 import { PremiumCard } from "@/components/ui-kit/Section";
 import { supabase } from "@/integrations/supabase/client";
+import type { MediaItem } from "@/services/media.service";
 import {
   MEDIA_INBOX_BUCKET,
   uploadMediaInboxFile,
