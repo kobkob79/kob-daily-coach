@@ -5,7 +5,7 @@
  * → hero, …) through `useExerciseMedia`, so the picker card, the details sheet
  * and the session hero all behave identically.
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { useExerciseMedia } from "@/hooks/useExerciseMedia";
 import { resolveExerciseMedia, type ExerciseMediaSlot } from "@/lib/exercise-media";
@@ -40,8 +40,27 @@ export function ExerciseMediaView({
   preferRole,
   fit,
 }: ExerciseMediaViewProps) {
-  const { items, isPending } = useExerciseMedia({ exerciseId, exerciseName: name });
+  const { items, isPending, refetch } = useExerciseMedia({
+    exerciseId,
+    exerciseName: name,
+  });
   const [failed, setFailed] = useState(false);
+  const retriedRef = useRef(false);
+
+  /**
+   * Root cause of "assigned thumbnail falls back to the emoji placeholder":
+   * the media list is cached with the signed-URL lifetime, so a URL that
+   * expired (or a transient 4xx) permanently marked the slot as failed. Retry
+   * once with fresh signed URLs before giving up on real media.
+   */
+  function handleError() {
+    if (!retriedRef.current) {
+      retriedRef.current = true;
+      void refetch();
+      return;
+    }
+    setFailed(true);
+  }
 
   const slot: ExerciseMediaSlot = mediaRole ?? preferRole ?? "hero";
   const resolved = resolveExerciseMedia(items, slot);
@@ -66,7 +85,7 @@ export function ExerciseMediaView({
         muted
         playsInline
         preload="metadata"
-        onError={() => setFailed(true)}
+        onError={handleError}
       />
     ) : (
       <img
@@ -75,7 +94,7 @@ export function ExerciseMediaView({
         alt={name ?? "תרגיל"}
         className={cn(fitClass, className)}
         loading="lazy"
-        onError={() => setFailed(true)}
+        onError={handleError}
       />
     );
   }

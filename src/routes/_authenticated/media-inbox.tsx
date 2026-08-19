@@ -5,9 +5,11 @@ import { Camera, ImagePlus, Loader2 } from "lucide-react";
 
 import { DevConsoleShell } from "@/components/dev/DevConsoleShell";
 import { MediaGallery } from "@/components/media/MediaGallery";
+import { ExerciseAssignSheet } from "@/components/media/ExerciseAssignSheet";
 import { Button } from "@/components/ui/button";
 import { PremiumCard } from "@/components/ui-kit/Section";
 import { supabase } from "@/integrations/supabase/client";
+import type { MediaItem } from "@/services/media.service";
 import {
   MEDIA_INBOX_BUCKET,
   uploadMediaInboxFile,
@@ -20,6 +22,7 @@ export const Route = createFileRoute("/_authenticated/media-inbox")({
 function MediaInboxPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -101,8 +104,11 @@ function MediaInboxPage() {
           bucket={MEDIA_INBOX_BUCKET}
           prefix={userId}
           columns={2}
+          onSelectItem={setSelectedItem}
         />
       )}
+
+      <ExerciseAssignSheet item={selectedItem} onClose={() => setSelectedItem(null)} />
     </DevConsoleShell>
   );
 }
