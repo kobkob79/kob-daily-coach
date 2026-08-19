@@ -17,16 +17,23 @@ export function AdvisorVisual({
   variant?: "cover" | "hero" | "avatar";
 }) {
   const Icon = icons[advisor.icon];
+  const image = variant === "cover" ? advisor.media.cover : variant === "hero" ? advisor.media.hero : null;
+  const objectPosition =
+    variant === "cover"
+      ? advisor.media.coverPosition
+      : variant === "hero"
+        ? advisor.media.heroPosition
+        : undefined;
 
   return (
     <div
       className={cn(
         "relative overflow-hidden border border-primary/20 bg-gradient-to-br from-primary/15 via-card to-muted/40",
         variant === "cover" && "aspect-[4/3] w-full rounded-2xl",
-        variant === "hero" && "aspect-[16/7] w-full rounded-3xl",
+        variant === "hero" && "h-28 w-full rounded-3xl sm:h-36",
         variant === "avatar" && "h-11 w-11 shrink-0 rounded-2xl",
       )}
-      aria-label={`מקום שמור לתמונה של ${advisor.name}`}
+      aria-label={image ? `תמונה של ${advisor.name}` : `מקום שמור לתמונה של ${advisor.name}`}
     >
       <div className="absolute -left-8 -top-8 h-24 w-24 rounded-full bg-primary/15 blur-2xl" />
       <div className="absolute inset-0 grid place-items-center">
@@ -37,6 +44,23 @@ export function AdvisorVisual({
           <Icon className={variant === "avatar" ? "h-4 w-4" : "h-6 w-6"} aria-hidden />
         </div>
       </div>
+      {variant === "hero" && (
+        <p className="absolute inset-x-3 bottom-2 text-center text-[11px] text-muted-foreground">
+          Chat Hero — תמונת היועץ תתווסף בהמשך
+        </p>
+      )}
+      {image && (
+        <img
+          key={image}
+          src={image}
+          alt={advisor.name}
+          className="absolute inset-0 z-10 h-full w-full object-cover"
+          style={{ objectPosition }}
+          onError={(event) => {
+            event.currentTarget.hidden = true;
+          }}
+        />
+      )}
     </div>
   );
 }

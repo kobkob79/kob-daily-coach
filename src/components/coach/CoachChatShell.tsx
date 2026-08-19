@@ -31,7 +31,7 @@ export function CoachChatShell({ advisor }: { advisor: CoachAdvisor }) {
   };
 
   return (
-    <div dir="rtl" className="space-y-4 pb-4">
+    <div dir="rtl" className="space-y-3 pb-4">
       <header className="flex items-center gap-3">
         <Button asChild variant="ghost" size="icon" aria-label="חזרה ליועצים">
           <Link to="/coach">
@@ -47,9 +47,8 @@ export function CoachChatShell({ advisor }: { advisor: CoachAdvisor }) {
 
       <div className="relative">
         <AdvisorVisual advisor={advisor} variant="hero" />
-        <div className="absolute inset-x-4 bottom-3">
+        <div className="absolute inset-x-4 top-3 z-20">
           <p className="text-sm font-bold">שיחה עם {advisor.name}</p>
-          <p className="text-xs text-muted-foreground">Chat Hero — תמונת היועץ תתווסף בהמשך</p>
         </div>
       </div>
 
@@ -59,14 +58,14 @@ export function CoachChatShell({ advisor }: { advisor: CoachAdvisor }) {
       </div>
 
       <section>
-        <h2 className="mb-2 text-sm font-bold">אפשר להתחיל מכאן</h2>
-        <div className="grid grid-cols-2 gap-2">
+        <h2 className="mb-1.5 text-sm font-bold">אפשר להתחיל מכאן</h2>
+        <div className="grid grid-cols-2 gap-1.5">
           {advisor.quickActions.map((action) => (
             <button
               key={action}
               type="button"
               onClick={() => setInput(action)}
-              className="min-h-12 rounded-2xl border border-border/60 bg-card/60 p-3 text-right text-xs font-medium leading-snug transition active:scale-[0.98] active:border-primary/40"
+              className="min-h-11 rounded-2xl border border-border/60 bg-card/60 px-3 py-2 text-right text-xs font-medium leading-snug transition active:scale-[0.98] active:border-primary/40"
             >
               {action}
             </button>
@@ -87,10 +86,12 @@ export function CoachChatShell({ advisor }: { advisor: CoachAdvisor }) {
             {message.text}
           </div>
         ))}
-        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-          <Sparkles className="h-3.5 w-3.5" aria-hidden />
-          V1 מציג הודעות מקומיות בלבד — עדיין אין חיבור ל־AI.
-        </div>
+        {import.meta.env.DEV && (
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+            <Sparkles className="h-3.5 w-3.5" aria-hidden />
+            V1 מציג הודעות מקומיות בלבד — עדיין אין חיבור ל־AI.
+          </div>
+        )}
       </section>
 
       <form onSubmit={submit} className="sticky bottom-0 flex gap-2 rounded-2xl border border-border/60 bg-background/90 p-2 backdrop-blur-xl">

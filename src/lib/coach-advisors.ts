@@ -10,6 +10,12 @@ export interface CoachAdvisor {
   intro: string;
   icon: AdvisorIcon;
   initials: string;
+  media: {
+    cover: string;
+    hero: string;
+    coverPosition: string;
+    heroPosition: string;
+  };
   quickActions: readonly [string, string, string, string];
 }
 
@@ -22,6 +28,12 @@ export const COACH_ADVISORS: readonly CoachAdvisor[] = [
     intro: "בוא נבחן יחד איך הגוף מרגיש ומה יכול לעזור לך להתאושש היום.",
     icon: "recovery",
     initials: "א",
+    media: {
+      cover: "/advisors/adam-cover.png",
+      hero: "/advisors/adam-hero.png",
+      coverPosition: "50% 25%",
+      heroPosition: "50% 28%",
+    },
     quickActions: [
       "איך ההתאוששות שלי היום?",
       "ישנתי גרוע, מה לעשות?",
@@ -37,6 +49,12 @@ export const COACH_ADVISORS: readonly CoachAdvisor[] = [
     intro: "ספר לי מה המטרה והזמן שעומד לרשותך, ונבנה כיוון לאימון.",
     icon: "strength",
     initials: "ד",
+    media: {
+      cover: "/advisors/daniel-cover.png",
+      hero: "/advisors/daniel-hero.png",
+      coverPosition: "50% 24%",
+      heroPosition: "50% 24%",
+    },
     quickActions: [
       "איזה אימון לעשות היום?",
       "במה להחליף את התרגיל הזה?",
@@ -52,6 +70,12 @@ export const COACH_ADVISORS: readonly CoachAdvisor[] = [
     intro: "נמצא פעילות שמתאימה לאנרגיה, לזמן ולסביבה שלך עכשיו.",
     icon: "movement",
     initials: "מ",
+    media: {
+      cover: "/advisors/maya-cover.png",
+      hero: "/advisors/maya-hero.png",
+      coverPosition: "50% 24%",
+      heroPosition: "50% 26%",
+    },
     quickActions: [
       "איך להיות פעיל היום?",
       "תני לי פעילות של 20 דקות",
@@ -67,6 +91,12 @@ export const COACH_ADVISORS: readonly CoachAdvisor[] = [
     intro: "ספר לי מה אכלת או מה יש במטבח, ונחשוב על האפשרות הבאה.",
     icon: "nutrition",
     initials: "ש",
+    media: {
+      cover: "/advisors/shiran-cover.png",
+      hero: "/advisors/shiran-hero.png",
+      coverPosition: "50% 22%",
+      heroPosition: "50% 23%",
+    },
     quickActions: [
       "מה כדאי לי לאכול עכשיו?",
       "מה להכין ממה שיש בבית?",
