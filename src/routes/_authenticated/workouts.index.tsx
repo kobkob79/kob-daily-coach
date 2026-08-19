@@ -272,16 +272,6 @@ function WorkoutHub() {
           <p className="text-sm text-muted-foreground">מה עושים עכשיו</p>
         </div>
         <div className="flex gap-1">
-          <Button asChild variant="ghost" size="icon" aria-label="היסטוריית אימונים">
-            <Link to="/workouts/history">
-              <History className="h-4 w-4" />
-            </Link>
-          </Button>
-          <Button asChild variant="ghost" size="icon" aria-label="תכנון שבועי">
-            <Link to="/workouts/program">
-              <CalendarDays className="h-4 w-4" />
-            </Link>
-          </Button>
           <Button asChild variant="ghost" size="icon" aria-label={t("workouts.templates")}>
             <Link to="/workout-templates">
               <ClipboardList className="h-4 w-4" />
@@ -289,6 +279,30 @@ function WorkoutHub() {
           </Button>
         </div>
       </header>
+
+      <nav aria-label="ניווט אימונים" className="grid grid-cols-3 gap-2">
+        <Link
+          to="/workouts/program"
+          className="flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-primary/25 bg-accent px-2 text-accent-foreground transition duration-150 active:scale-95 active:bg-primary/20"
+        >
+          <CalendarDays className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+          <span className="truncate text-xs font-bold">שבועי</span>
+        </Link>
+        <Link
+          to="/workouts/history"
+          className="flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-primary/25 bg-accent px-2 text-accent-foreground transition duration-150 active:scale-95 active:bg-primary/20"
+        >
+          <History className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+          <span className="truncate text-xs font-bold">היסטוריה</span>
+        </Link>
+        <Link
+          to="/exercises"
+          className="flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-primary/25 bg-accent px-2 text-accent-foreground transition duration-150 active:scale-95 active:bg-primary/20"
+        >
+          <Library className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+          <span className="truncate text-xs font-bold">מאגר</span>
+        </Link>
+      </nav>
 
       {/* Primary action */}
       {active ? (
@@ -332,39 +346,6 @@ function WorkoutHub() {
           </div>
         </section>
       )}
-
-      {/* Secondary entry points */}
-      <div className="grid grid-cols-2 gap-3">
-        <Link
-          to="/workouts/program"
-          className="flex items-center gap-2 rounded-2xl border border-border bg-card p-4"
-        >
-          <CalendarDays className="h-4 w-4 text-primary" />
-          <span className="text-sm font-bold">תכנון שבועי</span>
-        </Link>
-        <Link
-          to="/workouts/history"
-          className="flex items-center gap-2 rounded-2xl border border-border bg-card p-4"
-        >
-          <History className="h-4 w-4 text-primary" />
-          <span className="text-sm font-bold">היסטוריית אימונים</span>
-        </Link>
-      </div>
-      <Link
-        to="/exercises"
-        className="flex items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 to-card p-4"
-      >
-        <div className="flex items-center gap-3">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/15 text-primary">
-            <Library className="h-5 w-5" aria-hidden />
-          </span>
-          <div>
-            <p className="text-sm font-extrabold">מאגר תרגילים</p>
-            <p className="text-xs text-muted-foreground">גלישה ב־150 תרגילי הליבה</p>
-          </div>
-        </div>
-        <span className="text-primary" aria-hidden>←</span>
-      </Link>
 
       {conflict && (
         <ConflictDialog
