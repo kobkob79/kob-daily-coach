@@ -30,7 +30,7 @@ export function AdvisorVisual({
       className={cn(
         "relative overflow-hidden border border-primary/20 bg-gradient-to-br from-primary/15 via-card to-muted/40",
         variant === "cover" && "aspect-[4/3] w-full rounded-2xl",
-        variant === "hero" && "h-28 w-full rounded-3xl sm:h-36",
+        variant === "hero" && "h-36 w-full rounded-3xl sm:h-44",
         variant === "avatar" && "h-11 w-11 shrink-0 rounded-2xl",
       )}
       aria-label={image ? `תמונה של ${advisor.name}` : `מקום שמור לתמונה של ${advisor.name}`}

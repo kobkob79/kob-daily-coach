@@ -45,11 +45,8 @@ export function CoachChatShell({ advisor }: { advisor: CoachAdvisor }) {
         </div>
       </header>
 
-      <div className="relative">
+      <div>
         <AdvisorVisual advisor={advisor} variant="hero" />
-        <div className="absolute inset-x-4 top-3 z-20">
-          <p className="text-sm font-bold">שיחה עם {advisor.name}</p>
-        </div>
       </div>
 
       <div className="flex gap-2 rounded-2xl border border-border/60 bg-muted/25 p-3 text-xs leading-relaxed text-muted-foreground">
