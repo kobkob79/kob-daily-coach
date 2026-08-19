@@ -119,8 +119,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
               <div className="flex shrink-0 items-center justify-center px-1">
                 <button
-                  onClick={() => setAskOpen(true)}
-                  aria-label="שאל את Viora"
+                  onClick={() => router.navigate({ to: "/coach" })}
+                  aria-label="פתח את יועצי Viora"
                   className="group relative grid h-12 w-12 place-items-center"
                 >
                   <span
