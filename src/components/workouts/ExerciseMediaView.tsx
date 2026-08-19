@@ -5,7 +5,7 @@
  * → hero, …) through `useExerciseMedia`, so the picker card, the details sheet
  * and the session hero all behave identically.
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { useExerciseMedia } from "@/hooks/useExerciseMedia";
 import { resolveExerciseMedia, type ExerciseMediaSlot } from "@/lib/exercise-media";
