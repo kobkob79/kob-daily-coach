@@ -331,14 +331,25 @@ export function ExerciseCard({
     <button
       type="button"
       onClick={onPick}
-      className="group flex w-full items-stretch gap-3 rounded-2xl border border-border/60 bg-card/40 p-2.5 text-right transition-colors hover:border-primary/50 hover:bg-card/70 [content-visibility:auto] [contain-intrinsic-size:112px]"
+      className={cn(
+        "group flex w-full items-stretch rounded-2xl border border-border/60 bg-card/40 text-right transition-colors hover:border-primary/50 hover:bg-card/70 [content-visibility:auto] [contain-intrinsic-size:112px]",
+        action === "open" ? "min-h-[112px] gap-0 overflow-hidden p-0" : "gap-3 p-2.5",
+      )}
     >
-      <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-border/50 bg-muted/30">
+      <div
+        className={cn(
+          "shrink-0 overflow-hidden bg-muted/30",
+          action === "open"
+            ? "w-[34%] self-stretch border-l border-border/50"
+            : "h-24 w-24 rounded-2xl border border-border/50",
+        )}
+      >
         <ExerciseMediaView
           exerciseId={ex.id}
           name={ex.name}
           fallbackImage={ex.image_path}
           mediaRole="thumbnail"
+          fit={action === "open" ? "cover" : undefined}
           className="h-full w-full"
           placeholder={
             <div className="grid h-full w-full place-items-center">
@@ -348,7 +359,7 @@ export function ExerciseCard({
         />
       </div>
 
-      <div className="min-w-0 flex-1 py-0.5">
+      <div className={cn("min-w-0 flex-1", action === "open" ? "px-3 py-3" : "py-0.5")}>
         <p className="truncate text-sm font-semibold">{ex.name}</p>
         <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
           {normalizeMuscleGroup(ex.muscle_group)}
@@ -364,7 +375,7 @@ export function ExerciseCard({
         </div>
       </div>
 
-      <div className="grid w-8 shrink-0 place-items-center">
+      <div className={cn("grid w-8 shrink-0 place-items-center", action === "open" && "ml-2")}>
         <span className="grid h-7 w-7 place-items-center rounded-full bg-primary/15 text-primary">
           {action === "add" ? <Plus className="h-4 w-4" /> : <span aria-hidden>←</span>}
         </span>
