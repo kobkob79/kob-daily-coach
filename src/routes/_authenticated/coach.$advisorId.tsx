@@ -25,5 +25,5 @@ function AdvisorChatPage() {
     );
   }
 
-  return <CoachChatShell advisor={advisor} />;
+  return <CoachChatShell key={advisor.id} advisor={advisor} />;
 }

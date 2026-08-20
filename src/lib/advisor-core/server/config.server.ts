@@ -1,0 +1,26 @@
+import { AdvisorCoreError } from "../response";
+
+export const VIORA_AI_PROVIDERS = ["mock", "openai"] as const;
+export type VioraAIProvider = (typeof VIORA_AI_PROVIDERS)[number];
+
+export const VIORA_ADVISOR_MODEL = "gpt-5-mini";
+export const VIORA_ADVISOR_MAX_OUTPUT_TOKENS = 600;
+
+export function getVioraAIProvider(): VioraAIProvider {
+  const configuredProvider = process.env.VIORA_AI_PROVIDER?.trim().toLowerCase();
+
+  if (!configuredProvider && process.env.NODE_ENV !== "production") {
+    return "mock";
+  }
+
+  if (configuredProvider === "mock" || configuredProvider === "openai") {
+    return configuredProvider;
+  }
+
+  throw new AdvisorCoreError(
+    "INVALID_AI_PROVIDER_CONFIGURATION",
+    configuredProvider
+      ? "The configured Viora AI provider is not supported."
+      : "VIORA_AI_PROVIDER must be configured on the production server.",
+  );
+}

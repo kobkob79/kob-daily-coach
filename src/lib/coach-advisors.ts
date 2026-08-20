@@ -1,4 +1,6 @@
-export type AdvisorId = "adam" | "daniel" | "maya" | "shiran";
+import type { AdvisorId } from "./advisor-core";
+
+export type { AdvisorId } from "./advisor-core";
 
 export type AdvisorIcon = "recovery" | "strength" | "movement" | "nutrition";
 
