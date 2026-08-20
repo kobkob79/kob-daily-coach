@@ -1,7 +1,11 @@
 import OpenAI, { type APIError } from "openai";
 import type { AdvisorAIProvider } from "../provider.server";
 import { AdvisorCoreError, type AdvisorCoreErrorCode } from "../../response";
-import { VIORA_ADVISOR_MAX_OUTPUT_TOKENS, VIORA_ADVISOR_MODEL } from "../config.server";
+import {
+  VIORA_ADVISOR_MAX_OUTPUT_TOKENS,
+  VIORA_ADVISOR_MODEL,
+  VIORA_ADVISOR_REASONING_EFFORT,
+} from "../config.server";
 import { createOpenAIClient } from "../openai-client.server";
 
 interface SafeOpenAIErrorDiagnostics {
@@ -15,6 +19,22 @@ interface SafeOpenAIConnectionDiagnostics {
   error_name: string;
   has_cause: boolean;
   cause_code?: string;
+}
+
+interface OpenAITextResponse {
+  id?: string;
+  output_text?: string;
+  output: Array<{
+    type: string;
+    content?: Array<{ type: string; text?: string }>;
+  }>;
+  status?: string;
+  usage?: unknown;
+}
+
+interface ExtractedResponseText {
+  source: "output_text" | "output" | "none";
+  text: string;
 }
 
 type ClassifiableOpenAIError = Pick<APIError, "status" | "code" | "type">;
@@ -67,6 +87,47 @@ function logOpenAIErrorForDevelopment(
   });
 }
 
+function extractResponseText(response: OpenAITextResponse): ExtractedResponseText {
+  const aggregateText = response.output_text?.trim() ?? "";
+  if (aggregateText) {
+    return { source: "output_text", text: aggregateText };
+  }
+
+  const outputText = response.output
+    .filter((item) => item.type === "message")
+    .flatMap((item) => item.content ?? [])
+    .filter((content) => content.type === "output_text")
+    .map((content) => content.text?.trim() ?? "")
+    .filter(Boolean)
+    .join("\n\n");
+
+  return outputText
+    ? { source: "output", text: outputText }
+    : { source: "none", text: "" };
+}
+
+function logOpenAIResponseForSmokeTest(
+  response: OpenAITextResponse,
+  extraction: ExtractedResponseText,
+): void {
+  if (
+    process.env.NODE_ENV === "production" ||
+    process.env.VIORA_AI_SMOKE_DIAGNOSTICS !== "1"
+  ) {
+    return;
+  }
+
+  console.info("[Viora Advisor AI] OpenAI response metadata", {
+    extraction_source: extraction.source,
+    output_count: response.output.length,
+    output_text_length: response.output_text?.length ?? 0,
+    output_types: response.output.map((item) => item.type),
+    response_id_exists: Boolean(response.id),
+    status: response.status,
+    usage: response.usage,
+  });
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -113,6 +174,7 @@ export const openAIAdvisorProvider: AdvisorAIProvider = {
         instructions,
         input: request.message,
         max_output_tokens: VIORA_ADVISOR_MAX_OUTPUT_TOKENS,
+        reasoning: { effort: VIORA_ADVISOR_REASONING_EFFORT },
         store: false,
       });
     } catch (error) {
@@ -151,7 +213,10 @@ export const openAIAdvisorProvider: AdvisorAIProvider = {
       );
     }
 
-    const text = response.output_text.trim();
+    const extraction = extractResponseText(response);
+    logOpenAIResponseForSmokeTest(response, extraction);
+
+    const text = extraction.text;
     if (!text) {
       throw new AdvisorCoreError("EMPTY_MODEL_RESPONSE", "The advisor returned an empty response.");
     }
