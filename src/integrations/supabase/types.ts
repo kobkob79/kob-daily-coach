@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      advisor_daily_usage: {
+        Row: {
+          created_at: string
+          reservation_expires_at: string | null
+          reservation_token: string | null
+          successful_questions: number
+          updated_at: string
+          usage_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          reservation_expires_at?: string | null
+          reservation_token?: string | null
+          successful_questions?: number
+          updated_at?: string
+          usage_date: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          reservation_expires_at?: string | null
+          reservation_token?: string | null
+          successful_questions?: number
+          updated_at?: string
+          usage_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_memory: {
         Row: {
           created_at: string
@@ -1257,6 +1287,36 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_advisor_daily_quota: {
+        Args: { p_claim_token: string; p_user_id: string }
+        Returns: {
+          allowed: boolean
+          limit: number
+          remaining: number
+          resets_at: string
+          used: number
+        }[]
+      }
+      finalize_advisor_daily_quota: {
+        Args: { p_claim_token: string; p_user_id: string }
+        Returns: {
+          allowed: boolean
+          limit: number
+          remaining: number
+          resets_at: string
+          used: number
+        }[]
+      }
+      get_advisor_daily_quota: {
+        Args: { p_user_id: string }
+        Returns: {
+          allowed: boolean
+          limit: number
+          remaining: number
+          resets_at: string
+          used: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1267,6 +1327,10 @@ export type Database = {
       increment_meal_favorite_use: {
         Args: { _favorite_id: string }
         Returns: number
+      }
+      release_advisor_daily_quota: {
+        Args: { p_claim_token: string; p_user_id: string }
+        Returns: boolean
       }
     }
     Enums: {
