@@ -47,6 +47,6 @@ export async function generateQuotaProtectedAdvisorResponse(
     throw error;
   }
 
-  await quotaStore.finalize(userId, claim.claimToken);
-  return response;
+  const quota = await quotaStore.finalize(userId, claim.claimToken);
+  return { ...response, quota };
 }

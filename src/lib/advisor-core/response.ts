@@ -1,10 +1,12 @@
 import type { AdvisorId } from "./types";
+import type { AdvisorDailyQuota } from "./quota";
 
 export interface AdvisorChatResponse {
   advisor_id: AdvisorId;
   conversation_id?: string;
   response_id: string;
   text: string;
+  quota?: AdvisorDailyQuota;
 }
 
 export type AdvisorCoreErrorCode =
