@@ -5,6 +5,7 @@ import {
   type AdvisorChatResponse,
   type AdvisorCoreErrorCode,
 } from "@/lib/advisor-core/response";
+import type { AdvisorDailyQuota } from "@/lib/advisor-core/quota";
 
 type AdvisorChatServerResult =
   | { ok: true; response: AdvisorChatResponse }
@@ -12,6 +13,22 @@ type AdvisorChatServerResult =
       ok: false;
       error_code: AdvisorCoreErrorCode | "ADVISOR_REQUEST_FAILED";
     };
+
+type AdvisorQuotaStatusServerResult =
+  { ok: true; quota: AdvisorDailyQuota } | { ok: false; error_code: "ADVISOR_QUOTA_UNAVAILABLE" };
+
+export const getAdvisorDailyQuotaServer = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<AdvisorQuotaStatusServerResult> => {
+    const { supabaseAdvisorQuotaStore } = await import("@/lib/advisor-core/server/quota.server");
+
+    try {
+      const quota = await supabaseAdvisorQuotaStore.getStatus(String(context.userId));
+      return { ok: true, quota };
+    } catch {
+      return { ok: false, error_code: "ADVISOR_QUOTA_UNAVAILABLE" };
+    }
+  });
 
 export const generateAdvisorResponseServer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

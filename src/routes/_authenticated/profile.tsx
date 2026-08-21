@@ -39,6 +39,7 @@ import { getAllMemory } from "@/lib/ai-memory";
 import { fetchLifeProfile } from "@/lib/life-profile";
 import { QAToolsCard } from "@/components/qa/QAToolsCard";
 import { ThemeSelector } from "@/components/ThemeSelector";
+import { BuildInfo } from "@/components/BuildInfo";
 import { useQuery as useAdminQuery } from "@tanstack/react-query";
 import { fetchIsAdmin } from "@/lib/admin";
 export const Route = createFileRoute("/_authenticated/profile")({
@@ -104,6 +105,7 @@ function ProfilePage() {
       <KnowledgeSection profile={profileQ.data ?? null} memory={memoryQ.data ?? {}} />
 
       <QAToolsCard />
+      <BuildInfo showPrefix className="pb-1 text-center" />
     </div>
   );
 }

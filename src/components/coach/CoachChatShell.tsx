@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, LoaderCircle, RotateCcw, Send, ShieldAlert, UserRound } from "lucide-react";
@@ -6,7 +6,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { generateAdvisorResponseServer } from "@/lib/advisor-chat.functions";
+import {
+  generateAdvisorResponseServer,
+  getAdvisorDailyQuotaServer,
+} from "@/lib/advisor-chat.functions";
 import type { CoachAdvisor } from "@/lib/coach-advisors";
 import { fetchProfile, PROFILE_BUCKET } from "@/lib/profile";
 import { AdvisorMessageContent } from "./AdvisorMessageContent";
@@ -20,9 +23,10 @@ interface ChatMessage {
 
 interface FailedMessage {
   text: string;
+  userMessageId: string;
 }
 
-type QuotaState = "available" | "exhausted";
+type QuotaState = "loading" | "available" | "exhausted" | "error";
 
 const QUOTA_EXHAUSTED_CODES = new Set([
   "ADVISOR_DAILY_QUOTA_EXCEEDED",
@@ -52,7 +56,7 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
   const [conversationId] = useState(() => createLocalId(`conversation_${advisor.id}`));
   const [isLoading, setIsLoading] = useState(false);
   const [failedMessage, setFailedMessage] = useState<FailedMessage | null>(null);
-  const [quotaState, setQuotaState] = useState<QuotaState>("available");
+  const [quotaState, setQuotaState] = useState<QuotaState>("loading");
   const conversationEndRef = useRef<HTMLDivElement>(null);
   const hasInteractedRef = useRef(false);
   const requestInFlightRef = useRef(false);
@@ -67,29 +71,51 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
 
   const hasStarted = messages.some((message) => message.role === "user");
   const isQuotaExhausted = quotaState === "exhausted";
+  const canSend = quotaState === "available";
   const resolvedUserAvatarUrl = userAvatarUrl ?? profileAvatarQuery.data;
   const userName = profileQuery.data?.display_name ?? profileQuery.data?.full_name;
   const userInitial = userName?.trim().charAt(0);
+
+  const loadQuota = useCallback(async () => {
+    setQuotaState("loading");
+    try {
+      const result = await getAdvisorDailyQuotaServer();
+      if (!result.ok) {
+        setQuotaState("error");
+        return;
+      }
+      setQuotaState(result.quota.allowed ? "available" : "exhausted");
+    } catch {
+      setQuotaState("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadQuota();
+  }, [loadQuota]);
 
   useEffect(() => {
     if (!hasInteractedRef.current) return;
     conversationEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [messages, isLoading, failedMessage]);
 
-  const sendMessage = async (text: string, appendUserMessage = true) => {
+  const sendMessage = async (
+    text: string,
+    appendUserMessage = true,
+    existingUserMessageId?: string,
+  ) => {
     const clean = text.trim();
-    if (!clean || requestInFlightRef.current || isQuotaExhausted) return;
+    if (!clean || requestInFlightRef.current || !canSend) return;
 
     hasInteractedRef.current = true;
     requestInFlightRef.current = true;
     setFailedMessage(null);
     setIsLoading(true);
 
+    const userMessageId = existingUserMessageId ?? createLocalId("user");
+
     if (appendUserMessage) {
-      setMessages((current) => [
-        ...current,
-        { id: createLocalId("user"), role: "user", text: clean },
-      ]);
+      setMessages((current) => [...current, { id: userMessageId, role: "user", text: clean }]);
     }
 
     try {
@@ -102,11 +128,13 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
       });
       if (!result.ok) {
         if (QUOTA_EXHAUSTED_CODES.has(result.error_code)) {
+          setMessages((current) => current.filter((message) => message.id !== userMessageId));
+          setFailedMessage(null);
           setQuotaState("exhausted");
           return;
         }
 
-        setFailedMessage({ text: clean });
+        setFailedMessage({ text: clean, userMessageId });
         return;
       }
 
@@ -126,7 +154,7 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
       }
       setInput((current) => (current.trim() === clean ? "" : current));
     } catch {
-      setFailedMessage({ text: clean });
+      setFailedMessage({ text: clean, userMessageId });
     } finally {
       requestInFlightRef.current = false;
       setIsLoading(false);
@@ -162,18 +190,32 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
         <p>ההמלצות הן כלליות בלבד ואינן תחליף לייעוץ רפואי או מקצועי.</p>
       </div>
 
-      <p
+      <div
         role="status"
         className={
-          isQuotaExhausted
-            ? "rounded-2xl border border-border/60 bg-muted/35 px-3 py-2 text-xs font-medium text-muted-foreground"
-            : "rounded-2xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-medium text-foreground"
+          canSend
+            ? "rounded-2xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-medium text-foreground"
+            : "rounded-2xl border border-border/60 bg-muted/35 px-3 py-2 text-xs font-medium text-muted-foreground"
         }
       >
-        {isQuotaExhausted
-          ? "השאלה היומית נוצלה להיום. חדשה תחכה לך מחר."
-          : "השאלה היומית שלך זמינה"}
-      </p>
+        {quotaState === "loading" && "בודקים את זמינות השאלה היומית…"}
+        {quotaState === "available" && "השאלה היומית שלך זמינה"}
+        {quotaState === "exhausted" && "השאלה היומית נוצלה להיום. חדשה תחכה לך מחר."}
+        {quotaState === "error" && (
+          <div className="flex items-center justify-between gap-2">
+            <span>לא הצלחנו לבדוק את זמינות השאלה כרגע.</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="min-h-11 shrink-0 px-2 text-xs"
+              onClick={() => void loadQuota()}
+            >
+              ניסיון נוסף
+            </Button>
+          </div>
+        )}
+      </div>
 
       {!hasStarted && (
         <section>
@@ -184,7 +226,7 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
                 key={action}
                 type="button"
                 onClick={() => void sendMessage(action)}
-                disabled={isLoading || isQuotaExhausted}
+                disabled={isLoading || !canSend}
                 className="min-h-11 rounded-2xl border border-border/60 bg-card/60 px-3 py-2 text-right text-xs font-medium leading-snug transition active:scale-[0.98] active:border-primary/40 disabled:pointer-events-none disabled:opacity-50"
               >
                 {action}
@@ -265,7 +307,9 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
               variant="ghost"
               size="sm"
               className="mt-1.5 min-h-11 px-2 text-xs"
-              onClick={() => void sendMessage(failedMessage.text, false)}
+              onClick={() =>
+                void sendMessage(failedMessage.text, false, failedMessage.userMessageId)
+              }
             >
               <RotateCcw className="h-3.5 w-3.5" aria-hidden />
               ניסיון נוסף
@@ -283,17 +327,25 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
         <Input
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          placeholder={isQuotaExhausted ? "השאלה היומית נוצלה להיום" : `כתבו ל${advisor.name}…`}
+          placeholder={
+            quotaState === "loading"
+              ? "בודקים זמינות…"
+              : isQuotaExhausted
+                ? "השאלה היומית נוצלה להיום"
+                : quotaState === "error"
+                  ? "לא ניתן לשלוח עד לבדיקת הזמינות"
+                  : `כתבו ל${advisor.name}…`
+          }
           className="h-12"
           autoComplete="off"
           aria-label={`הודעה ל${advisor.name}`}
-          disabled={isLoading || isQuotaExhausted}
+          disabled={isLoading || !canSend}
         />
         <Button
           type="submit"
           size="icon"
           className="h-12 w-12 shrink-0"
-          disabled={isLoading || isQuotaExhausted || !input.trim()}
+          disabled={isLoading || !canSend || !input.trim()}
         >
           <Send className="h-4 w-4 rtl:-scale-x-100" aria-hidden />
           <span className="sr-only">שליחה</span>
