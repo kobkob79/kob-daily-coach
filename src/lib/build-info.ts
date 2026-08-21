@@ -10,17 +10,17 @@ const commitCandidates = [
   import.meta.env.VITE_LOVABLE_COMMIT_SHA,
 ];
 
-function resolveCommitHash(): string {
+function resolveCommitHash(): string | null {
   const commit = commitCandidates.find(
     (candidate): candidate is string =>
       typeof candidate === "string" && /^[0-9a-f]{7,40}$/i.test(candidate.trim()),
   );
 
-  return commit ? commit.trim().slice(0, 7) : "unknown";
+  return commit ? commit.trim().slice(0, 7) : null;
 }
 
 export const appVersion =
   typeof packageVersion === "string" && packageVersion.trim() ? packageVersion.trim() : "unknown";
 
 export const commitHash = resolveCommitHash();
-export const buildLabel = `v${appVersion} · ${commitHash}`;
+export const buildLabel = commitHash ? `v${appVersion} · ${commitHash}` : `v${appVersion}`;
