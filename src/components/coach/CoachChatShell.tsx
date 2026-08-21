@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, LoaderCircle, RotateCcw, Send, ShieldAlert, UserRound } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarClock,
+  LoaderCircle,
+  RotateCcw,
+  Send,
+  ShieldAlert,
+  UserRound,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -195,12 +203,26 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
         className={
           canSend
             ? "rounded-2xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-medium text-foreground"
-            : "rounded-2xl border border-border/60 bg-muted/35 px-3 py-2 text-xs font-medium text-muted-foreground"
+            : isQuotaExhausted
+              ? "rounded-2xl border border-primary/35 bg-primary/10 px-3 py-2.5 shadow-sm"
+              : "rounded-2xl border border-border/60 bg-muted/35 px-3 py-2 text-xs font-medium text-muted-foreground"
         }
       >
         {quotaState === "loading" && "בודקים את זמינות השאלה היומית…"}
         {quotaState === "available" && "השאלה היומית שלך זמינה"}
-        {quotaState === "exhausted" && "השאלה היומית נוצלה להיום. חדשה תחכה לך מחר."}
+        {quotaState === "exhausted" && (
+          <div className="flex items-center gap-2.5">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+              <CalendarClock className="h-4 w-4" aria-hidden />
+            </span>
+            <div className="min-w-0 leading-snug">
+              <p className="text-sm font-bold text-foreground">השאלה היומית נוצלה להיום</p>
+              <p className="mt-0.5 text-xs font-medium text-muted-foreground">
+                שאלה חדשה תחכה לך מחר
+              </p>
+            </div>
+          </div>
+        )}
         {quotaState === "error" && (
           <div className="flex items-center justify-between gap-2">
             <span>לא הצלחנו לבדוק את זמינות השאלה כרגע.</span>
