@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { AdvisorCoreError } from "../response";
+import { VIORA_ADVISOR_REQUEST_TIMEOUT_MS } from "./config.server";
 
 let openAIClient: OpenAI | undefined;
 
@@ -14,6 +15,10 @@ export function createOpenAIClient(): OpenAI {
     );
   }
 
-  openAIClient = new OpenAI({ apiKey, maxRetries: 0 });
+  openAIClient = new OpenAI({
+    apiKey,
+    maxRetries: 0,
+    timeout: VIORA_ADVISOR_REQUEST_TIMEOUT_MS,
+  });
   return openAIClient;
 }

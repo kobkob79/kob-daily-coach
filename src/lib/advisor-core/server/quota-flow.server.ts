@@ -5,15 +5,18 @@ import {
   generateAdvisorResponse,
   validateAdvisorChatRequest,
 } from "./generate-advisor-response.server";
-import { supabaseAdvisorQuotaStore } from "./quota.server";
+import { logAdvisorServerEvent, type AdvisorServerEventLogger } from "./observability.server";
 
-type AdvisorResponseGenerator = (
-  input: unknown,
-) => Promise<AdvisorChatResponse>;
+type AdvisorResponseGenerator = (input: unknown) => Promise<AdvisorChatResponse>;
 
 export interface QuotaProtectedAdvisorDependencies {
   quotaStore?: AdvisorQuotaStore;
   generateResponse?: AdvisorResponseGenerator;
+  logEvent?: AdvisorServerEventLogger;
+}
+
+function getErrorCategory(error: unknown): string | undefined {
+  return error instanceof AdvisorCoreError ? error.code : undefined;
 }
 
 export async function generateQuotaProtectedAdvisorResponse(
@@ -22,9 +25,21 @@ export async function generateQuotaProtectedAdvisorResponse(
   dependencies: QuotaProtectedAdvisorDependencies = {},
 ): Promise<AdvisorChatResponse> {
   const request: AdvisorChatRequest = validateAdvisorChatRequest(input);
-  const quotaStore = dependencies.quotaStore ?? supabaseAdvisorQuotaStore;
+  const quotaStore =
+    dependencies.quotaStore ?? (await import("./quota.server")).supabaseAdvisorQuotaStore;
   const generateResponse = dependencies.generateResponse ?? generateAdvisorResponse;
-  const claim = await quotaStore.claim(userId);
+  const logEvent = dependencies.logEvent ?? logAdvisorServerEvent;
+  let claim;
+
+  try {
+    claim = await quotaStore.claim(userId);
+  } catch (error) {
+    logEvent("advisor_quota_claim_failed", {
+      error_category: getErrorCategory(error),
+      operation: "claim",
+    });
+    throw error;
+  }
 
   if (!claim.quota.allowed) {
     throw new AdvisorCoreError(
@@ -39,14 +54,25 @@ export async function generateQuotaProtectedAdvisorResponse(
   } catch (error) {
     try {
       await quotaStore.release(userId, claim.claimToken);
-    } catch {
-      if (process.env.NODE_ENV !== "production") {
-        console.error("[Viora Advisor AI] Failed to release advisor quota reservation");
-      }
+    } catch (releaseError) {
+      logEvent("advisor_quota_release_failed", {
+        error_category: getErrorCategory(releaseError),
+        operation: "release",
+      });
     }
     throw error;
   }
 
-  const quota = await quotaStore.finalize(userId, claim.claimToken);
-  return { ...response, quota };
+  try {
+    const quota = await quotaStore.finalize(userId, claim.claimToken);
+    return { ...response, quota };
+  } catch (error) {
+    const details = {
+      error_category: getErrorCategory(error),
+      operation: "finalize" as const,
+    };
+    logEvent("advisor_quota_finalize_failed", details);
+    logEvent("advisor_provider_succeeded_quota_finalize_failed", details);
+    throw error;
+  }
 }

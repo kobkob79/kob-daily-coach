@@ -6,6 +6,7 @@ export type VioraAIProvider = (typeof VIORA_AI_PROVIDERS)[number];
 export const VIORA_ADVISOR_MODEL = "gpt-5.6-terra";
 export const VIORA_ADVISOR_MAX_OUTPUT_TOKENS = 1200;
 export const VIORA_ADVISOR_REASONING_EFFORT = "low" as const;
+export const VIORA_ADVISOR_REQUEST_TIMEOUT_MS = 60_000;
 
 export function getVioraAIProvider(): VioraAIProvider {
   const configuredProvider = process.env.VIORA_AI_PROVIDER?.trim().toLowerCase();
