@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, LoaderCircle, RotateCcw, Send, ShieldAlert } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, LoaderCircle, RotateCcw, Send, ShieldAlert, UserRound } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
 import { generateAdvisorResponseServer } from "@/lib/advisor-chat.functions";
 import type { CoachAdvisor } from "@/lib/coach-advisors";
+import { fetchProfile, PROFILE_BUCKET } from "@/lib/profile";
+import { AdvisorMessageContent } from "./AdvisorMessageContent";
 import { AdvisorVisual } from "./AdvisorVisual";
 
 interface ChatMessage {
@@ -17,11 +22,29 @@ interface FailedMessage {
   text: string;
 }
 
+type QuotaState = "available" | "exhausted";
+
+const QUOTA_EXHAUSTED_CODES = new Set([
+  "ADVISOR_DAILY_QUOTA_EXCEEDED",
+  "ADVISOR_DAILY_QUOTA_EXHAUSTED",
+]);
+
 function createLocalId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID()}`;
 }
 
-export function CoachChatShell({ advisor }: { advisor: CoachAdvisor }) {
+interface CoachChatShellProps {
+  advisor: CoachAdvisor;
+  userAvatarUrl?: string;
+}
+
+async function createProfileAvatarUrl(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from(PROFILE_BUCKET).createSignedUrl(path, 3600);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
+export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: `intro_${advisor.id}`, role: "advisor", text: advisor.intro },
@@ -29,11 +52,24 @@ export function CoachChatShell({ advisor }: { advisor: CoachAdvisor }) {
   const [conversationId] = useState(() => createLocalId(`conversation_${advisor.id}`));
   const [isLoading, setIsLoading] = useState(false);
   const [failedMessage, setFailedMessage] = useState<FailedMessage | null>(null);
+  const [quotaState, setQuotaState] = useState<QuotaState>("available");
   const conversationEndRef = useRef<HTMLDivElement>(null);
   const hasInteractedRef = useRef(false);
   const requestInFlightRef = useRef(false);
+  const profileQuery = useQuery({ queryKey: ["profile"], queryFn: fetchProfile });
+  const profileAvatarPath = profileQuery.data?.avatar_url ?? null;
+  const profileAvatarQuery = useQuery({
+    queryKey: ["profile-avatar", profileAvatarPath],
+    queryFn: () => createProfileAvatarUrl(profileAvatarPath!),
+    enabled: !userAvatarUrl && Boolean(profileAvatarPath),
+    staleTime: 50 * 60 * 1000,
+  });
 
   const hasStarted = messages.some((message) => message.role === "user");
+  const isQuotaExhausted = quotaState === "exhausted";
+  const resolvedUserAvatarUrl = userAvatarUrl ?? profileAvatarQuery.data;
+  const userName = profileQuery.data?.display_name ?? profileQuery.data?.full_name;
+  const userInitial = userName?.trim().charAt(0);
 
   useEffect(() => {
     if (!hasInteractedRef.current) return;
@@ -42,7 +78,7 @@ export function CoachChatShell({ advisor }: { advisor: CoachAdvisor }) {
 
   const sendMessage = async (text: string, appendUserMessage = true) => {
     const clean = text.trim();
-    if (!clean || requestInFlightRef.current) return;
+    if (!clean || requestInFlightRef.current || isQuotaExhausted) return;
 
     hasInteractedRef.current = true;
     requestInFlightRef.current = true;
@@ -57,13 +93,24 @@ export function CoachChatShell({ advisor }: { advisor: CoachAdvisor }) {
     }
 
     try {
-      const response = await generateAdvisorResponseServer({
+      const result = await generateAdvisorResponseServer({
         data: {
           advisor_id: advisor.id,
           message: clean,
           conversation_id: conversationId,
         },
       });
+      if (!result.ok) {
+        if (QUOTA_EXHAUSTED_CODES.has(result.error_code)) {
+          setQuotaState("exhausted");
+          return;
+        }
+
+        setFailedMessage({ text: clean });
+        return;
+      }
+
+      const response = result.response;
       const responseText = response.text?.trim();
 
       if (!responseText) {
@@ -74,6 +121,9 @@ export function CoachChatShell({ advisor }: { advisor: CoachAdvisor }) {
         ...current,
         { id: response.response_id, role: "advisor", text: responseText },
       ]);
+      if (response.quota?.remaining === 0 || response.quota?.allowed === false) {
+        setQuotaState("exhausted");
+      }
       setInput((current) => (current.trim() === clean ? "" : current));
     } catch {
       setFailedMessage({ text: clean });
@@ -112,6 +162,19 @@ export function CoachChatShell({ advisor }: { advisor: CoachAdvisor }) {
         <p>ההמלצות הן כלליות בלבד ואינן תחליף לייעוץ רפואי או מקצועי.</p>
       </div>
 
+      <p
+        role="status"
+        className={
+          isQuotaExhausted
+            ? "rounded-2xl border border-border/60 bg-muted/35 px-3 py-2 text-xs font-medium text-muted-foreground"
+            : "rounded-2xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-medium text-foreground"
+        }
+      >
+        {isQuotaExhausted
+          ? "השאלה היומית נוצלה להיום. חדשה תחכה לך מחר."
+          : "השאלה היומית שלך זמינה"}
+      </p>
+
       {!hasStarted && (
         <section>
           <h2 className="mb-1.5 text-sm font-bold">אפשר להתחיל מכאן</h2>
@@ -121,7 +184,7 @@ export function CoachChatShell({ advisor }: { advisor: CoachAdvisor }) {
                 key={action}
                 type="button"
                 onClick={() => void sendMessage(action)}
-                disabled={isLoading}
+                disabled={isLoading || isQuotaExhausted}
                 className="min-h-11 rounded-2xl border border-border/60 bg-card/60 px-3 py-2 text-right text-xs font-medium leading-snug transition active:scale-[0.98] active:border-primary/40 disabled:pointer-events-none disabled:opacity-50"
               >
                 {action}
@@ -132,18 +195,60 @@ export function CoachChatShell({ advisor }: { advisor: CoachAdvisor }) {
       )}
 
       <section className="space-y-2" aria-label={`שיחה עם ${advisor.name}`} aria-live="polite">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={
-              message.role === "advisor"
-                ? "max-w-[88%] rounded-3xl rounded-tr-md border border-border/60 bg-card/70 px-4 py-3 text-sm leading-relaxed"
-                : "mr-auto max-w-[85%] rounded-3xl rounded-tl-md border border-primary/25 bg-primary/10 px-4 py-3 text-sm leading-relaxed"
-            }
-          >
-            {message.text}
-          </div>
-        ))}
+        {messages.map((message) => {
+          const isAdvisor = message.role === "advisor";
+          return (
+            <div
+              key={message.id}
+              dir={isAdvisor ? "rtl" : "ltr"}
+              className={
+                isAdvisor
+                  ? "flex w-full max-w-[96%] items-end gap-2 overflow-visible"
+                  : "mr-auto flex w-full max-w-[94%] items-end gap-2 overflow-visible"
+              }
+            >
+              <Avatar className="z-10 h-9 w-9 shrink-0 self-end border border-primary/20 bg-card shadow-sm ring-2 ring-background">
+                {isAdvisor ? (
+                  <>
+                    <AvatarImage
+                      src={advisor.media.cover}
+                      alt={advisor.name}
+                      className="object-cover"
+                      style={{ objectPosition: advisor.media.coverPosition }}
+                    />
+                    <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">
+                      {advisor.initials}
+                    </AvatarFallback>
+                  </>
+                ) : (
+                  <>
+                    {resolvedUserAvatarUrl && (
+                      <AvatarImage
+                        src={resolvedUserAvatarUrl}
+                        alt="תמונת הפרופיל שלך"
+                        className="object-cover"
+                      />
+                    )}
+                    <AvatarFallback className="bg-muted text-xs font-bold text-muted-foreground">
+                      {userInitial || <UserRound className="h-4 w-4" aria-hidden />}
+                    </AvatarFallback>
+                  </>
+                )}
+              </Avatar>
+
+              <div
+                className={
+                  isAdvisor
+                    ? "min-w-0 flex-1 rounded-3xl rounded-tr-md border border-border/60 bg-card/70 px-4 py-3"
+                    : "min-w-0 flex-1 whitespace-pre-wrap break-words rounded-3xl rounded-tl-md border border-primary/25 bg-primary/10 px-4 py-3 text-right text-sm leading-6"
+                }
+                dir="rtl"
+              >
+                {isAdvisor ? <AdvisorMessageContent text={message.text} /> : message.text}
+              </div>
+            </div>
+          );
+        })}
 
         {isLoading && (
           <div className="flex max-w-[88%] items-center gap-2 rounded-3xl rounded-tr-md border border-border/60 bg-card/70 px-4 py-3 text-xs text-muted-foreground">
@@ -171,20 +276,24 @@ export function CoachChatShell({ advisor }: { advisor: CoachAdvisor }) {
         <div ref={conversationEndRef} />
       </section>
 
-      <form onSubmit={submit} className="sticky bottom-0 flex gap-2 rounded-2xl border border-border/60 bg-background/90 p-2 backdrop-blur-xl">
+      <form
+        onSubmit={submit}
+        className="sticky bottom-0 flex gap-2 rounded-2xl border border-border/60 bg-background/90 p-2 backdrop-blur-xl"
+      >
         <Input
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          placeholder={`כתבו ל${advisor.name}…`}
+          placeholder={isQuotaExhausted ? "השאלה היומית נוצלה להיום" : `כתבו ל${advisor.name}…`}
           className="h-12"
           autoComplete="off"
           aria-label={`הודעה ל${advisor.name}`}
+          disabled={isLoading || isQuotaExhausted}
         />
         <Button
           type="submit"
           size="icon"
           className="h-12 w-12 shrink-0"
-          disabled={isLoading || !input.trim()}
+          disabled={isLoading || isQuotaExhausted || !input.trim()}
         >
           <Send className="h-4 w-4 rtl:-scale-x-100" aria-hidden />
           <span className="sr-only">שליחה</span>
