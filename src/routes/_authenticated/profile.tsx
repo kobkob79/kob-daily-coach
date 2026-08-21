@@ -131,23 +131,41 @@ function AdminEntry() {
 /* ---------------- Header (avatar + name) ---------------- */
 
 function ProfileHeader({ profile, onChanged }: { profile: Profile | null; onChanged: () => void }) {
-  const fileRef = useRef<HTMLInputElement>(null);
+  const qc = useQueryClient();
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const [avatarStage, setAvatarStage] = useState<"processing" | "uploading" | null>(null);
   const avatar = useSignedUrl(PROFILE_BUCKET, profile?.avatar_url ?? null);
 
+  const invalidateAvatarQueries = async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["profile"] }),
+      qc.invalidateQueries({ queryKey: ["profile-avatar"] }),
+      qc.invalidateQueries({ queryKey: ["signed-url", PROFILE_BUCKET] }),
+    ]);
+    onChanged();
+  };
+
   const upload = useMutation({
-    mutationFn: async (f: File) => uploadAvatar(f),
-    onSuccess: () => { toast.success(t("profile.saved")); onChanged(); },
+    mutationFn: async (f: File) => uploadAvatar(f, profile?.avatar_url ?? null, setAvatarStage),
+    onSuccess: async () => { toast.success(t("profile.saved")); await invalidateAvatarQueries(); },
     onError: (e) => toast.error((e as Error).message),
+    onSettled: () => setAvatarStage(null),
   });
 
   const remove = useMutation({
     mutationFn: async () => removeAvatar(profile?.avatar_url ?? null),
-    onSuccess: () => { toast.success(t("profile.avatarRemoved")); onChanged(); },
+    onSuccess: async () => { toast.success(t("profile.avatarRemoved")); await invalidateAvatarQueries(); },
     onError: (e) => toast.error((e as Error).message),
   });
 
   const name = profile?.full_name || profile?.display_name || t("profile.namePlaceholder");
   const age = ageFromBirthdate(profile?.birth_date ?? null);
+  const isAvatarBusy = upload.isPending || remove.isPending;
+
+  const selectAvatar = (file: File | undefined) => {
+    if (file && !isAvatarBusy) upload.mutate(file);
+  };
 
   return (
     <PremiumCard className="flex items-center gap-4">
@@ -162,21 +180,32 @@ function ProfileHeader({ profile, onChanged }: { profile: Profile | null; onChan
           )}
         </div>
         <button
-          onClick={() => fileRef.current?.click()}
+          type="button"
+          onClick={() => cameraRef.current?.click()}
+          disabled={isAvatarBusy}
           className="absolute -bottom-1 -left-1 grid h-8 w-8 place-items-center rounded-full bg-primary text-primary-foreground shadow-glow"
           aria-label={t("profile.avatar.change")}
         >
           <Camera className="h-4 w-4" />
         </button>
         <input
-          ref={fileRef}
+          ref={cameraRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp"
           capture="user"
           hidden
           onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) upload.mutate(f);
+            selectAvatar(e.target.files?.[0]);
+            e.target.value = "";
+          }}
+        />
+        <input
+          ref={galleryRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          hidden
+          onChange={(e) => {
+            selectAvatar(e.target.files?.[0]);
             e.target.value = "";
           }}
         />
@@ -186,13 +215,30 @@ function ProfileHeader({ profile, onChanged }: { profile: Profile | null; onChan
         <p className="text-xs text-muted-foreground">
           {age != null ? `${t("profile.age")} ${age}` : t("profile.completeHint")}
         </p>
-        {profile?.avatar_url && (
+        <div className="mt-2 flex flex-wrap items-center gap-3">
           <button
-            onClick={() => remove.mutate()}
-            className="mt-2 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-destructive"
+            type="button"
+            onClick={() => galleryRef.current?.click()}
+            disabled={isAvatarBusy}
+            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
           >
-            <Trash2 className="h-3 w-3" /> {t("profile.avatar.remove")}
+            <Upload className="h-3 w-3" /> בחירה מהגלריה
           </button>
+          {profile?.avatar_url && (
+            <button
+              type="button"
+              onClick={() => remove.mutate()}
+              disabled={isAvatarBusy}
+              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-destructive disabled:pointer-events-none disabled:opacity-50"
+            >
+              <Trash2 className="h-3 w-3" /> {remove.isPending ? "מסיר…" : t("profile.avatar.remove")}
+            </button>
+          )}
+        </div>
+        {avatarStage && (
+          <p className="mt-1 text-[11px] text-muted-foreground" aria-live="polite">
+            {avatarStage === "processing" ? "מעבד את התמונה…" : "מעלה את התמונה…"}
+          </p>
         )}
       </div>
     </PremiumCard>

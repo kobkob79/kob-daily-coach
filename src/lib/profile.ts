@@ -12,6 +12,13 @@
  * currently maps 1:1 to the authenticated user id.
  */
 import { supabase } from "@/integrations/supabase/client";
+import {
+  removeProfileAvatar,
+  replaceProfileAvatar,
+  type AvatarSafeLogEvent,
+  type AvatarUploadStage,
+} from "@/lib/avatar-flow";
+import { processAvatarImage } from "@/lib/image-compress";
 
 export const PROFILE_BUCKET = "profile-photos";
 export const BODY_BUCKET = "body-photos";
@@ -108,24 +115,50 @@ export async function upsertProfile(patch: Partial<Profile>): Promise<void> {
   if (error) throw error;
 }
 
-export async function uploadAvatar(file: File): Promise<string> {
+function logAvatarEvent(event: AvatarSafeLogEvent): void {
+  console.warn("[Viora Profile]", { event });
+}
+
+async function removeStorageObject(path: string): Promise<void> {
+  const { error } = await supabase.storage.from(PROFILE_BUCKET).remove([path]);
+  if (error) throw error;
+}
+
+export async function uploadAvatar(
+  file: File,
+  currentPath: string | null,
+  onStage?: (stage: AvatarUploadStage) => void,
+): Promise<string> {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error("Not signed in");
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-  const path = `${u.user.id}/avatar-${Date.now()}.${ext}`;
-  const { error } = await supabase.storage
-    .from(PROFILE_BUCKET)
-    .upload(path, file, { upsert: true, contentType: file.type || "image/jpeg" });
-  if (error) throw error;
-  await upsertProfile({ avatar_url: path });
-  return path;
+
+  return replaceProfileAvatar(file, currentPath, u.user.id, {
+    processImage: processAvatarImage,
+    async upload(path, processedFile) {
+      const { error } = await supabase.storage.from(PROFILE_BUCKET).upload(path, processedFile, {
+        upsert: false,
+        contentType: processedFile.type,
+        cacheControl: "3600",
+      });
+      if (error) throw error;
+    },
+    updateProfile: (avatarUrl) => upsertProfile({ avatar_url: avatarUrl }),
+    remove: removeStorageObject,
+    createObjectId: () => crypto.randomUUID(),
+    onStage,
+    log: logAvatarEvent,
+  });
 }
 
 export async function removeAvatar(currentPath: string | null): Promise<void> {
-  if (currentPath) {
-    await supabase.storage.from(PROFILE_BUCKET).remove([currentPath]);
-  }
-  await upsertProfile({ avatar_url: null });
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) throw new Error("Not signed in");
+
+  await removeProfileAvatar(currentPath, u.user.id, {
+    updateProfile: (avatarUrl) => upsertProfile({ avatar_url: avatarUrl }),
+    remove: removeStorageObject,
+    log: logAvatarEvent,
+  });
 }
 
 export async function listBodyPhotos(): Promise<BodyPhoto[]> {
@@ -167,5 +200,8 @@ export async function addBodyPhoto(input: {
 
 export async function deleteBodyPhoto(photo: BodyPhoto): Promise<void> {
   await supabase.storage.from(BODY_BUCKET).remove([photo.image_path]);
-  await supabase.from("body_photos" as never).delete().eq("id", photo.id);
+  await supabase
+    .from("body_photos" as never)
+    .delete()
+    .eq("id", photo.id);
 }

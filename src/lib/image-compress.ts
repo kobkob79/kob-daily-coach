@@ -10,8 +10,11 @@
 
 const MAX_EDGE = 1600;
 const QUALITY = 0.82;
+const AVATAR_SIZE = 512;
 
-async function decode(file: File): Promise<{ width: number; height: number; draw: CanvasImageSource; close: () => void }> {
+async function decode(
+  file: File,
+): Promise<{ width: number; height: number; draw: CanvasImageSource; close: () => void }> {
   // createImageBitmap decodes off the main thread and can be released explicitly.
   if (typeof createImageBitmap === "function") {
     const bmp = await createImageBitmap(file);
@@ -75,6 +78,42 @@ export async function compressImageFile(file: File, maxEdge = MAX_EDGE): Promise
     return new File([blob], `${base}.jpg`, { type: "image/jpeg", lastModified: Date.now() });
   } catch {
     return file;
+  } finally {
+    src?.close();
+  }
+}
+
+/** Produces a small, consistently cropped avatar without an interactive cropper. */
+export async function processAvatarImage(file: File): Promise<File> {
+  if (typeof document === "undefined") {
+    throw new Error("Avatar processing requires a browser environment");
+  }
+
+  let src: Awaited<ReturnType<typeof decode>> | null = null;
+  try {
+    src = await decode(file);
+    const cropSize = Math.min(src.width, src.height);
+    const sourceX = Math.max(0, (src.width - cropSize) / 2);
+    const sourceY = Math.max(0, (src.height - cropSize) / 2);
+    const canvas = document.createElement("canvas");
+    canvas.width = AVATAR_SIZE;
+    canvas.height = AVATAR_SIZE;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Avatar image processing is unavailable");
+
+    ctx.drawImage(src.draw, sourceX, sourceY, cropSize, cropSize, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((result) => resolve(result), "image/jpeg", QUALITY),
+    );
+    canvas.width = 0;
+    canvas.height = 0;
+    if (!blob) throw new Error("Avatar image processing failed");
+
+    return new File([blob], "avatar.jpg", {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    });
   } finally {
     src?.close();
   }
