@@ -567,8 +567,9 @@ function Dashboard() {
   });
 
   /** AI brief wins when it is ready; the deterministic voice is the fallback. */
-  const coachLines = briefQ.data?.hero
-    ? [briefQ.data.hero, briefQ.data.statusLine].filter(Boolean)
+  const aiBrief = briefQ.data?.status === "available" ? briefQ.data.brief : undefined;
+  const coachLines = aiBrief?.hero
+    ? [aiBrief.hero, aiBrief.statusLine].filter(Boolean)
     : coachMessage.lines;
 
   const quickActions = buildQuickActions({

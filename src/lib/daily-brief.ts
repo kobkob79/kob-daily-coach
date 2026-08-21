@@ -14,6 +14,7 @@ import {
   generateDailyBrief,
   type DailyBrief,
   type DailyBriefContext,
+  type DailyBriefResult,
 } from "@/lib/daily-brief.functions";
 
 export interface BodyStatusCard {
@@ -177,15 +178,21 @@ export function briefSignature(ctx: DailyBriefContext): string {
 export function useDailyBrief(ctx: DailyBriefContext | null) {
   const call = useServerFn(generateDailyBrief);
   const sig = ctx ? briefSignature(ctx) : null;
-  return useQuery<DailyBrief>({
+  return useQuery<DailyBriefResult>({
     queryKey: ["daily-brief", sig],
     enabled: !!ctx,
     // Once generated for a signature, keep it — new logs create a new sig.
     staleTime: 30 * 60_000,
     gcTime: 60 * 60_000,
     retry: false,
-    queryFn: async () => call({ data: ctx! }),
+    queryFn: async () => {
+      try {
+        return await call({ data: ctx! });
+      } catch {
+        return { status: "unavailable", reason: "provider_error" };
+      }
+    },
   });
 }
 
-export type { DailyBrief, DailyBriefContext };
+export type { DailyBrief, DailyBriefContext, DailyBriefResult };

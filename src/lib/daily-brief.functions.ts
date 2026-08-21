@@ -55,6 +55,10 @@ export interface DailyBrief {
   diagnostics: { model: string; duration_ms: number };
 }
 
+export type DailyBriefResult =
+  | { status: "available"; brief: DailyBrief }
+  | { status: "unavailable"; reason: "not_configured" | "provider_error" };
+
 const SYSTEM_PROMPT = `אתה Viora — מאמן AI בכיר בעברית המשלב תזונאי ספורט, מאמן כושר ורופא חינוכי.
 אתה מקבל תמונת מצב של המשתמש להיום ומחזיר ניתוח חם, אישי, מעודד ולא שיפוטי, בעברית טבעית וזורמת.
 
@@ -86,113 +90,98 @@ const SYSTEM_PROMPT = `אתה Viora — מאמן AI בכיר בעברית המש
   "calorieVerdict": "משפט אחד: האם היום תומך בהרזיה / שימור / עלייה במסה — בהתאם למטרה"
 }`;
 
-export class BriefNotConnectedError extends Error {
-  code = "BRIEF_NOT_CONNECTED" as const;
-}
-
 function arr(v: unknown, max = 6): string[] {
   return Array.isArray(v) ? v.map((x) => String(x)).filter(Boolean).slice(0, max) : [];
 }
 
-export const generateDailyBrief = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => {
-    const ctx = (input ?? {}) as DailyBriefContext;
-    return { ctx };
-  })
-  .handler(async ({ data }): Promise<DailyBrief> => {
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) {
-      throw new BriefNotConnectedError("LOVABLE_API_KEY חסר בשרת.");
-    }
+function logUnavailable(
+  event: "daily_brief_unavailable" | "daily_brief_provider_error",
+  metadata?: { stage?: "request" | "response" | "parse"; status?: number },
+) {
+  console.warn(JSON.stringify({ event, ...metadata }));
+}
 
-    const started = Date.now();
-    let res: Response;
-    try {
-      res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${key}`,
-        },
-        body: JSON.stringify({
-          model: MODEL,
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            {
-              role: "user",
-              content: `להלן קונטקסט המצב של המשתמש להיום. השב JSON בלבד.\n\n${JSON.stringify(data.ctx)}`,
-            },
-          ],
-          response_format: { type: "json_object" },
-        }),
-      });
-    } catch (e) {
-      throw new BriefNotConnectedError(`לא ניתן להגיע ל-AI: ${(e as Error).message}`);
-    }
-    const duration = Date.now() - started;
+export async function generateDailyBriefResult(
+  ctx: DailyBriefContext,
+  options: { apiKey?: string; fetchImpl?: typeof fetch } = {},
+): Promise<DailyBriefResult> {
+  if (!options.apiKey) {
+    logUnavailable("daily_brief_unavailable");
+    return { status: "unavailable", reason: "not_configured" };
+  }
 
-    if (res.status === 402 || res.status === 429) {
-      const msg =
-        res.status === 402
-          ? "אזלו זיכויי ה-AI — הניתוח האישי יחזור ברגע שהזיכויים יתחדשו."
-          : "יותר מדי בקשות ל-AI כרגע — ננסה שוב בקרוב.";
-      return {
-        hero: msg,
-        statusLine: "Viora ממשיך לעקוב אחריך — נתוני הגוף עדיין מתעדכנים בזמן אמת.",
-        analysis: [],
-        supplementAnalysis: [],
-        wellDone: [],
-        improve: [],
-        mission: [],
-        learned: [],
-        calorieVerdict: "",
-        diagnostics: { model: MODEL, duration_ms: duration },
-      };
-    }
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      throw new BriefNotConnectedError(`שגיאת ספק (${res.status}): ${body.slice(0, 180)}`);
-    }
+  const started = Date.now();
+  let res: Response;
+  try {
+    res = await (options.fetchImpl ?? fetch)("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${options.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          {
+            role: "user",
+            content: `להלן קונטקסט המצב של המשתמש להיום. השב JSON בלבד.\n\n${JSON.stringify(ctx)}`,
+          },
+        ],
+        response_format: { type: "json_object" },
+      }),
+    });
+  } catch {
+    logUnavailable("daily_brief_provider_error", { stage: "request" });
+    return { status: "unavailable", reason: "provider_error" };
+  }
+  const duration = Date.now() - started;
 
+  if (!res.ok) {
+    logUnavailable("daily_brief_provider_error", { stage: "response", status: res.status });
+    return { status: "unavailable", reason: "provider_error" };
+  }
+
+  let parsed: Record<string, unknown>;
+  try {
     const json = await res.json();
     const raw: string = json?.choices?.[0]?.message?.content ?? "";
     const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) throw new BriefNotConnectedError("תשובת AI לא תקינה.");
+    if (!match) throw new Error("missing_json");
+    parsed = JSON.parse(match[0]);
+  } catch {
+    logUnavailable("daily_brief_provider_error", { stage: "parse" });
+    return { status: "unavailable", reason: "provider_error" };
+  }
 
-    let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(match[0]);
-    } catch {
-      throw new BriefNotConnectedError("JSON פגום מה-AI.");
-    }
+  const analysisRaw = Array.isArray(parsed.analysis) ? parsed.analysis : [];
+  const analysis = analysisRaw
+    .slice(0, 8)
+    .map((r) => {
+      const o = (r ?? {}) as Record<string, unknown>;
+      return {
+        emoji: String(o.emoji ?? "•"),
+        title: String(o.title ?? "").trim(),
+        body: String(o.body ?? "").trim(),
+      };
+    })
+    .filter((r) => r.title && r.body);
 
-    const analysisRaw = Array.isArray(parsed.analysis) ? parsed.analysis : [];
-    const analysis = analysisRaw
-      .slice(0, 8)
-      .map((r) => {
-        const o = (r ?? {}) as Record<string, unknown>;
-        return {
-          emoji: String(o.emoji ?? "•"),
-          title: String(o.title ?? "").trim(),
-          body: String(o.body ?? "").trim(),
-        };
-      })
-      .filter((r) => r.title && r.body);
+  const supplementRaw = Array.isArray(parsed.supplementAnalysis) ? parsed.supplementAnalysis : [];
+  const supplementAnalysis = supplementRaw
+    .slice(0, 8)
+    .map((r) => {
+      const o = (r ?? {}) as Record<string, unknown>;
+      return {
+        name: String(o.name ?? "").trim(),
+        benefit: String(o.benefit ?? "").trim(),
+      };
+    })
+    .filter((r) => r.name && r.benefit);
 
-    const supplementRaw = Array.isArray(parsed.supplementAnalysis) ? parsed.supplementAnalysis : [];
-    const supplementAnalysis = supplementRaw
-      .slice(0, 8)
-      .map((r) => {
-        const o = (r ?? {}) as Record<string, unknown>;
-        return {
-          name: String(o.name ?? "").trim(),
-          benefit: String(o.benefit ?? "").trim(),
-        };
-      })
-      .filter((r) => r.name && r.benefit);
-
-    return {
+  return {
+    status: "available",
+    brief: {
       hero: String(parsed.hero ?? "").trim() || "היום הגוף שלך ממתין להוראה — בוא נתחיל.",
       statusLine: String(parsed.statusLine ?? "").trim() || "Viora עוקב אחריך בזמן אמת.",
       analysis,
@@ -203,5 +192,16 @@ export const generateDailyBrief = createServerFn({ method: "POST" })
       learned: arr(parsed.learned),
       calorieVerdict: String(parsed.calorieVerdict ?? "").trim(),
       diagnostics: { model: MODEL, duration_ms: duration },
-    };
-  });
+    },
+  };
+}
+
+export const generateDailyBrief = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => {
+    const ctx = (input ?? {}) as DailyBriefContext;
+    return { ctx };
+  })
+  .handler(({ data }): Promise<DailyBriefResult> =>
+    generateDailyBriefResult(data.ctx, { apiKey: process.env.LOVABLE_API_KEY }),
+  );
