@@ -3,7 +3,7 @@ import { AdvisorCoreError } from "../response";
 export const VIORA_AI_PROVIDERS = ["mock", "openai"] as const;
 export type VioraAIProvider = (typeof VIORA_AI_PROVIDERS)[number];
 
-export const VIORA_ADVISOR_MODEL = "gpt-5-mini";
+export const VIORA_ADVISOR_MODEL = "gpt-5.6-terra";
 export const VIORA_ADVISOR_MAX_OUTPUT_TOKENS = 1200;
 export const VIORA_ADVISOR_REASONING_EFFORT = "low" as const;
 
