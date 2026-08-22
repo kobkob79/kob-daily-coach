@@ -826,6 +826,48 @@ export type Database = {
         }
         Relationships: []
       }
+      user_entitlements: {
+        Row: {
+          created_at: string
+          entitlement_key: string
+          expires_at: string | null
+          external_reference: string | null
+          granted_by: string | null
+          id: string
+          source: string
+          starts_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entitlement_key: string
+          expires_at?: string | null
+          external_reference?: string | null
+          granted_by?: string | null
+          id?: string
+          source: string
+          starts_at?: string
+          status: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entitlement_key?: string
+          expires_at?: string | null
+          external_reference?: string | null
+          granted_by?: string | null
+          id?: string
+          source?: string
+          starts_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
