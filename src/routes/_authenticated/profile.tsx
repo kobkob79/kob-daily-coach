@@ -39,6 +39,7 @@ import { getAllMemory } from "@/lib/ai-memory";
 import { fetchLifeProfile } from "@/lib/life-profile";
 import { QAToolsCard } from "@/components/qa/QAToolsCard";
 import { ThemeSelector } from "@/components/ThemeSelector";
+import { PlanAndAISection } from "@/components/premium/AIConnectionSection";
 import { BuildInfo } from "@/components/BuildInfo";
 import { useQuery as useAdminQuery } from "@tanstack/react-query";
 import { fetchIsAdmin } from "@/lib/admin";
@@ -92,6 +93,7 @@ function ProfilePage() {
         <ProfileSummary profile={profileQ.data ?? null} life={lifeQ.data ?? null} />
       )}
 
+      <PlanAndAISection />
       <ThemeSelector />
       <AdminEntry />
       <BodyPhotosSection
