@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { requireAdminAuth } from "@/integrations/supabase/admin-middleware";
 import { ASSETS_BUCKET } from "@/lib/media-paths";
 import { MEDIA_INBOX_BUCKET } from "@/services/media-inbox.service";
 
@@ -12,7 +11,7 @@ function extensionOf(path: string): string {
 }
 
 export const assignExerciseMediaServer = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdminAuth])
   .inputValidator((input: unknown) => {
     const i = (input ?? {}) as Record<string, unknown>;
 
@@ -24,8 +23,8 @@ export const assignExerciseMediaServer = createServerFn({ method: "POST" })
     if (!sourcePath) throw new Error("Missing source media path");
     if (!exerciseId) throw new Error("Missing exercise id");
 
-if (!["thumbnail", "main", "guide", "demo"].includes(role)) {
-          throw new Error("Invalid media role");
+    if (!["thumbnail", "main", "guide", "demo"].includes(role)) {
+      throw new Error("Invalid media role");
     }
 
     return {
@@ -36,16 +35,16 @@ if (!["thumbnail", "main", "guide", "demo"].includes(role)) {
     };
   })
   .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const userId = String(context.userId);
 
     if (!data.sourcePath.startsWith(`${userId}/`)) {
       throw new Error("Forbidden media path");
     }
 
-    const { data: sourceBlob, error: downloadError } =
-      await supabaseAdmin.storage
-        .from(MEDIA_INBOX_BUCKET)
-        .download(data.sourcePath);
+    const { data: sourceBlob, error: downloadError } = await supabaseAdmin.storage
+      .from(MEDIA_INBOX_BUCKET)
+      .download(data.sourcePath);
 
     if (downloadError || !sourceBlob) {
       throw new Error(downloadError?.message ?? "Media file not found");
@@ -57,15 +56,13 @@ if (!["thumbnail", "main", "guide", "demo"].includes(role)) {
       throw new Error("Media file has no extension");
     }
 
-    const destinationPath =
-      `exercises/${data.exerciseId}/${data.role}.${extension}`;
+    const destinationPath = `exercises/${data.exerciseId}/${data.role}.${extension}`;
 
-    const { data: existingFiles, error: listError } =
-      await supabaseAdmin.storage
-        .from(ASSETS_BUCKET)
-        .list(`exercises/${data.exerciseId}`, {
-          limit: 100,
-        });
+    const { data: existingFiles, error: listError } = await supabaseAdmin.storage
+      .from(ASSETS_BUCKET)
+      .list(`exercises/${data.exerciseId}`, {
+        limit: 100,
+      });
 
     if (listError) {
       throw new Error(listError.message);

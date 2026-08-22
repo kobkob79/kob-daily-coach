@@ -4,15 +4,23 @@
  * Phase 1 hosts the Media Inbox and the exercise-media assignment workflow,
  * which used to live inside the personal Profile screen.
  */
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ShieldAlert, Loader2 } from "lucide-react";
 
 import { PremiumCard, SectionHeader, EmptyState } from "@/components/ui-kit/Section";
 import { MediaInboxCard } from "@/components/media/MediaInboxCard";
 import { fetchIsAdmin } from "@/lib/admin";
+import { requireAdminAccessServer } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
+  beforeLoad: async () => {
+    try {
+      await requireAdminAccessServer();
+    } catch {
+      throw redirect({ to: "/dashboard" });
+    }
+  },
   component: AdminPage,
 });
 
@@ -31,9 +39,7 @@ function AdminPage() {
         </Link>
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold tracking-tight">Viora Admin</h1>
-          <p className="text-xs text-muted-foreground">
-            ניהול תכנים ומדיה — לאדמינים בלבד
-          </p>
+          <p className="text-xs text-muted-foreground">ניהול תכנים ומדיה — לאדמינים בלבד</p>
         </div>
       </div>
 
