@@ -28,8 +28,18 @@ function AdvisorChatPage() {
       </div>
     );
   }
-
-  if (hydrated && !(isPremium && isConnected)) {
+  if (!hydrated) {
+  return (
+    <div dir="rtl" className="grid min-h-[40dvh] place-items-center">
+      <div className="text-center">
+        <p className="text-sm font-medium text-muted-foreground">
+          טוען את חוויית Viora...
+        </p>
+      </div>
+    </div>
+  );
+}
+  if (!(isPremium && isConnected)) {
     return (
       <div dir="rtl" className="space-y-4 pb-4">
         <header className="flex items-center gap-3">
