@@ -2,12 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 import { AdvisorCard } from "@/components/coach/AdvisorCard";
 import { COACH_ADVISORS } from "@/lib/coach-advisors";
+import { PremiumGate } from "@/components/premium/PremiumGate";
+import { useVioraPlanUI } from "@/lib/plan-ui";
 
 export const Route = createFileRoute("/_authenticated/coach/")({
   component: CoachHubPage,
 });
 
 function CoachHubPage() {
+  const { hydrated, isPremium, isConnected } = useVioraPlanUI();
+  const showGate = hydrated && !(isPremium && isConnected);
+
   return (
     <div dir="rtl" className="space-y-5 pb-4">
       <header>
@@ -20,6 +25,17 @@ function CoachHubPage() {
           בחרו את היועץ שמתאים למה שצריך עכשיו.
         </p>
       </header>
+
+      {showGate && (
+        <PremiumGate
+          variant={isPremium ? "connect" : "locked"}
+          description={
+            isPremium
+              ? "חברו AI כדי להתחיל לשוחח עם היועצים של Viora."
+              : "אפשר להכיר את היועצים גם עכשיו. שיחה איתם נפתחת ב־Premium, עם חשבון ה־AI שלך."
+          }
+        />
+      )}
 
       <section className="grid grid-cols-2 gap-3" aria-label="יועצי Viora">
         {COACH_ADVISORS.map((advisor) => (
