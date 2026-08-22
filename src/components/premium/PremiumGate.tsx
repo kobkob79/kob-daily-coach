@@ -58,8 +58,7 @@ export function PremiumGate({
 
   return (
     <PremiumCard
-      dir="rtl"
-      className={cn("relative overflow-hidden border-primary/25 bg-card/80", className)}
+      className={cn("relative overflow-hidden border-primary/25 bg-card/80 text-right", className)}
     >
       <div
         className="pointer-events-none absolute -top-16 left-1/2 h-40 w-40 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl"
