@@ -74,13 +74,13 @@ export function PremiumGate({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className="text-[15px] font-bold leading-tight">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <h3 className="text-[15px] font-extrabold leading-tight tracking-tight">
               {title ?? (locked ? "Viora AI זמין ב־Premium" : "חברו AI כדי להתחיל")}
             </h3>
             {locked && <PlanBadge premium />}
           </div>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
             {description ??
               (locked
                 ? "כל שאר Viora פתוח וזמין לך במלואו. Premium מוסיף שכבת AI אישית מעל הנתונים שלך."
@@ -90,9 +90,9 @@ export function PremiumGate({
       </div>
 
       {locked && points.length > 0 && (
-        <ul className="relative mt-4 space-y-1.5">
+        <ul className="relative mt-3.5 space-y-2 border-t border-border/50 pt-3.5">
           {points.map((point) => (
-            <li key={point} className="flex items-center gap-2 text-xs text-foreground/85">
+            <li key={point} className="flex items-center gap-2 text-[12px] text-foreground/85">
               <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
               {point}
             </li>
@@ -102,16 +102,17 @@ export function PremiumGate({
 
       <div className="relative mt-4 flex flex-col gap-2">
         {children ?? (
-          <Button asChild className="min-h-11 w-full rounded-2xl font-bold">
+          <Button asChild className="min-h-12 w-full rounded-2xl text-[14px] font-bold">
             <Link to="/profile" hash="ai-connection">
               {locked ? "לשדרוג ל־Premium" : "לחיבור AI"}
             </Link>
           </Button>
         )}
-        <p className="text-center text-[11px] text-muted-foreground">
+        <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
           הנתונים והמסכים הרגילים שלך ממשיכים לעבוד בלי AI.
         </p>
       </div>
+
     </PremiumCard>
   );
 }
