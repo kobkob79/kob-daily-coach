@@ -41,25 +41,25 @@ function AdvisorChatPage() {
 }
   if (!(isPremium && isConnected)) {
     return (
-      <div dir="rtl" className="space-y-4 pb-4">
+      <div dir="rtl" className="space-y-4 pb-6">
         <header className="flex items-center gap-3">
           <Link
             to="/coach"
             aria-label="חזרה ליועצים"
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border/60 text-muted-foreground transition hover:text-foreground"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border/60 text-muted-foreground transition hover:text-foreground active:scale-95"
           >
             <ArrowRight className="h-5 w-5" aria-hidden />
           </Link>
           <AdvisorVisual advisor={advisor} variant="avatar" />
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-xl font-extrabold">{advisor.name}</h1>
-            <p className="truncate text-xs text-muted-foreground">{advisor.field}</p>
+            <h1 className="truncate text-[20px] font-extrabold leading-tight">{advisor.name}</h1>
+            <p className="truncate text-[12px] font-semibold text-primary">{advisor.field}</p>
           </div>
         </header>
 
         <AdvisorVisual advisor={advisor} variant="hero" />
 
-        <p className="text-sm leading-relaxed text-muted-foreground">{advisor.tagline}</p>
+        <p className="text-[13px] leading-relaxed text-muted-foreground">{advisor.tagline}</p>
 
         <PremiumGate
           variant={isPremium ? "connect" : "locked"}
@@ -73,6 +73,7 @@ function AdvisorChatPage() {
           }
         />
       </div>
+
     );
   }
 

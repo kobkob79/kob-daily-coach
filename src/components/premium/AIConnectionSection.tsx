@@ -50,7 +50,7 @@ export function PlanAndAISection({ className }: { className?: string }) {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[13px] font-bold">התוכנית הנוכחית</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
+            <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
               {isPremium ? "כל יכולות Viora AI פתוחות" : "החוויה המלאה של Viora, בלי AI"}
             </p>
           </div>
@@ -62,7 +62,7 @@ export function PlanAndAISection({ className }: { className?: string }) {
         <button
           type="button"
           onClick={() => setManageOpen(true)}
-          className="flex w-full items-center justify-between gap-3 rounded-2xl px-1 py-1 text-right transition active:scale-[0.99]"
+          className="flex w-full items-center justify-between gap-3 rounded-2xl px-1 py-1.5 text-right transition active:scale-[0.99]"
         >
           <div className="flex min-w-0 items-center gap-3">
             <span
@@ -100,34 +100,37 @@ export function PlanAndAISection({ className }: { className?: string }) {
           </div>
           <ChevronLeft className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
         </button>
-
-        {/* Preview control — lets you review every state of this design. */}
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-muted/25 px-3 py-2">
-          <p className="text-[11px] text-muted-foreground">תצוגת מצב (עיצוב)</p>
-          <div className="flex gap-1">
-            <button
-              type="button"
-              onClick={() => setPlan("free")}
-              className={cn(
-                "rounded-full px-3 py-1 text-[11px] font-bold transition",
-                !isPremium ? "bg-foreground/10 text-foreground" : "text-muted-foreground",
-              )}
-            >
-              Free
-            </button>
-            <button
-              type="button"
-              onClick={() => setPlan("premium")}
-              className={cn(
-                "rounded-full px-3 py-1 text-[11px] font-bold transition",
-                isPremium ? "bg-primary/15 text-primary" : "text-muted-foreground",
-              )}
-            >
-              Premium
-            </button>
-          </div>
-        </div>
       </PremiumCard>
+
+      {/* Temporary QA control — lets you review every state of this design. */}
+      <div className="mt-2 flex items-center justify-between gap-3 rounded-xl border border-dashed border-border/60 px-3 py-1.5 opacity-70">
+        <p className="text-[10px] font-medium tracking-wide text-muted-foreground">
+          תצוגת מצב · כלי QA זמני
+        </p>
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={() => setPlan("free")}
+            className={cn(
+              "rounded-full px-2.5 py-0.5 text-[10px] font-bold transition",
+              !isPremium ? "bg-foreground/10 text-foreground" : "text-muted-foreground",
+            )}
+          >
+            Free
+          </button>
+          <button
+            type="button"
+            onClick={() => setPlan("premium")}
+            className={cn(
+              "rounded-full px-2.5 py-0.5 text-[10px] font-bold transition",
+              isPremium ? "bg-primary/15 text-primary" : "text-muted-foreground",
+            )}
+          >
+            Premium
+          </button>
+        </div>
+      </div>
+
 
       <ManageAISheet open={manageOpen} onOpenChange={setManageOpen} />
     </section>
