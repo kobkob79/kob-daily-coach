@@ -29,7 +29,7 @@ import {
 } from "@/lib/exercise-meta";
 import { ExerciseDetailsSheet } from "./ExerciseDetailsSheet";
 import { cn } from "@/lib/utils";
-import { CORE_150_EXERCISE_NAME_SET } from "@/lib/core-150-exercises";
+import { findCore150ExerciseByName, isCore150ExerciseName } from "@/lib/core-150-exercises";
 
 export type { PickerExercise };
 
@@ -47,8 +47,8 @@ const MUSCLE_CHIPS: { group: MuscleGroup; emoji: string }[] = [
   { group: "מוביליטי", emoji: "🤸" },
 ];
 
-/** Lightweight alias index so Hebrew/English searches both hit. */
-const ALIASES: { test: RegExp; words: string[] }[] = [
+/** Generic aliases retained for non-Core exercises. Core aliases come from the V2 canon. */
+const GENERIC_ALIASES: { test: RegExp; words: string[] }[] = [
   { test: /לחיצת חזה|bench/i, words: ["bench press", "לחיצות", "חזה"] },
   { test: /סקוואט|squat/i, words: ["squat", "רגליים", "כפיפות"] },
   { test: /דדליפט|deadlift/i, words: ["deadlift", "גב", "הרמת מתים"] },
@@ -62,9 +62,13 @@ const ALIASES: { test: RegExp; words: string[] }[] = [
 ];
 
 function searchHaystack(ex: PickerExercise): string {
-  const extra = ALIASES.filter((a) => a.test.test(ex.name)).flatMap((a) => a.words);
+  const coreExercise = findCore150ExerciseByName(ex.name);
+  const extra = GENERIC_ALIASES.filter((a) => a.test.test(ex.name)).flatMap((a) => a.words);
   return [
     ex.name,
+    coreExercise?.canonicalHebrewName ?? "",
+    coreExercise?.englishName ?? "",
+    ...(coreExercise?.aliases ?? []),
     ex.muscle_group ?? "",
     normalizeMuscleGroup(ex.muscle_group),
     ex.equipment ?? "",
@@ -93,8 +97,8 @@ export function useExerciseLibrary({ enabled = true, coreOnly = false } = {}) {
       if (error) throw error;
       const rows = (data ?? []) as ExerciseRow[];
       return coreOnly
-        ? rows.filter((exercise) =>
-            exercise.owner_id === null && CORE_150_EXERCISE_NAME_SET.has(exercise.name),
+        ? rows.filter(
+            (exercise) => exercise.owner_id === null && isCore150ExerciseName(exercise.name),
           )
         : rows;
     },
@@ -104,7 +108,13 @@ export function useExerciseLibrary({ enabled = true, coreOnly = false } = {}) {
   const [equip, setEquip] = useState<EquipmentKey | null>(null);
   const all = q.data ?? [];
   const indexed = useMemo(
-    () => all.map((ex) => ({ ex, hay: searchHaystack(ex), group: normalizeMuscleGroup(ex.muscle_group), eq: equipmentKey(ex.equipment) })),
+    () =>
+      all.map((ex) => ({
+        ex,
+        hay: searchHaystack(ex),
+        group: normalizeMuscleGroup(ex.muscle_group),
+        eq: equipmentKey(ex.equipment),
+      })),
     [all],
   );
   const results = useMemo(() => {
@@ -128,8 +138,9 @@ interface Props {
 }
 
 export function ExercisePicker({ open, onClose, onSelect, title = "בחר תרגיל" }: Props) {
-  const { q, all, results, term, setTerm, muscle, setMuscle, equip, setEquip } =
-    useExerciseLibrary({ enabled: open });
+  const { q, all, results, term, setTerm, muscle, setMuscle, equip, setEquip } = useExerciseLibrary(
+    { enabled: open },
+  );
   const [visible, setVisible] = useState(PAGE);
   const [details, setDetails] = useState<PickerExercise | null>(null);
 
@@ -141,11 +152,14 @@ export function ExercisePicker({ open, onClose, onSelect, title = "בחר תרג
   useEffect(() => {
     const el = sentinel.current;
     if (!el) return;
-    const io = new IntersectionObserver((entries) => {
-      if (entries[0]?.isIntersecting) {
-        setVisible((v) => (v >= results.length ? v : v + PAGE));
-      }
-    }, { rootMargin: "300px" });
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisible((v) => (v >= results.length ? v : v + PAGE));
+        }
+      },
+      { rootMargin: "300px" },
+    );
     io.observe(el);
     return () => io.disconnect();
   }, [results.length, open]);
@@ -251,17 +265,10 @@ export function ExercisePicker({ open, onClose, onSelect, title = "בחר תרג
               </div>
             ) : (
               <>
-                <p className="mb-2 text-[11px] text-muted-foreground">
-                  {results.length} תרגילים
-                </p>
+                <p className="mb-2 text-[11px] text-muted-foreground">{results.length} תרגילים</p>
                 <div className="space-y-2">
                   {results.slice(0, visible).map((ex) => (
-                    <ExerciseCard
-                      key={ex.id}
-                      ex={ex}
-                      onPick={() => setDetails(ex)}
-                    />
-
+                    <ExerciseCard key={ex.id} ex={ex} onPick={() => setDetails(ex)} />
                   ))}
                 </div>
                 <div ref={sentinel} className="h-8" />
@@ -270,7 +277,6 @@ export function ExercisePicker({ open, onClose, onSelect, title = "בחר תרג
           </div>
         </div>
       </SheetContent>
-
 
       <ExerciseDetailsSheet
         open={!!details}
@@ -286,7 +292,6 @@ export function ExercisePicker({ open, onClose, onSelect, title = "בחר תרג
       />
     </Sheet>
   );
-
 }
 
 function ChipRow({ children }: { children: React.ReactNode }) {
@@ -298,8 +303,14 @@ function ChipRow({ children }: { children: React.ReactNode }) {
 }
 
 function Chip({
-  active, onClick, children,
-}: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <button
       type="button"
@@ -327,6 +338,7 @@ export function ExerciseCard({
   action?: "add" | "open";
 }) {
   const diff = difficultyOf(ex);
+  const displayName = findCore150ExerciseByName(ex.name)?.canonicalHebrewName ?? ex.name;
   return (
     <button
       type="button"
@@ -360,7 +372,7 @@ export function ExerciseCard({
       </div>
 
       <div className={cn("min-w-0 flex-1", action === "open" ? "px-3 py-3" : "py-0.5")}>
-        <p className="truncate text-sm font-semibold">{ex.name}</p>
+        <p className="truncate text-sm font-semibold">{displayName}</p>
         <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
           {normalizeMuscleGroup(ex.muscle_group)}
         </p>
