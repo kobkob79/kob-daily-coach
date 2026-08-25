@@ -7,6 +7,7 @@ export { ServiceError, requireUserId, supabase } from "./base";
 export { authService } from "./auth.service";
 export { profilesService } from "./profiles.service";
 export { exercisesService } from "./exercises.service";
+export { exerciseRegistryService, getLiveExerciseRegistry } from "./exercise-registry.service";
 export { programsService } from "./programs.service";
 export { sessionsService } from "./sessions.service";
 export { measurementsService } from "./measurements.service";
