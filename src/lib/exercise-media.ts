@@ -35,10 +35,7 @@ export function exerciseSlug(name: string | null | undefined): string {
  * The id-based folder is canonical; the slug folder is a convenience for
  * manual uploads made by name.
  */
-export function exerciseMediaPrefixes(
-  exerciseId: string,
-  exerciseName?: string | null,
-): string[] {
+export function exerciseMediaPrefixes(exerciseId: string, exerciseName?: string | null): string[] {
   const out = [`${EXERCISE_MEDIA_ROOT}/${exerciseId}`];
   const slug = exerciseSlug(exerciseName);
   if (slug) out.push(`${EXERCISE_MEDIA_ROOT}/${slug}`);
@@ -96,6 +93,21 @@ export function pickHeroMedia(items: MediaItem[]): ExerciseHeroMedia | null {
 /** Canonical assigned file names inside the exercise folder. */
 export type ExerciseAssignedRole = "thumbnail" | "main" | "guide" | "demo";
 
+const EXERCISE_ASSIGNED_ROLES: readonly ExerciseAssignedRole[] = [
+  "thumbnail",
+  "main",
+  "guide",
+  "demo",
+];
+
+/** Returns the explicit assigned role encoded by a canonical `<role>.<ext>` filename. */
+export function getExerciseAssignedRole(
+  item: Pick<MediaItem, "name">,
+): ExerciseAssignedRole | null {
+  const normalizedName = item.name.toLowerCase();
+  return EXERCISE_ASSIGNED_ROLES.find((role) => normalizedName.startsWith(`${role}.`)) ?? null;
+}
+
 /** Logical media slots requested by the UI. */
 export type ExerciseMediaSlot = "hero" | ExerciseAssignedRole;
 
@@ -108,7 +120,7 @@ export function pickRoleMedia(
   items: MediaItem[],
   role: ExerciseAssignedRole,
 ): ExerciseHeroMedia | null {
-  const hit = items.find((item) => item.name.toLowerCase().startsWith(`${role}.`));
+  const hit = items.find((item) => getExerciseAssignedRole(item) === role);
   return hit ? { item: hit, role: classifyExerciseMedia(hit) } : null;
 }
 
