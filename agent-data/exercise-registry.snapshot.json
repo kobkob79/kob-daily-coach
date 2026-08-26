@@ -4,14 +4,14 @@
   "readOnly": true,
   "summary": {
     "totalExercises": 150,
-    "completedExercises": 4,
+    "completedExercises": 5,
     "partialExercises": 0,
-    "notStartedExercises": 146,
-    "coversComplete": 4,
-    "infographicsComplete": 4,
-    "thumbnailsComplete": 4,
+    "notStartedExercises": 145,
+    "coversComplete": 5,
+    "infographicsComplete": 5,
+    "thumbnailsComplete": 5,
     "demosComplete": 0,
-    "overallProgressPercent": 2.666666666666667
+    "overallProgressPercent": 3.3333333333333335
   },
   "nextRecommendedExercise": {
     "exerciseId": "eb363b52-89b8-43fe-ab61-871d32029217",
@@ -318,19 +318,17 @@
       "canonicalHebrewName": "מקבילים בדגש על החזה",
       "englishName": "Chest Dip",
       "muscleGroup": "chest",
-      "status": "NOT_STARTED",
+      "status": "COMPLETE",
       "media": {
-        "hasCover": false,
-        "hasInfographic": false,
-        "hasThumbnail": false,
+        "hasCover": true,
+        "hasInfographic": true,
+        "hasThumbnail": true,
         "hasDemo": false
       },
       "missingAssets": [
-        "cover",
-        "infographic",
-        "thumbnail",
         "demo"
-      ]
+      ],
+      "lastUpdated": "2026-08-26T11:09:58.023Z"
     },
     {
       "exerciseId": "1867c725-c05d-443a-b387-5889dad55f15",
