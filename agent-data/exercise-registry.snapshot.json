@@ -1,0 +1,3036 @@
+{
+  "source": "viora-exercise-registry",
+  "schemaVersion": 1,
+  "readOnly": true,
+  "summary": {
+    "totalExercises": 150,
+    "completedExercises": 3,
+    "partialExercises": 1,
+    "notStartedExercises": 146,
+    "coversComplete": 4,
+    "infographicsComplete": 3,
+    "thumbnailsComplete": 4,
+    "demosComplete": 0,
+    "overallProgressPercent": 2
+  },
+  "nextRecommendedExercise": {
+    "exerciseId": "3d775aeb-977e-4a8b-9b61-7af388bd7852",
+    "exerciseNumber": 14,
+    "canonicalHebrewName": "שכיבות סמיכה",
+    "englishName": "Push-Up",
+    "muscleGroup": "chest",
+    "status": "PARTIAL",
+    "media": {
+      "hasCover": true,
+      "hasInfographic": false,
+      "hasThumbnail": true,
+      "hasDemo": false
+    },
+    "missingAssets": [
+      "infographic",
+      "demo"
+    ],
+    "lastUpdated": "2026-08-16T19:18:19.576Z"
+  },
+  "exercises": [
+    {
+      "exerciseId": "eb363b52-89b8-43fe-ab61-871d32029217",
+      "exerciseNumber": 1,
+      "canonicalHebrewName": "לחיצת חזה עם מוט",
+      "englishName": "Barbell Bench Press",
+      "muscleGroup": "chest",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "677e458d-0206-48f1-a340-d1a75fe972e6",
+      "exerciseNumber": 2,
+      "canonicalHebrewName": "לחיצת חזה עם משקולות יד",
+      "englishName": "Dumbbell Bench Press",
+      "muscleGroup": "chest",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "247189d8-d72e-4dcf-a6c7-f4b3b6ff8488",
+      "exerciseNumber": 3,
+      "canonicalHebrewName": "לחיצת חזה במכונה",
+      "englishName": "Machine Chest Press",
+      "muscleGroup": "chest",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "6e1f561b-b4c8-463f-9437-b4bb2eb849de",
+      "exerciseNumber": 4,
+      "canonicalHebrewName": "לחיצת חזה בשיפוע חיובי עם מוט",
+      "englishName": "Incline Barbell Bench Press",
+      "muscleGroup": "chest",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "c48888f0-fa57-418a-a9d1-ad5e1c0a1c6d",
+      "exerciseNumber": 5,
+      "canonicalHebrewName": "לחיצת חזה בשיפוע חיובי עם משקולות יד",
+      "englishName": "Incline Dumbbell Bench Press",
+      "muscleGroup": "chest",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "5779ce39-a184-4192-bad5-ec2c7ee1fd62",
+      "exerciseNumber": 6,
+      "canonicalHebrewName": "לחיצת חזה בשיפוע חיובי במכונה",
+      "englishName": "Incline Machine Chest Press",
+      "muscleGroup": "chest",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "562f3c82-0157-4bf9-9775-56e7261b41c8",
+      "exerciseNumber": 7,
+      "canonicalHebrewName": "לחיצת חזה בשיפוע שלילי עם מוט",
+      "englishName": "Decline Barbell Bench Press",
+      "muscleGroup": "chest",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "759dc5ef-3df6-4a64-bd0c-cc9b237eee3d",
+      "exerciseNumber": 8,
+      "canonicalHebrewName": "לחיצת חזה בשיפוע שלילי עם משקולות יד",
+      "englishName": "Decline Dumbbell Bench Press",
+      "muscleGroup": "chest",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "b5d60513-1d3c-4982-9a52-19578622fd48",
+      "exerciseNumber": 9,
+      "canonicalHebrewName": "פרפר במכונה",
+      "englishName": "Pec Deck Fly",
+      "muscleGroup": "chest",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "555c8ed7-864d-4699-aeaf-e8c4d4d5a072",
+      "exerciseNumber": 10,
+      "canonicalHebrewName": "פרפר בכבלים בעמידה",
+      "englishName": "Standing Cable Fly",
+      "muscleGroup": "chest",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "4dbd51f0-bc21-42e9-8f71-f812a904c66b",
+      "exerciseNumber": 11,
+      "canonicalHebrewName": "פרפר בכבלים מלמעלה למטה",
+      "englishName": "High-to-Low Cable Fly",
+      "muscleGroup": "chest",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "d05d739b-4c1e-4f1f-bc11-3ad3b97a2543",
+      "exerciseNumber": 12,
+      "canonicalHebrewName": "פרפר בכבלים מלמטה למעלה",
+      "englishName": "Low-to-High Cable Fly",
+      "muscleGroup": "chest",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "0bb11fca-28fb-4c14-b4e0-ae6df78d05fe",
+      "exerciseNumber": 13,
+      "canonicalHebrewName": "פרפר בשכיבה עם משקולות יד",
+      "englishName": "Dumbbell Fly",
+      "muscleGroup": "chest",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "3d775aeb-977e-4a8b-9b61-7af388bd7852",
+      "exerciseNumber": 14,
+      "canonicalHebrewName": "שכיבות סמיכה",
+      "englishName": "Push-Up",
+      "muscleGroup": "chest",
+      "status": "PARTIAL",
+      "media": {
+        "hasCover": true,
+        "hasInfographic": false,
+        "hasThumbnail": true,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "infographic",
+        "demo"
+      ],
+      "lastUpdated": "2026-08-16T19:18:19.576Z"
+    },
+    {
+      "exerciseId": "235ee07e-3871-4cf0-b5b2-77aa41bffb6b",
+      "exerciseNumber": 15,
+      "canonicalHebrewName": "מקבילים בדגש על החזה",
+      "englishName": "Chest Dip",
+      "muscleGroup": "chest",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "1867c725-c05d-443a-b387-5889dad55f15",
+      "exerciseNumber": 16,
+      "canonicalHebrewName": "מתח באחיזה רחבה",
+      "englishName": "Wide-Grip Pull-Up",
+      "muscleGroup": "back",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "f19c5894-2c09-498d-a3bb-4769fc41e76b",
+      "exerciseNumber": 17,
+      "canonicalHebrewName": "מתח באחיזה צרה",
+      "englishName": "Close-Grip Pull-Up",
+      "muscleGroup": "back",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "9af3c37b-3841-45f8-8336-be442d980b47",
+      "exerciseNumber": 18,
+      "canonicalHebrewName": "מתח באחיזה הפוכה",
+      "englishName": "Chin-Up",
+      "muscleGroup": "back",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "939fd4ef-0733-4a06-bfe8-e9b347a5b9f2",
+      "exerciseNumber": 19,
+      "canonicalHebrewName": "משיכת פולי עליון באחיזה רחבה",
+      "englishName": "Wide-Grip Lat Pulldown",
+      "muscleGroup": "back",
+      "status": "COMPLETE",
+      "media": {
+        "hasCover": true,
+        "hasInfographic": true,
+        "hasThumbnail": true,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "demo"
+      ],
+      "lastUpdated": "2026-08-23T23:03:34.816Z"
+    },
+    {
+      "exerciseId": "9a6e179d-e16e-40ad-bf9f-703e30da31b4",
+      "exerciseNumber": 20,
+      "canonicalHebrewName": "משיכת פולי עליון באחיזה צרה",
+      "englishName": "Close-Grip Lat Pulldown",
+      "muscleGroup": "back",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "cb1abd6b-3c16-4ad2-9dd3-e32b2194820c",
+      "exerciseNumber": 21,
+      "canonicalHebrewName": "משיכת פולי עליון באחיזה הפוכה",
+      "englishName": "Reverse-Grip Lat Pulldown",
+      "muscleGroup": "back",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "531597e6-4b9c-4852-9673-3f7199e5d78b",
+      "exerciseNumber": 22,
+      "canonicalHebrewName": "חתירה בישיבה בכבל",
+      "englishName": "Seated Cable Row",
+      "muscleGroup": "back",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "c41fddb2-a6ef-4106-b916-61385cc2da45",
+      "exerciseNumber": 23,
+      "canonicalHebrewName": "חתירה במכונה",
+      "englishName": "Machine Row",
+      "muscleGroup": "back",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "dc12ba2b-d61d-471a-8510-ff8dc2ebbffa",
+      "exerciseNumber": 24,
+      "canonicalHebrewName": "חתירה במכונה עם תמיכת חזה",
+      "englishName": "Chest-Supported Machine Row",
+      "muscleGroup": "back",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "fc02e5ee-4fa6-4dbc-8ad3-b70011c5ad77",
+      "exerciseNumber": 25,
+      "canonicalHebrewName": "חתירה ביד אחת עם משקולת יד",
+      "englishName": "One-Arm Dumbbell Row",
+      "muscleGroup": "back",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "990c7081-6dbc-49cc-a357-36c344904783",
+      "exerciseNumber": 26,
+      "canonicalHebrewName": "חתירה בהטיית גו עם מוט",
+      "englishName": "Barbell Bent-Over Row",
+      "muscleGroup": "back",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "516f58dc-8b3c-479b-9002-d521efb90da0",
+      "exerciseNumber": 27,
+      "canonicalHebrewName": "חתירת T-Bar",
+      "englishName": "T-Bar Row",
+      "muscleGroup": "back",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "67e2bab9-6ce2-4866-bf3a-600e0c389e45",
+      "exerciseNumber": 28,
+      "canonicalHebrewName": "חתירה עם משקולות יד בתמיכת חזה",
+      "englishName": "Chest-Supported Dumbbell Row",
+      "muscleGroup": "back",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "bfe08df8-ab20-42a4-8857-1b4d755f3140",
+      "exerciseNumber": 29,
+      "canonicalHebrewName": "משיכת ידיים ישרות בפולי עליון",
+      "englishName": "Straight-Arm Cable Pulldown",
+      "muscleGroup": "back",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "0bbc48d6-a5cc-4a95-b4fa-08561fbfffba",
+      "exerciseNumber": 30,
+      "canonicalHebrewName": "פולאובר בכבל",
+      "englishName": "Cable Pullover",
+      "muscleGroup": "back",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "dc70012a-8dba-4ae0-b0da-78bbf946c9f8",
+      "exerciseNumber": 31,
+      "canonicalHebrewName": "פולאובר עם משקולת יד",
+      "englishName": "Dumbbell Pullover",
+      "muscleGroup": "back",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "b7331530-982d-4fc0-b741-19b895e3fe8d",
+      "exerciseNumber": 32,
+      "canonicalHebrewName": "חתירה בפולי תחתון באחיזה רחבה",
+      "englishName": "Wide-Grip Seated Cable Row",
+      "muscleGroup": "back",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "74127241-3e9e-4d0d-a6e6-dcb11cc635ec",
+      "exerciseNumber": 33,
+      "canonicalHebrewName": "חתירה בפולי תחתון באחיזה צרה",
+      "englishName": "Close-Grip Seated Cable Row",
+      "muscleGroup": "back",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "69f3507e-da37-4809-a373-7e061e4d67fe",
+      "exerciseNumber": 34,
+      "canonicalHebrewName": "חתירה הפוכה במשקל גוף",
+      "englishName": "Inverted Row",
+      "muscleGroup": "back",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "54cb1d51-7fe6-45a5-b405-f6c81483c5ae",
+      "exerciseNumber": 35,
+      "canonicalHebrewName": "חתירה עם גומיית התנגדות",
+      "englishName": "Resistance Band Row",
+      "muscleGroup": "back",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "88e93b02-fee5-40c9-a6c1-1dd809edc29f",
+      "exerciseNumber": 36,
+      "canonicalHebrewName": "לחיצת כתפיים עם משקולות יד",
+      "englishName": "Dumbbell Shoulder Press",
+      "muscleGroup": "shoulders",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "20648486-6bd5-47ab-8e32-edb2f368967f",
+      "exerciseNumber": 37,
+      "canonicalHebrewName": "לחיצת כתפיים במכונה",
+      "englishName": "Machine Shoulder Press",
+      "muscleGroup": "shoulders",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "656ad319-2f09-4df6-b00c-8b11b7d39e33",
+      "exerciseNumber": 38,
+      "canonicalHebrewName": "לחיצת כתפיים עם מוט",
+      "englishName": "Barbell Shoulder Press",
+      "muscleGroup": "shoulders",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "b92663b1-e220-4312-bcd8-bc8b4bdadaf2",
+      "exerciseNumber": 39,
+      "canonicalHebrewName": "לחיצת ארנולד",
+      "englishName": "Arnold Press",
+      "muscleGroup": "shoulders",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "24bbd39d-6fa0-427d-9bd5-62390d4e90c8",
+      "exerciseNumber": 40,
+      "canonicalHebrewName": "הרחקת זרועות לצדדים עם משקולות יד",
+      "englishName": "Dumbbell Lateral Raise",
+      "muscleGroup": "shoulders",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "f75ba874-8f92-4eb0-a3d2-3ee22dcdcc51",
+      "exerciseNumber": 41,
+      "canonicalHebrewName": "הרחקת זרועות לצדדים בכבל",
+      "englishName": "Cable Lateral Raise",
+      "muscleGroup": "shoulders",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "1a1896db-89bd-41a8-b1b4-7c2521c83719",
+      "exerciseNumber": 42,
+      "canonicalHebrewName": "הרחקת זרועות לצדדים במכונה",
+      "englishName": "Machine Lateral Raise",
+      "muscleGroup": "shoulders",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "639ee58e-c03c-4da7-82f7-bce345c3709c",
+      "exerciseNumber": 43,
+      "canonicalHebrewName": "הרחקת זרוע לצד בכבל, יד אחת",
+      "englishName": "Single-Arm Cable Lateral Raise",
+      "muscleGroup": "shoulders",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "2cb49fda-b5a3-4197-80a1-d7fcbba62339",
+      "exerciseNumber": 44,
+      "canonicalHebrewName": "הרמת זרועות לפנים עם משקולות יד",
+      "englishName": "Dumbbell Front Raise",
+      "muscleGroup": "shoulders",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "a596ada9-8b20-48ab-bf0a-59cfaba95ff7",
+      "exerciseNumber": 45,
+      "canonicalHebrewName": "הרמת זרועות לפנים בכבל",
+      "englishName": "Cable Front Raise",
+      "muscleGroup": "shoulders",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "e524e0d8-6047-42ab-b5d7-43a8a400506a",
+      "exerciseNumber": 46,
+      "canonicalHebrewName": "פרפר הפוך במכונה",
+      "englishName": "Reverse Pec Deck Fly",
+      "muscleGroup": "shoulders",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "cca26031-3be0-4ea6-88c2-d2e88544ca98",
+      "exerciseNumber": 47,
+      "canonicalHebrewName": "פרפר הפוך עם משקולות יד",
+      "englishName": "Dumbbell Reverse Fly",
+      "muscleGroup": "shoulders",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "34440569-9867-4735-953f-867763ed8491",
+      "exerciseNumber": 48,
+      "canonicalHebrewName": "משיכת חבל לפנים",
+      "englishName": "Face Pull",
+      "muscleGroup": "shoulders",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "150e00e2-346c-4db2-ae35-5f4da7a33c3d",
+      "exerciseNumber": 49,
+      "canonicalHebrewName": "חתירה אנכית בכבל",
+      "englishName": "Cable Upright Row",
+      "muscleGroup": "shoulders",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "8be9460d-14e4-4e16-85fa-d5ce794decab",
+      "exerciseNumber": 50,
+      "canonicalHebrewName": "סיבוב חיצוני של הכתף בכבל",
+      "englishName": "Cable External Rotation",
+      "muscleGroup": "shoulders",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "aae1d542-9231-49d1-8955-97f4ce6dbabb",
+      "exerciseNumber": 51,
+      "canonicalHebrewName": "כפיפת מרפקים עם מוט ישר",
+      "englishName": "Barbell Curl",
+      "muscleGroup": "biceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "4b5ec50d-12df-4d07-8312-83f7bf2b0cd0",
+      "exerciseNumber": 52,
+      "canonicalHebrewName": "כפיפת מרפקים עם מוט EZ",
+      "englishName": "EZ-Bar Curl",
+      "muscleGroup": "biceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "d5111813-9573-40eb-aeba-ab5d94a1fdb4",
+      "exerciseNumber": 53,
+      "canonicalHebrewName": "כפיפת מרפקים עם משקולות יד",
+      "englishName": "Dumbbell Curl",
+      "muscleGroup": "biceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "48b47eff-2e89-4407-b2c7-e81f5869cb2a",
+      "exerciseNumber": 54,
+      "canonicalHebrewName": "כפיפת מרפקים לסירוגין עם משקולות יד",
+      "englishName": "Alternating Dumbbell Curl",
+      "muscleGroup": "biceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "f9e3de84-0e8a-4344-bebb-0d4f522c5670",
+      "exerciseNumber": 55,
+      "canonicalHebrewName": "כפיפת מרפקים באחיזת פטיש",
+      "englishName": "Hammer Curl",
+      "muscleGroup": "biceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "34c2f631-b88c-4dd4-b4bc-9f623f1391bc",
+      "exerciseNumber": 56,
+      "canonicalHebrewName": "כפיפת מרפקים בכבל",
+      "englishName": "Cable Curl",
+      "muscleGroup": "biceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "724e221e-6093-4284-8572-20d30c5e56ff",
+      "exerciseNumber": 57,
+      "canonicalHebrewName": "כפיפת מרפק ביד אחת בכבל",
+      "englishName": "Single-Arm Cable Curl",
+      "muscleGroup": "biceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "40a1169e-b912-4f3f-99e0-a8b93361248b",
+      "exerciseNumber": 58,
+      "canonicalHebrewName": "כפיפת מרפקים על ספסל בשיפוע עם משקולות יד",
+      "englishName": "Incline Dumbbell Curl",
+      "muscleGroup": "biceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "1faf87f9-d938-4cb6-a6b4-3c39a411183c",
+      "exerciseNumber": 59,
+      "canonicalHebrewName": "כפיפת מרפקים על ספסל כומר",
+      "englishName": "Preacher Curl",
+      "muscleGroup": "biceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "21396f26-5023-4e29-82e7-472e8d6ae736",
+      "exerciseNumber": 60,
+      "canonicalHebrewName": "כפיפת מרפקים במכונת כומר",
+      "englishName": "Machine Preacher Curl",
+      "muscleGroup": "biceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "f501172a-8adb-48cb-b9ae-d9bd8b30f771",
+      "exerciseNumber": 61,
+      "canonicalHebrewName": "כפיפת מרפק בריכוז עם משקולת יד",
+      "englishName": "Concentration Curl",
+      "muscleGroup": "biceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "7c60f132-8cdd-490d-9a59-7c7ebd2115cc",
+      "exerciseNumber": 62,
+      "canonicalHebrewName": "כפיפת מרפקים באחיזה הפוכה עם מוט",
+      "englishName": "Reverse Barbell Curl",
+      "muscleGroup": "biceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "57d93ea5-ba29-4f54-95b9-ed66ea881652",
+      "exerciseNumber": 63,
+      "canonicalHebrewName": "פשיטת מרפקים בפולי עליון עם חבל",
+      "englishName": "Rope Triceps Pushdown",
+      "muscleGroup": "triceps",
+      "status": "COMPLETE",
+      "media": {
+        "hasCover": true,
+        "hasInfographic": true,
+        "hasThumbnail": true,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "demo"
+      ],
+      "lastUpdated": "2026-08-18T17:57:11.879Z"
+    },
+    {
+      "exerciseId": "35faeab5-4976-4b86-9590-2e2d44cba4b6",
+      "exerciseNumber": 64,
+      "canonicalHebrewName": "פשיטת מרפקים בפולי עליון עם מוט ישר",
+      "englishName": "Straight-Bar Triceps Pushdown",
+      "muscleGroup": "triceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "d9f77221-9908-4be5-8941-c62fd0612d77",
+      "exerciseNumber": 65,
+      "canonicalHebrewName": "פשיטת מרפק ביד אחת בפולי עליון",
+      "englishName": "Single-Arm Cable Triceps Pushdown",
+      "muscleGroup": "triceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "0bcc4c0e-87b2-416b-9dec-9bd398a9331a",
+      "exerciseNumber": 66,
+      "canonicalHebrewName": "פשיטת מרפקים מעל הראש בכבל עם חבל",
+      "englishName": "Overhead Rope Triceps Extension",
+      "muscleGroup": "triceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "707d0b9c-5644-4402-997f-0edae2bd4d1a",
+      "exerciseNumber": 67,
+      "canonicalHebrewName": "פשיטת מרפקים מעל הראש עם משקולת יד",
+      "englishName": "Dumbbell Overhead Triceps Extension",
+      "muscleGroup": "triceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "45a511e3-60dc-4a91-ade4-c2956836744c",
+      "exerciseNumber": 68,
+      "canonicalHebrewName": "לחיצת חזה באחיזה צרה עם מוט",
+      "englishName": "Close-Grip Bench Press",
+      "muscleGroup": "triceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "144c7ac6-6bce-4fb9-adfa-5ec4fd7316e9",
+      "exerciseNumber": 69,
+      "canonicalHebrewName": "פשיטת מרפקים בשכיבה עם מוט EZ",
+      "englishName": "EZ-Bar Lying Triceps Extension",
+      "muscleGroup": "triceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "b1e7f6a5-b30a-4b94-9b81-1bc6ce199e67",
+      "exerciseNumber": 70,
+      "canonicalHebrewName": "פשיטת מרפקים בשכיבה עם משקולות יד",
+      "englishName": "Dumbbell Lying Triceps Extension",
+      "muscleGroup": "triceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "41c3dd76-1cd5-4947-8517-4fff30ce6145",
+      "exerciseNumber": 71,
+      "canonicalHebrewName": "פשיטת מרפק לאחור עם משקולת יד",
+      "englishName": "Dumbbell Triceps Kickback",
+      "muscleGroup": "triceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "c0e382d1-dc03-49db-b3aa-41467401b41b",
+      "exerciseNumber": 72,
+      "canonicalHebrewName": "פשיטת מרפק לאחור בכבל",
+      "englishName": "Cable Triceps Kickback",
+      "muscleGroup": "triceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "4a45ed91-6b41-499b-a867-748a24c6bee2",
+      "exerciseNumber": 73,
+      "canonicalHebrewName": "מקבילים בדגש על התלת-ראשי",
+      "englishName": "Triceps Dip",
+      "muscleGroup": "triceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "7154ca59-6dc8-4621-8088-6254cef38909",
+      "exerciseNumber": 74,
+      "canonicalHebrewName": "פשיטת מרפקים במכונה",
+      "englishName": "Machine Triceps Extension",
+      "muscleGroup": "triceps",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "016d2794-430f-4f7e-a737-7f36177f8337",
+      "exerciseNumber": 75,
+      "canonicalHebrewName": "סקוואט אחורי עם מוט",
+      "englishName": "Barbell Back Squat",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "c2c714bd-1607-43e1-a311-fec6621a96ed",
+      "exerciseNumber": 76,
+      "canonicalHebrewName": "סקוואט קדמי עם מוט",
+      "englishName": "Barbell Front Squat",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "0eebc46b-8aaa-4942-816f-ff03ac399dda",
+      "exerciseNumber": 77,
+      "canonicalHebrewName": "גובלט סקוואט עם משקולת יד",
+      "englishName": "Goblet Squat",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "f51fc8cb-211c-4936-96c1-2b8b47740d1e",
+      "exerciseNumber": 78,
+      "canonicalHebrewName": "האק סקוואט במכונה",
+      "englishName": "Hack Squat",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "a026f85a-1164-457a-b862-58188a04fb83",
+      "exerciseNumber": 79,
+      "canonicalHebrewName": "לחיצת רגליים במכונה",
+      "englishName": "Leg Press",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "5f65af29-10ab-445e-a440-37d7901ad08a",
+      "exerciseNumber": 80,
+      "canonicalHebrewName": "לחיצת רגליים חד-צדדית במכונה",
+      "englishName": "Single-Leg Press",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "bbe07ba7-d39e-4701-bcb2-90d08a02ea5b",
+      "exerciseNumber": 81,
+      "canonicalHebrewName": "פשיטת ברכיים במכונה",
+      "englishName": "Leg Extension",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "837b8981-7ea5-4567-96a0-f83d1b600c3e",
+      "exerciseNumber": 82,
+      "canonicalHebrewName": "פשיטת ברך חד-צדדית במכונה",
+      "englishName": "Single-Leg Extension",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "40b880e6-c276-48e4-9a0b-a031d77f634c",
+      "exerciseNumber": 83,
+      "canonicalHebrewName": "מכרע קדמי",
+      "englishName": "Forward Lunge",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "50e4440c-1e5d-4494-9fb6-7de168792a45",
+      "exerciseNumber": 84,
+      "canonicalHebrewName": "מכרע לאחור",
+      "englishName": "Reverse Lunge",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "83101da2-b874-49b8-8419-9a7333caf68c",
+      "exerciseNumber": 85,
+      "canonicalHebrewName": "מכרע בולגרי",
+      "englishName": "Bulgarian Split Squat",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "c7ff31bc-7acf-4952-95b5-c32330720cda",
+      "exerciseNumber": 86,
+      "canonicalHebrewName": "עלייה למדרגה",
+      "englishName": "Step-Up",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "29cd8fe2-3776-45f6-b0d8-0322961bf0e9",
+      "exerciseNumber": 87,
+      "canonicalHebrewName": "כפיפת ברכיים בשכיבה במכונה",
+      "englishName": "Lying Leg Curl",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "04702ed5-0087-4824-9309-e5e55fc04800",
+      "exerciseNumber": 88,
+      "canonicalHebrewName": "כפיפת ברכיים בישיבה במכונה",
+      "englishName": "Seated Leg Curl",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "2efc60b5-2c36-4797-bfdf-c3f1616c3a5e",
+      "exerciseNumber": 89,
+      "canonicalHebrewName": "כפיפת ברך בעמידה במכונה",
+      "englishName": "Standing Leg Curl",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "0b246778-64e2-4dd9-8d9a-5ed40293f250",
+      "exerciseNumber": 90,
+      "canonicalHebrewName": "דדליפט רומני עם מוט",
+      "englishName": "Barbell Romanian Deadlift",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "b273f68f-3b11-4507-a1f3-ecb1abaeae2e",
+      "exerciseNumber": 91,
+      "canonicalHebrewName": "דדליפט רומני עם משקולות יד",
+      "englishName": "Dumbbell Romanian Deadlift",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "8a8f5544-0e63-4f5b-928e-9dd68a58392b",
+      "exerciseNumber": 92,
+      "canonicalHebrewName": "דדליפט רומני חד-צדדי",
+      "englishName": "Single-Leg Romanian Deadlift",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "8ea53c68-3036-4e66-98d7-78d0d49fd04c",
+      "exerciseNumber": 93,
+      "canonicalHebrewName": "גוד מורנינג עם מוט",
+      "englishName": "Barbell Good Morning",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "be450401-8784-40e5-bd5e-82a039273e25",
+      "exerciseNumber": 94,
+      "canonicalHebrewName": "כפיפת ברכיים נורדית",
+      "englishName": "Nordic Hamstring Curl",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "bb5e61ba-b552-483d-9227-d77fa4fa5ce0",
+      "exerciseNumber": 95,
+      "canonicalHebrewName": "כפיפת ברכיים עם כדור פיזיו",
+      "englishName": "Swiss Ball Leg Curl",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "5bdc568f-6855-41ed-8126-3d62f0699bce",
+      "exerciseNumber": 96,
+      "canonicalHebrewName": "כפיפת ברכיים בהחלקה על הרצפה",
+      "englishName": "Sliding Leg Curl",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "971daadf-2768-456f-bb8a-241af623ddb3",
+      "exerciseNumber": 97,
+      "canonicalHebrewName": "דחיקת אגן עם מוט",
+      "englishName": "Barbell Hip Thrust",
+      "muscleGroup": "legs_glutes",
+      "status": "COMPLETE",
+      "media": {
+        "hasCover": true,
+        "hasInfographic": true,
+        "hasThumbnail": true,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "demo"
+      ],
+      "lastUpdated": "2026-08-22T22:16:38.211Z"
+    },
+    {
+      "exerciseId": "500e7021-db1b-42a2-b994-5cf920a20f80",
+      "exerciseNumber": 98,
+      "canonicalHebrewName": "דחיקת אגן במכונה",
+      "englishName": "Machine Hip Thrust",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "a12213d4-c59f-4bfd-8972-6766034480f7",
+      "exerciseNumber": 99,
+      "canonicalHebrewName": "גשר ישבן",
+      "englishName": "Glute Bridge",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "cc09c930-d8b1-40e2-985f-d4c998e7835d",
+      "exerciseNumber": 100,
+      "canonicalHebrewName": "גשר ישבן חד-צדדי",
+      "englishName": "Single-Leg Glute Bridge",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "1b1ad0ee-36f7-4387-bc9f-f80eac5da3b7",
+      "exerciseNumber": 101,
+      "canonicalHebrewName": "פשיטת ירך לאחור בכבל",
+      "englishName": "Cable Glute Kickback",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "eff4e261-6bec-4e94-abc2-1caf0f40ce49",
+      "exerciseNumber": 102,
+      "canonicalHebrewName": "פשיטת ירך לאחור במכונה",
+      "englishName": "Machine Glute Kickback",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "ea8b3876-976f-478e-852a-55f29d2f2301",
+      "exerciseNumber": 103,
+      "canonicalHebrewName": "הרחקת ירך במכונה",
+      "englishName": "Hip Abduction Machine",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "a37e670a-c123-4695-8484-c9b3fafa9f8e",
+      "exerciseNumber": 104,
+      "canonicalHebrewName": "הרחקת ירך בכבל",
+      "englishName": "Cable Hip Abduction",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "d3c2859b-fe00-4649-b937-91087575d93e",
+      "exerciseNumber": 105,
+      "canonicalHebrewName": "הליכה צידית עם גומיית התנגדות",
+      "englishName": "Lateral Band Walk",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "cefffee7-f932-4ce7-b4de-ea891c8d9900",
+      "exerciseNumber": 106,
+      "canonicalHebrewName": "סומו סקוואט",
+      "englishName": "Sumo Squat",
+      "muscleGroup": "legs_glutes",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "f4d242b9-ee3e-4ba1-a29e-c3169659c0e0",
+      "exerciseNumber": 107,
+      "canonicalHebrewName": "הרמת עקבים בעמידה במכונה",
+      "englishName": "Standing Calf Raise Machine",
+      "muscleGroup": "calves",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "8a3f4bf1-9cc1-4b85-92e4-7b83d6bfc712",
+      "exerciseNumber": 108,
+      "canonicalHebrewName": "הרמת עקבים בישיבה",
+      "englishName": "Seated Calf Raise",
+      "muscleGroup": "calves",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "dd8b4798-2812-4744-a017-96c00bdc973d",
+      "exerciseNumber": 109,
+      "canonicalHebrewName": "הרמת עקבים במכשיר לחיצת רגליים",
+      "englishName": "Leg Press Calf Raise",
+      "muscleGroup": "calves",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "879606a7-29dc-4091-b227-678515214bb3",
+      "exerciseNumber": 110,
+      "canonicalHebrewName": "הרמת עקבים בעמידה עם משקולות יד",
+      "englishName": "Standing Dumbbell Calf Raise",
+      "muscleGroup": "calves",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "3a3187f7-3af0-462d-9f35-4e5b2ebd8025",
+      "exerciseNumber": 111,
+      "canonicalHebrewName": "הרמת עקב חד-צדדית",
+      "englishName": "Single-Leg Calf Raise",
+      "muscleGroup": "calves",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "2657e16e-1cc8-4914-b7b1-00f4dfd74917",
+      "exerciseNumber": 112,
+      "canonicalHebrewName": "הרמת קדמת כף הרגל",
+      "englishName": "Tibialis Raise",
+      "muscleGroup": "calves",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "af34bcdc-9f36-46e9-9b25-45f0f47601ff",
+      "exerciseNumber": 113,
+      "canonicalHebrewName": "פלאנק",
+      "englishName": "Plank",
+      "muscleGroup": "core",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "a93cf5f0-cb07-4820-bef3-6c7caafa89b5",
+      "exerciseNumber": 114,
+      "canonicalHebrewName": "פלאנק צידי",
+      "englishName": "Side Plank",
+      "muscleGroup": "core",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "d96d061a-e824-4938-b297-b541143b0887",
+      "exerciseNumber": 115,
+      "canonicalHebrewName": "פלאנק עם נגיעות כתף",
+      "englishName": "Plank Shoulder Tap",
+      "muscleGroup": "core",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "3cf42b60-dc74-4bf8-ae30-0b1b81b6c0ac",
+      "exerciseNumber": 116,
+      "canonicalHebrewName": "דד באג",
+      "englishName": "Dead Bug",
+      "muscleGroup": "core",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "1a972125-aaf2-4bbe-b460-3c45f0fb5de3",
+      "exerciseNumber": 117,
+      "canonicalHebrewName": "בירד דוג",
+      "englishName": "Bird Dog",
+      "muscleGroup": "core",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "da2ff89f-cf53-4e0d-b73b-d05175470479",
+      "exerciseNumber": 118,
+      "canonicalHebrewName": "לחיצת פאלוף נגד סיבוב",
+      "englishName": "Pallof Press",
+      "muscleGroup": "core",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "61d66b7d-2c3e-4430-97e7-82401588c5e9",
+      "exerciseNumber": 119,
+      "canonicalHebrewName": "לחיצת פאלוף בכריעה נגד סיבוב",
+      "englishName": "Kneeling Pallof Press",
+      "muscleGroup": "core",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "29abbd7c-f6d3-49d9-99ed-36e2108d6c0f",
+      "exerciseNumber": 120,
+      "canonicalHebrewName": "כפיפות בטן בכבל",
+      "englishName": "Cable Crunch",
+      "muscleGroup": "core",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "5f58b817-2743-422b-b74b-cd9803da1c85",
+      "exerciseNumber": 121,
+      "canonicalHebrewName": "כפיפות בטן במכונה",
+      "englishName": "Machine Crunch",
+      "muscleGroup": "core",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "4c9f4e22-072a-46fa-b52c-a46606420734",
+      "exerciseNumber": 122,
+      "canonicalHebrewName": "הרמת ברכיים בכיסא קפטן",
+      "englishName": "Captain's Chair Knee Raise",
+      "muscleGroup": "core",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "97618f66-cd5a-4d32-86a2-e42baf553dae",
+      "exerciseNumber": 123,
+      "canonicalHebrewName": "הרמת רגליים בשכיבה",
+      "englishName": "Lying Leg Raise",
+      "muscleGroup": "core",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "b149f6e5-40a1-43b2-ae63-e1a005da0a78",
+      "exerciseNumber": 124,
+      "canonicalHebrewName": "רולאאוט עם גלגל בטן",
+      "englishName": "Ab Wheel Rollout",
+      "muscleGroup": "core",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "3dd9aeb4-9539-4ffb-82d4-e89d83451910",
+      "exerciseNumber": 125,
+      "canonicalHebrewName": "נשיאת מזוודה ביד אחת",
+      "englishName": "Suitcase Carry",
+      "muscleGroup": "core",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "b77cd6bb-2894-4386-9793-e1589631447e",
+      "exerciseNumber": 126,
+      "canonicalHebrewName": "נשיאת משקל מעל הראש ביד אחת",
+      "englishName": "Single-Arm Overhead Carry",
+      "muscleGroup": "core",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "d0a71cd5-7126-4981-afc5-83ee49787881",
+      "exerciseNumber": 127,
+      "canonicalHebrewName": "סיבוב גו בכבל",
+      "englishName": "Cable Trunk Rotation",
+      "muscleGroup": "core",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "47bee7c1-09db-434b-91b4-b6e8b325df11",
+      "exerciseNumber": 128,
+      "canonicalHebrewName": "דדליפט קלאסי",
+      "englishName": "Conventional Deadlift",
+      "muscleGroup": "conditioning",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "56ec4bb4-2cd6-48a1-8071-cdf11229edcb",
+      "exerciseNumber": 129,
+      "canonicalHebrewName": "דדליפט סומו",
+      "englishName": "Sumo Deadlift",
+      "muscleGroup": "conditioning",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "75601d60-cdf1-4e50-b0bf-ead185f38d70",
+      "exerciseNumber": 130,
+      "canonicalHebrewName": "דחיפת מזחלת",
+      "englishName": "Sled Push",
+      "muscleGroup": "conditioning",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "b8f6b5a5-dfae-4096-9973-e027a18479f5",
+      "exerciseNumber": 131,
+      "canonicalHebrewName": "משיכת מזחלת",
+      "englishName": "Sled Pull",
+      "muscleGroup": "conditioning",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "c1544913-4d2c-4be1-8c1f-f28b4953b98e",
+      "exerciseNumber": 132,
+      "canonicalHebrewName": "הליכת חקלאי",
+      "englishName": "Farmer's Carry",
+      "muscleGroup": "conditioning",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "ff82a236-024e-4f31-92a9-a7ccb7632fef",
+      "exerciseNumber": 133,
+      "canonicalHebrewName": "הנפת קטלבל",
+      "englishName": "Kettlebell Swing",
+      "muscleGroup": "conditioning",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "610a6cee-e453-4d76-b478-52bc355930f0",
+      "exerciseNumber": 134,
+      "canonicalHebrewName": "סקוואט ולחיצה מעל הראש עם משקולות יד",
+      "englishName": "Dumbbell Thruster",
+      "muscleGroup": "conditioning",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "c430880a-388b-4a3d-ba78-71444a486098",
+      "exerciseNumber": 135,
+      "canonicalHebrewName": "עלייה למדרגה עם משקולות יד",
+      "englishName": "Dumbbell Step-Up",
+      "muscleGroup": "conditioning",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "1487876f-599a-4fb8-b4a6-2b76383010cf",
+      "exerciseNumber": 136,
+      "canonicalHebrewName": "פתיחת גומיית התנגדות לצדדים בגובה החזה",
+      "englishName": "Band Pull-Apart",
+      "muscleGroup": "mobility",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "1e5d5c75-9954-4f00-8771-091b9ca2ad74",
+      "exerciseNumber": 137,
+      "canonicalHebrewName": "סיבוב חיצוני של הכתף עם גומיית התנגדות",
+      "englishName": "Band External Rotation",
+      "muscleGroup": "mobility",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "6950fcb9-8ade-42bb-aac8-3e2bf82a5bf3",
+      "exerciseNumber": 138,
+      "canonicalHebrewName": "סיבוב פנימי של הכתף עם גומיית התנגדות",
+      "englishName": "Band Internal Rotation",
+      "muscleGroup": "mobility",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "e53abf95-0dd0-4639-9405-9b3eaad68965",
+      "exerciseNumber": 139,
+      "canonicalHebrewName": "החלקת זרועות על קיר",
+      "englishName": "Wall Slide",
+      "muscleGroup": "mobility",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "22003022-ab9a-4b91-b7de-860777c7fe83",
+      "exerciseNumber": 140,
+      "canonicalHebrewName": "הרחקת שכמות בעמידת שש",
+      "englishName": "Quadruped Scapular Protraction",
+      "muscleGroup": "mobility",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "4509086d-e7e4-4767-8e5e-cb8d1df20311",
+      "exerciseNumber": 141,
+      "canonicalHebrewName": "קירוב שכמות עם גומיית התנגדות",
+      "englishName": "Band Scapular Retraction",
+      "muscleGroup": "mobility",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "174623a9-1033-4962-bc52-d1e0ce40b198",
+      "exerciseNumber": 142,
+      "canonicalHebrewName": "מתיחת מכופפי הירך",
+      "englishName": "Hip Flexor Stretch",
+      "muscleGroup": "mobility",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "ddcc8dc0-3d0f-49f5-aa52-9e153410e58b",
+      "exerciseNumber": 143,
+      "canonicalHebrewName": "מתיחת שרירי הירך האחורית",
+      "englishName": "Hamstring Stretch",
+      "muscleGroup": "mobility",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "8df72a30-de61-434c-9ed6-385e4d606722",
+      "exerciseNumber": 144,
+      "canonicalHebrewName": "מתיחת השריר הארבע-ראשי",
+      "englishName": "Quadriceps Stretch",
+      "muscleGroup": "mobility",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "d19af973-2d49-432d-a8d2-e960affdda23",
+      "exerciseNumber": 145,
+      "canonicalHebrewName": "מתיחת שרירי השוק האחוריים",
+      "englishName": "Calf Stretch",
+      "muscleGroup": "mobility",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "08427bb0-18de-4da4-9b41-79e06455583e",
+      "exerciseNumber": 146,
+      "canonicalHebrewName": "סיבובי עמוד השדרה החזי",
+      "englishName": "Thoracic Spine Rotation",
+      "muscleGroup": "mobility",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "4082eb62-969c-4761-be79-b992afe0c725",
+      "exerciseNumber": 147,
+      "canonicalHebrewName": "פתיחת בית החזה בשכיבה על הצד",
+      "englishName": "Side-Lying Thoracic Opener",
+      "muscleGroup": "mobility",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "b9f5c9ce-9e0a-4696-a8d5-c5a68fc84ce3",
+      "exerciseNumber": 148,
+      "canonicalHebrewName": "תנועת חתול-פרה",
+      "englishName": "Cat-Cow",
+      "muscleGroup": "mobility",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "a9deeb61-e2cd-4f9a-a6c5-b70cfceebf96",
+      "exerciseNumber": 149,
+      "canonicalHebrewName": "מוביליות קרסול מול קיר",
+      "englishName": "Knee-to-Wall Ankle Mobilization",
+      "muscleGroup": "mobility",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "e839b953-5379-4813-889e-3eceec8e1112",
+      "exerciseNumber": 150,
+      "canonicalHebrewName": "הרחקת ירך בשכיבה על הצד",
+      "englishName": "Side-Lying Hip Abduction",
+      "muscleGroup": "mobility",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    }
+  ],
+  "diagnostics": {
+    "unresolvedCount": 0,
+    "ignoredDatabaseRows": 25,
+    "unassignedMediaPathsCount": 0,
+    "unexpectedMediaFoldersCount": 0
+  }
+}

@@ -1,0 +1,48 @@
+name: Sync Exercise Registry snapshot
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-exercise-registry-snapshot
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate live Registry snapshot
+        env:
+          REGISTRY_SNAPSHOT_SOURCE_URL: https://kob-daily-coach.lovable.app/api/exercise-registry
+        run: node scripts/sync-exercise-registry-snapshot.mjs
+
+      - name: Validate Registry snapshot
+        run: node scripts/test-exercise-registry-snapshot.mjs
+
+      - name: Commit meaningful snapshot changes
+        shell: bash
+        run: |
+          if git diff --quiet -- agent-data/exercise-registry.snapshot.json; then
+            echo "No meaningful Registry snapshot change."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- agent-data/exercise-registry.snapshot.json
+          git commit -m "chore(agent-data): sync exercise registry snapshot"
+          git push origin HEAD:main
