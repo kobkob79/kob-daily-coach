@@ -48,7 +48,10 @@ export interface ExerciseRegistrySnapshot {
   };
 }
 
-export async function getExerciseRegistry(): Promise<ExerciseRegistry> {
+export async function getExerciseRegistry(
+  loadRegistry?: () => Promise<ExerciseRegistry>,
+): Promise<ExerciseRegistry> {
+  if (loadRegistry) return loadRegistry();
   const { getLiveExerciseRegistry } = await import("../services/exercise-registry.service.ts");
   return getLiveExerciseRegistry();
 }

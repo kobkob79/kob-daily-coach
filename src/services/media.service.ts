@@ -7,6 +7,10 @@
  * thousands of objects stays cheap to browse.
  */
 import { supabase, ServiceError } from "./base";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+type MediaSupabaseClient = SupabaseClient<Database>;
 
 export type MediaKind = "image" | "video" | "audio" | "other";
 
@@ -74,12 +78,19 @@ export async function signMedia(
   paths: string[],
   expiresIn: number = SIGNED_URL_TTL,
 ): Promise<Map<string, string>> {
+  return signMediaWithClient(supabase, bucket, paths, expiresIn);
+}
+
+async function signMediaWithClient(
+  client: MediaSupabaseClient,
+  bucket: string,
+  paths: string[],
+  expiresIn: number,
+): Promise<Map<string, string>> {
   const urls = new Map<string, string>();
   if (paths.length === 0) return urls;
 
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .createSignedUrls(paths, expiresIn);
+  const { data, error } = await client.storage.from(bucket).createSignedUrls(paths, expiresIn);
   if (error) throw new ServiceError(error.message, error);
 
   for (const entry of data ?? []) {
@@ -157,13 +168,10 @@ const TREE_LIST_LIMIT = 100;
  * alphabetically by its full path. Filenames and extensions are discovered
  * from Storage — nothing is hardcoded.
  */
-export async function listMediaTree({
-  bucket,
-  prefix,
-  maxDepth = 4,
-  maxFiles = 500,
-  signed = true,
-}: ListMediaTreeOptions): Promise<MediaItem[]> {
+export async function listMediaTree(
+  { bucket, prefix, maxDepth = 4, maxFiles = 500, signed = true }: ListMediaTreeOptions,
+  client: MediaSupabaseClient = supabase,
+): Promise<MediaItem[]> {
   const root = prefix.replace(/^\/+|\/+$/g, "");
 
   interface RawFile {
@@ -183,7 +191,7 @@ export async function listMediaTree({
 
     // Page through the folder so folders with many objects are complete.
     for (;;) {
-      const { data, error } = await supabase.storage.from(bucket).list(folder, {
+      const { data, error } = await client.storage.from(bucket).list(folder, {
         limit: TREE_LIST_LIMIT,
         offset,
         sortBy: { column: "name", order: "asc" },
@@ -226,7 +234,12 @@ export async function listMediaTree({
   files.sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
 
   const urls = signed
-    ? await signMedia(bucket, files.map((f) => f.path))
+    ? await signMediaWithClient(
+        client,
+        bucket,
+        files.map((f) => f.path),
+        SIGNED_URL_TTL,
+      )
     : new Map<string, string>();
 
   return files.flatMap((f) => {
@@ -237,9 +250,10 @@ export async function listMediaTree({
         path: f.path,
         name: f.name,
         // Folder relative to the queried root, for display purposes.
-        folder: root && f.folder.startsWith(root)
-          ? f.folder.slice(root.length).replace(/^\/+/, "")
-          : f.folder,
+        folder:
+          root && f.folder.startsWith(root)
+            ? f.folder.slice(root.length).replace(/^\/+/, "")
+            : f.folder,
         kind: classifyMedia(f.name, f.mimeType),
         mimeType: f.mimeType,
         size: f.size,

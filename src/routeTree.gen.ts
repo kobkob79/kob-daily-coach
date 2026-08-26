@@ -34,6 +34,7 @@ import { Route as AuthenticatedProgressRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
 import { Route as AuthenticatedWorkoutTemplatesRouteImport } from './routes/_authenticated/workout-templates'
 import { Route as AuthenticatedWorkoutsRouteImport } from './routes/_authenticated/workouts'
+import { Route as ApiExerciseRegistryRouteImport } from './routes/api/exercise-registry'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
@@ -183,6 +184,11 @@ const AuthenticatedWorkoutsRoute = AuthenticatedWorkoutsRouteImport.update({
   path: '/workouts',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiExerciseRegistryRoute = ApiExerciseRegistryRouteImport.update({
+  id: '/api/exercise-registry',
+  path: '/api/exercise-registry',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   id: '/.lovable/oauth/consent',
   path: '/.lovable/oauth/consent',
@@ -329,6 +335,7 @@ export interface FileRoutesByFullPath {
   '/shift': typeof AuthenticatedShiftRoute
   '/workout-templates': typeof AuthenticatedWorkoutTemplatesRoute
   '/workouts': typeof AuthenticatedWorkoutsRouteWithChildren
+  '/api/exercise-registry': typeof ApiExerciseRegistryRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/admin/exercise-registry': typeof AuthenticatedAdminExerciseRegistryRoute
@@ -372,6 +379,7 @@ export interface FileRoutesByTo {
   '/progress': typeof AuthenticatedProgressRoute
   '/shift': typeof AuthenticatedShiftRoute
   '/workout-templates': typeof AuthenticatedWorkoutTemplatesRoute
+  '/api/exercise-registry': typeof ApiExerciseRegistryRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/admin/exercise-registry': typeof AuthenticatedAdminExerciseRegistryRoute
@@ -420,6 +428,7 @@ export interface FileRoutesById {
   '/_authenticated/shift': typeof AuthenticatedShiftRoute
   '/_authenticated/workout-templates': typeof AuthenticatedWorkoutTemplatesRoute
   '/_authenticated/workouts': typeof AuthenticatedWorkoutsRouteWithChildren
+  '/api/exercise-registry': typeof ApiExerciseRegistryRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/admin/exercise-registry': typeof AuthenticatedAdminExerciseRegistryRoute
@@ -469,6 +478,7 @@ export interface FileRouteTypes {
     | '/shift'
     | '/workout-templates'
     | '/workouts'
+    | '/api/exercise-registry'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/admin/exercise-registry'
@@ -512,6 +522,7 @@ export interface FileRouteTypes {
     | '/progress'
     | '/shift'
     | '/workout-templates'
+    | '/api/exercise-registry'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/admin/exercise-registry'
@@ -559,6 +570,7 @@ export interface FileRouteTypes {
     | '/_authenticated/shift'
     | '/_authenticated/workout-templates'
     | '/_authenticated/workouts'
+    | '/api/exercise-registry'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/admin/exercise-registry'
@@ -589,6 +601,7 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  ApiExerciseRegistryRoute: typeof ApiExerciseRegistryRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
 }
@@ -769,6 +782,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/workouts'
       preLoaderRoute: typeof AuthenticatedWorkoutsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/exercise-registry': {
+      id: '/api/exercise-registry'
+      path: '/api/exercise-registry'
+      fullPath: '/api/exercise-registry'
+      preLoaderRoute: typeof ApiExerciseRegistryRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/.lovable/oauth/consent': {
       id: '/.lovable/oauth/consent'
@@ -1085,6 +1105,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  ApiExerciseRegistryRoute: ApiExerciseRegistryRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
 }

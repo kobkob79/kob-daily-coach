@@ -6,9 +6,13 @@ import {
 import { ASSETS_BUCKET } from "../lib/media-paths.ts";
 import { ServiceError, supabase } from "./base";
 import { listMediaTree } from "./media.service";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 
-async function readSharedExercises() {
-  const { data, error } = await supabase
+type RegistrySupabaseClient = SupabaseClient<Database>;
+
+async function readSharedExercises(client: RegistrySupabaseClient) {
+  const { data, error } = await client
     .from("exercises")
     .select("id,name,owner_id")
     .is("owner_id", null);
@@ -16,21 +20,30 @@ async function readSharedExercises() {
   return data ?? [];
 }
 
-async function readCanonicalExerciseMedia() {
-  return listMediaTree({
-    bucket: ASSETS_BUCKET,
-    prefix: EXERCISE_MEDIA_ROOT,
-    maxDepth: 1,
-    maxFiles: Number.MAX_SAFE_INTEGER,
-    signed: false,
+async function readCanonicalExerciseMedia(client: RegistrySupabaseClient) {
+  return listMediaTree(
+    {
+      bucket: ASSETS_BUCKET,
+      prefix: EXERCISE_MEDIA_ROOT,
+      maxDepth: 1,
+      maxFiles: Number.MAX_SAFE_INTEGER,
+      signed: false,
+    },
+    client,
+  );
+}
+
+export async function getLiveExerciseRegistryWithClient(
+  client: RegistrySupabaseClient,
+): Promise<ExerciseRegistryReadModel> {
+  return loadExerciseRegistryReadModel({
+    readDatabaseExercises: () => readSharedExercises(client),
+    readStorageItems: () => readCanonicalExerciseMedia(client),
   });
 }
 
 export async function getLiveExerciseRegistry(): Promise<ExerciseRegistryReadModel> {
-  return loadExerciseRegistryReadModel({
-    readDatabaseExercises: readSharedExercises,
-    readStorageItems: readCanonicalExerciseMedia,
-  });
+  return getLiveExerciseRegistryWithClient(supabase);
 }
 
 export const exerciseRegistryService = {
