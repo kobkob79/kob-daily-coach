@@ -4,14 +4,14 @@
   "readOnly": true,
   "summary": {
     "totalExercises": 150,
-    "completedExercises": 5,
+    "completedExercises": 6,
     "partialExercises": 0,
-    "notStartedExercises": 145,
-    "coversComplete": 5,
-    "infographicsComplete": 5,
-    "thumbnailsComplete": 5,
+    "notStartedExercises": 144,
+    "coversComplete": 6,
+    "infographicsComplete": 6,
+    "thumbnailsComplete": 6,
     "demosComplete": 0,
-    "overallProgressPercent": 3.3333333333333335
+    "overallProgressPercent": 4
   },
   "nextRecommendedExercise": {
     "exerciseId": "eb363b52-89b8-43fe-ab61-871d32029217",
@@ -2270,19 +2270,17 @@
       "canonicalHebrewName": "פלאנק",
       "englishName": "Plank",
       "muscleGroup": "core",
-      "status": "NOT_STARTED",
+      "status": "COMPLETE",
       "media": {
-        "hasCover": false,
-        "hasInfographic": false,
-        "hasThumbnail": false,
+        "hasCover": true,
+        "hasInfographic": true,
+        "hasThumbnail": true,
         "hasDemo": false
       },
       "missingAssets": [
-        "cover",
-        "infographic",
-        "thumbnail",
         "demo"
-      ]
+      ],
+      "lastUpdated": "2026-08-26T11:51:49.524Z"
     },
     {
       "exerciseId": "a93cf5f0-cb07-4820-bef3-6c7caafa89b5",
