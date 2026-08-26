@@ -35,7 +35,7 @@ import { Route as AuthenticatedProgressRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
 import { Route as AuthenticatedWorkoutTemplatesRouteImport } from './routes/_authenticated/workout-templates'
 import { Route as AuthenticatedWorkoutsRouteImport } from './routes/_authenticated/workouts'
-import { Route as AboutPersonRouteImport } from './routes/about.$person'
+import { Route as AboutPersonRouteImport } from './routes/about_.$person'
 import { Route as ApiExerciseRegistryRouteImport } from './routes/api/exercise-registry'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
@@ -192,9 +192,9 @@ const AuthenticatedWorkoutsRoute = AuthenticatedWorkoutsRouteImport.update({
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AboutPersonRoute = AboutPersonRouteImport.update({
-  id: '/$person',
-  path: '/$person',
-  getParentRoute: () => AboutRoute,
+  id: '/about_/$person',
+  path: '/about/$person',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiExerciseRegistryRoute = ApiExerciseRegistryRouteImport.update({
   id: '/api/exercise-registry',
@@ -324,7 +324,7 @@ const AuthenticatedWorkoutsSessionSessionIdExerciseExerciseIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/about': typeof AboutRouteWithChildren
+  '/about': typeof AboutRoute
   '/auth': typeof AuthRoute
   '/mcp': typeof McpRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -374,7 +374,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/about': typeof AboutRouteWithChildren
+  '/about': typeof AboutRoute
   '/auth': typeof AuthRoute
   '/mcp': typeof McpRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -421,7 +421,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/about': typeof AboutRouteWithChildren
+  '/about': typeof AboutRoute
   '/auth': typeof AuthRoute
   '/mcp': typeof McpRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -445,7 +445,7 @@ export interface FileRoutesById {
   '/_authenticated/shift': typeof AuthenticatedShiftRoute
   '/_authenticated/workout-templates': typeof AuthenticatedWorkoutTemplatesRoute
   '/_authenticated/workouts': typeof AuthenticatedWorkoutsRouteWithChildren
-  '/about/$person': typeof AboutPersonRoute
+  '/about_/$person': typeof AboutPersonRoute
   '/api/exercise-registry': typeof ApiExerciseRegistryRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -593,7 +593,7 @@ export interface FileRouteTypes {
     | '/_authenticated/shift'
     | '/_authenticated/workout-templates'
     | '/_authenticated/workouts'
-    | '/about/$person'
+    | '/about_/$person'
     | '/api/exercise-registry'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -621,11 +621,12 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
-  AboutRoute: typeof AboutRouteWithChildren
+  AboutRoute: typeof AboutRoute
   AuthRoute: typeof AuthRoute
   McpRoute: typeof McpRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  AboutPersonRoute: typeof AboutPersonRoute
   ApiExerciseRegistryRoute: typeof ApiExerciseRegistryRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -815,12 +816,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWorkoutsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/about/$person': {
-      id: '/about/$person'
-      path: '/$person'
+    '/about_/$person': {
+      id: '/about_/$person'
+      path: '/about/$person'
       fullPath: '/about/$person'
       preLoaderRoute: typeof AboutPersonRouteImport
-      parentRoute: typeof AboutRoute
+      parentRoute: typeof rootRouteImport
     }
     '/api/exercise-registry': {
       id: '/api/exercise-registry'
@@ -1136,25 +1137,16 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
-interface AboutRouteChildren {
-  AboutPersonRoute: typeof AboutPersonRoute
-}
-
-const AboutRouteChildren: AboutRouteChildren = {
-  AboutPersonRoute: AboutPersonRoute,
-}
-
-const AboutRouteWithChildren = AboutRoute._addFileChildren(AboutRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
-  AboutRoute: AboutRouteWithChildren,
+  AboutRoute: AboutRoute,
   AuthRoute: AuthRoute,
   McpRoute: McpRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  AboutPersonRoute: AboutPersonRoute,
   ApiExerciseRegistryRoute: ApiExerciseRegistryRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,

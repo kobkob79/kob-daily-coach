@@ -3,7 +3,7 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { PersonStoryPage } from "@/components/about/PersonStoryPage";
 import { getAboutPerson } from "@/lib/about-people";
 
-export const Route = createFileRoute("/about/$person")({
+export const Route = createFileRoute("/about_/$person")({
   loader: ({ params }) => {
     const person = getAboutPerson(params.person);
     if (!person) throw notFound();
