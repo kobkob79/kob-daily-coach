@@ -20,11 +20,7 @@ import {
   ZoomOut,
   Folder,
 } from "lucide-react";
-import {
-  listMediaTree,
-  SIGNED_URL_TTL,
-  type MediaItem,
-} from "@/services/media.service";
+import { listMediaTree, SIGNED_URL_TTL, type MediaItem } from "@/services/media.service";
 import { PremiumCard, EmptyState } from "@/components/ui-kit/Section";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -40,6 +36,8 @@ type MediaGalleryProps = {
   className?: string;
   /** Grid columns on mobile. */
   columns?: 2 | 3;
+  /** Reduces shell and empty-state height for dense dashboard embeds. */
+  compact?: boolean;
   /**
    * When provided, tapping a tile hands the item to the caller instead of
    * opening the fullscreen viewer (used by the assignment flow).
@@ -54,10 +52,9 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 6;
 
 export function MediaGallery(props: MediaGalleryProps) {
-  const { title, className, columns = 2, onSelectItem } = props;
+  const { title, className, columns = 2, compact = false, onSelectItem } = props;
   const bucket = props.bucket ?? ASSETS_BUCKET;
-  const prefix =
-    props.prefix ?? characterAssetPrefix(props.characterId!, props.category!);
+  const prefix = props.prefix ?? characterAssetPrefix(props.characterId!, props.category!);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const query = useQuery({
@@ -68,7 +65,7 @@ export function MediaGallery(props: MediaGalleryProps) {
     retry: 1,
   });
 
-  const items = query.data ?? [];
+  const items = useMemo(() => query.data ?? [], [query.data]);
 
   /** Files grouped by nested folder, preserving alphabetical order. */
   const groups = useMemo(() => {
@@ -83,10 +80,10 @@ export function MediaGallery(props: MediaGalleryProps) {
 
   if (query.isPending) {
     return (
-      <PremiumCard className={className}>
+      <PremiumCard className={cn(className, compact && "rounded-2xl p-3 shadow-none")}>
         {title && <h3 className="mb-3 text-sm font-semibold">{title}</h3>}
         <div className={cn("grid gap-3", columns === 3 ? "grid-cols-3" : "grid-cols-2")}>
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: compact ? 2 : 6 }).map((_, i) => (
             <div
               key={i}
               className="aspect-[3/4] animate-pulse rounded-2xl border border-border/40 bg-muted/40"
@@ -117,6 +114,34 @@ export function MediaGallery(props: MediaGalleryProps) {
   }
 
   if (items.length === 0) {
+    if (compact) {
+      return (
+        <div
+          className={cn(
+            "flex min-h-16 items-center gap-2.5 rounded-2xl border border-dashed border-border/70 bg-background/25 px-3 py-2.5",
+            className,
+          )}
+        >
+          <ImageOff className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium">עדיין אין נכסים בתיקייה</p>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">
+              קבצים שיועלו יופיעו כאן אוטומטית.
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            aria-label="רענן"
+            onClick={() => query.refetch()}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      );
+    }
+
     return (
       <PremiumCard className={className}>
         <EmptyState
@@ -135,7 +160,7 @@ export function MediaGallery(props: MediaGalleryProps) {
   }
 
   return (
-    <PremiumCard className={className}>
+    <PremiumCard className={cn(className, compact && "rounded-2xl p-3 shadow-none")}>
       <div className="mb-3 flex items-center justify-between gap-3">
         {title ? <h3 className="text-sm font-semibold">{title}</h3> : <span />}
         <span className="text-xs text-muted-foreground">{items.length} קבצים</span>
@@ -147,7 +172,9 @@ export function MediaGallery(props: MediaGalleryProps) {
             {folder && (
               <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                 <Folder className="h-3.5 w-3.5" />
-                <span dir="ltr" className="truncate">{folder}</span>
+                <span dir="ltr" className="truncate">
+                  {folder}
+                </span>
               </p>
             )}
             <div className={cn("grid gap-3", columns === 3 ? "grid-cols-3" : "grid-cols-2")}>
@@ -156,9 +183,7 @@ export function MediaGallery(props: MediaGalleryProps) {
                   key={item.path}
                   item={item}
                   onOpen={() =>
-                    onSelectItem
-                      ? onSelectItem(item)
-                      : setActiveIndex(items.indexOf(item))
+                    onSelectItem ? onSelectItem(item) : setActiveIndex(items.indexOf(item))
                   }
                 />
               ))}
@@ -307,9 +332,7 @@ function MediaViewer({
     const k = next / zoom;
     setZoom(next);
     setOffset((o) =>
-      next === 1
-        ? { x: 0, y: 0 }
-        : { x: px - (px - o.x) * k, y: py - (py - o.y) * k },
+      next === 1 ? { x: 0, y: 0 } : { x: px - (px - o.x) * k, y: py - (py - o.y) * k },
     );
   };
 
@@ -347,7 +370,9 @@ function MediaViewer({
           <X className="h-5 w-5" />
         </button>
         <div className="min-w-0 flex-1 text-center">
-          <p className="truncate text-sm font-semibold" dir="ltr">{item.name}</p>
+          <p className="truncate text-sm font-semibold" dir="ltr">
+            {item.name}
+          </p>
           <p className="truncate text-[11px] text-muted-foreground" dir="ltr">
             {item.path}
           </p>
@@ -415,10 +440,7 @@ function MediaViewer({
                 onLoad={() => setLoaded(true)}
                 onError={() => setFailed(true)}
                 draggable={false}
-                className={cn(
-                  "max-h-full max-w-full object-contain",
-                  !loaded && "opacity-0",
-                )}
+                className={cn("max-h-full max-w-full object-contain", !loaded && "opacity-0")}
               />
             )}
           </div>

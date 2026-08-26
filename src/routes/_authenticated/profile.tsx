@@ -14,6 +14,7 @@ import {
   X,
   Activity,
   Target,
+  Info,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -107,6 +108,19 @@ function ProfilePage() {
 
       <section className="space-y-3">
         <SectionHeader title="חשבון והגדרות" subtitle="התאמה אישית וחיבורי החשבון שלך" />
+        <Link
+          to="/about"
+          className="flex min-h-14 items-center gap-3 rounded-2xl border border-border/60 bg-card/60 px-4 transition hover:border-primary/30 hover:bg-card"
+        >
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+            <Info className="h-4 w-4" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">על Viora</span>
+            <span className="block text-xs text-muted-foreground">האנשים, היועצים והחזון שלנו</span>
+          </span>
+          <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+        </Link>
         <PlanAndAISection />
         <ThemeSelector />
       </section>

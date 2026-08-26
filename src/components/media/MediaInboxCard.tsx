@@ -7,13 +7,17 @@ import { Button } from "@/components/ui/button";
 import { PremiumCard, SectionHeader } from "@/components/ui-kit/Section";
 import { MediaGallery } from "@/components/media/MediaGallery";
 import { ExerciseAssignSheet } from "@/components/media/ExerciseAssignSheet";
+import { cn } from "@/lib/utils";
 import type { MediaItem } from "@/services/media.service";
-import {
-  MEDIA_INBOX_BUCKET,
-  uploadMediaInboxFile,
-} from "@/services/media-inbox.service";
+import { MEDIA_INBOX_BUCKET, uploadMediaInboxFile } from "@/services/media-inbox.service";
 
-export function MediaInboxCard() {
+export function MediaInboxCard({
+  showHeader = true,
+  compact = false,
+}: {
+  showHeader?: boolean;
+  compact?: boolean;
+}) {
   const [uploading, setUploading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
@@ -58,14 +62,19 @@ export function MediaInboxCard() {
   }
 
   return (
-    <section className="space-y-3">
-      <SectionHeader
-        title="Media Inbox"
-        subtitle="העלה תמונות מהטלפון ישירות ל-Viora"
-      />
+    <section className={compact ? "space-y-2" : "space-y-3"}>
+      {showHeader && (
+        <SectionHeader title="Media Inbox" subtitle="העלה תמונות מהטלפון ישירות ל-Viora" />
+      )}
 
-      <PremiumCard className="space-y-3">
-        <div className="grid grid-cols-2 gap-3">
+      <PremiumCard
+        className={cn(
+          "space-y-3",
+          compact &&
+            "rounded-2xl border-border/60 bg-background/35 p-2.5 shadow-none backdrop-blur-none",
+        )}
+      >
+        <div className={cn("grid grid-cols-2", compact ? "gap-2" : "gap-3")}>
           <Button onClick={() => galleryRef.current?.click()} disabled={uploading}>
             {uploading ? (
               <Loader2 className="ml-2 h-4 w-4 animate-spin" />
@@ -75,11 +84,7 @@ export function MediaInboxCard() {
             גלריה
           </Button>
 
-          <Button
-            variant="outline"
-            onClick={() => cameraRef.current?.click()}
-            disabled={uploading}
-          >
+          <Button variant="outline" onClick={() => cameraRef.current?.click()} disabled={uploading}>
             <Camera className="ml-2 h-4 w-4" />
             מצלמה
           </Button>
@@ -104,7 +109,7 @@ export function MediaInboxCard() {
       </PremiumCard>
 
       {userQ.isPending && (
-        <PremiumCard className="grid place-items-center py-8">
+        <PremiumCard className={cn("grid place-items-center", compact ? "py-4" : "py-8")}>
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </PremiumCard>
       )}
@@ -115,6 +120,7 @@ export function MediaInboxCard() {
           bucket={MEDIA_INBOX_BUCKET}
           prefix={userId}
           columns={2}
+          compact={compact}
           onSelectItem={setSelectedItem}
         />
       )}
