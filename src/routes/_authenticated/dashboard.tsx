@@ -25,6 +25,7 @@ import {
   TrendingUp,
   Clock,
   Flame,
+  Users,
 } from "lucide-react";
 import { useCountUp } from "@/hooks/useCountUp";
 
@@ -315,12 +316,7 @@ function Dashboard() {
     gender: (profileQ.data?.gender as "male" | "female" | "other" | null) ?? null,
     activity:
       (profileQ.data?.activity_level as
-        | "sedentary"
-        | "light"
-        | "moderate"
-        | "active"
-        | "very_active"
-        | null) ?? null,
+        "sedentary" | "light" | "moderate" | "active" | "very_active" | null) ?? null,
     shift: shift ?? null,
     workoutMinutes: workoutTodayMinutes,
   });
@@ -750,6 +746,25 @@ function Dashboard() {
       </section>
 
       <HomeHero focus={todaysFocus} />
+
+      <Link
+        to="/about"
+        className="group relative block min-h-28 overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-l from-primary/14 via-card to-card px-5 py-5 shadow-soft transition active:scale-[0.99]"
+      >
+        <div className="absolute -left-8 -top-10 h-32 w-32 rounded-full bg-primary/12 blur-2xl" />
+        <div className="relative flex items-center gap-4">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+            <Users className="h-6 w-6" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-lg font-extrabold">הכירו את Viora</span>
+            <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+              הסיפור, האנשים והגישה שמאחורי Viora
+            </span>
+          </span>
+          <span className="shrink-0 text-xs font-bold text-primary">הכירו אותנו</span>
+        </div>
+      </Link>
 
       {/* Context-aware quick actions */}
       <section className="animate-stagger">
