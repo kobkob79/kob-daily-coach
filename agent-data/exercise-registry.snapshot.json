@@ -4,33 +4,34 @@
   "readOnly": true,
   "summary": {
     "totalExercises": 150,
-    "completedExercises": 3,
-    "partialExercises": 1,
+    "completedExercises": 4,
+    "partialExercises": 0,
     "notStartedExercises": 146,
     "coversComplete": 4,
-    "infographicsComplete": 3,
+    "infographicsComplete": 4,
     "thumbnailsComplete": 4,
     "demosComplete": 0,
-    "overallProgressPercent": 2
+    "overallProgressPercent": 2.666666666666667
   },
   "nextRecommendedExercise": {
-    "exerciseId": "3d775aeb-977e-4a8b-9b61-7af388bd7852",
-    "exerciseNumber": 14,
-    "canonicalHebrewName": "שכיבות סמיכה",
-    "englishName": "Push-Up",
+    "exerciseId": "eb363b52-89b8-43fe-ab61-871d32029217",
+    "exerciseNumber": 1,
+    "canonicalHebrewName": "לחיצת חזה עם מוט",
+    "englishName": "Barbell Bench Press",
     "muscleGroup": "chest",
-    "status": "PARTIAL",
+    "status": "NOT_STARTED",
     "media": {
-      "hasCover": true,
+      "hasCover": false,
       "hasInfographic": false,
-      "hasThumbnail": true,
+      "hasThumbnail": false,
       "hasDemo": false
     },
     "missingAssets": [
+      "cover",
       "infographic",
+      "thumbnail",
       "demo"
-    ],
-    "lastUpdated": "2026-08-16T19:18:19.576Z"
+    ]
   },
   "exercises": [
     {
@@ -299,18 +300,17 @@
       "canonicalHebrewName": "שכיבות סמיכה",
       "englishName": "Push-Up",
       "muscleGroup": "chest",
-      "status": "PARTIAL",
+      "status": "COMPLETE",
       "media": {
         "hasCover": true,
-        "hasInfographic": false,
+        "hasInfographic": true,
         "hasThumbnail": true,
         "hasDemo": false
       },
       "missingAssets": [
-        "infographic",
         "demo"
       ],
-      "lastUpdated": "2026-08-16T19:18:19.576Z"
+      "lastUpdated": "2026-08-26T09:30:13.241Z"
     },
     {
       "exerciseId": "235ee07e-3871-4cf0-b5b2-77aa41bffb6b",
