@@ -4,20 +4,20 @@
   "readOnly": true,
   "summary": {
     "totalExercises": 150,
-    "completedExercises": 6,
+    "completedExercises": 9,
     "partialExercises": 0,
-    "notStartedExercises": 144,
-    "coversComplete": 6,
-    "infographicsComplete": 6,
-    "thumbnailsComplete": 6,
+    "notStartedExercises": 141,
+    "coversComplete": 9,
+    "infographicsComplete": 9,
+    "thumbnailsComplete": 9,
     "demosComplete": 0,
-    "overallProgressPercent": 4
+    "overallProgressPercent": 6
   },
   "nextRecommendedExercise": {
-    "exerciseId": "eb363b52-89b8-43fe-ab61-871d32029217",
-    "exerciseNumber": 1,
-    "canonicalHebrewName": "לחיצת חזה עם מוט",
-    "englishName": "Barbell Bench Press",
+    "exerciseId": "677e458d-0206-48f1-a340-d1a75fe972e6",
+    "exerciseNumber": 2,
+    "canonicalHebrewName": "לחיצת חזה עם משקולות יד",
+    "englishName": "Dumbbell Bench Press",
     "muscleGroup": "chest",
     "status": "NOT_STARTED",
     "media": {
@@ -40,19 +40,17 @@
       "canonicalHebrewName": "לחיצת חזה עם מוט",
       "englishName": "Barbell Bench Press",
       "muscleGroup": "chest",
-      "status": "NOT_STARTED",
+      "status": "COMPLETE",
       "media": {
-        "hasCover": false,
-        "hasInfographic": false,
-        "hasThumbnail": false,
+        "hasCover": true,
+        "hasInfographic": true,
+        "hasThumbnail": true,
         "hasDemo": false
       },
       "missingAssets": [
-        "cover",
-        "infographic",
-        "thumbnail",
         "demo"
-      ]
+      ],
+      "lastUpdated": "2026-08-26T12:44:09.113Z"
     },
     {
       "exerciseId": "677e458d-0206-48f1-a340-d1a75fe972e6",
@@ -200,19 +198,17 @@
       "canonicalHebrewName": "פרפר במכונה",
       "englishName": "Pec Deck Fly",
       "muscleGroup": "chest",
-      "status": "NOT_STARTED",
+      "status": "COMPLETE",
       "media": {
-        "hasCover": false,
-        "hasInfographic": false,
-        "hasThumbnail": false,
+        "hasCover": true,
+        "hasInfographic": true,
+        "hasThumbnail": true,
         "hasDemo": false
       },
       "missingAssets": [
-        "cover",
-        "infographic",
-        "thumbnail",
         "demo"
-      ]
+      ],
+      "lastUpdated": "2026-08-26T12:24:44.072Z"
     },
     {
       "exerciseId": "555c8ed7-864d-4699-aeaf-e8c4d4d5a072",
@@ -834,19 +830,17 @@
       "canonicalHebrewName": "הרחקת זרועות לצדדים בכבל",
       "englishName": "Cable Lateral Raise",
       "muscleGroup": "shoulders",
-      "status": "NOT_STARTED",
+      "status": "COMPLETE",
       "media": {
-        "hasCover": false,
-        "hasInfographic": false,
-        "hasThumbnail": false,
+        "hasCover": true,
+        "hasInfographic": true,
+        "hasThumbnail": true,
         "hasDemo": false
       },
       "missingAssets": [
-        "cover",
-        "infographic",
-        "thumbnail",
         "demo"
-      ]
+      ],
+      "lastUpdated": "2026-08-26T13:13:04.299Z"
     },
     {
       "exerciseId": "1a1896db-89bd-41a8-b1b4-7c2521c83719",
