@@ -1,19 +1,21 @@
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
-import { Bell, User, LogOut, Sparkles } from "lucide-react";
+import { Bell, User, LogOut, Settings, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { liveModules } from "@/lib/modules";
 import { t } from "@/lib/i18n";
 import { VioraLogo } from "@/components/brand/VioraLogo";
 import { AskVioraSheet } from "@/components/AskVioraSheet";
 import { ActiveWorkoutBar } from "@/components/ActiveWorkoutBar";
+import { fetchIsAdmin } from "@/lib/admin";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const router = useRouter();
   const qc = useQueryClient();
+  const adminQ = useQuery({ queryKey: ["is-admin"], queryFn: fetchIsAdmin });
   const [askOpen, setAskOpen] = useState(false);
   const hideBottomNav = pathname.startsWith("/workouts/session/");
 
@@ -42,7 +44,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, [hideBottomNav, pathname]);
 
-
   const handleSignOut = async () => {
     await qc.cancelQueries();
     qc.clear();
@@ -67,10 +68,24 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <header className="sticky top-0 z-40 border-b border-white/5 bg-background/50 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-5 py-4">
-          <Link to="/profile" aria-label={t("profile.title")}
-            className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-card/60 backdrop-blur-xl transition hover:border-primary/40">
-            <User className="h-[18px] w-[18px] text-foreground/80" strokeWidth={1.8} />
-          </Link>
+          <div className="flex items-center gap-1.5">
+            <Link
+              to="/profile"
+              aria-label={t("profile.title")}
+              className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-card/60 backdrop-blur-xl transition hover:border-primary/40"
+            >
+              <User className="h-[18px] w-[18px] text-foreground/80" strokeWidth={1.8} />
+            </Link>
+            {adminQ.data === true && (
+              <Link
+                to="/admin"
+                aria-label="ניהול Viora"
+                className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-card/60 backdrop-blur-xl transition hover:border-primary/40"
+              >
+                <Settings className="h-[18px] w-[18px] text-foreground/80" strokeWidth={1.8} />
+              </Link>
+            )}
+          </div>
 
           <Link to="/dashboard" className="flex items-center gap-2">
             <VioraLogo className="h-7 w-7 rounded-xl ring-glow" />
@@ -141,7 +156,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
       )}
 
-
       <AskVioraSheet open={askOpen} onOpenChange={setAskOpen} pathname={pathname} />
     </div>
   );
@@ -183,4 +197,3 @@ function NavTab({
     </Link>
   );
 }
-

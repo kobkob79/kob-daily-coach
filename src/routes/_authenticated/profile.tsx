@@ -13,7 +13,6 @@ import {
   Pencil,
   X,
   Activity,
-  Sparkles,
   Target,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -46,8 +45,6 @@ import {
 } from "@/lib/profile";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { PlanAndAISection } from "@/components/premium/AIConnectionSection";
-import { useQuery as useAdminQuery } from "@tanstack/react-query";
-import { fetchIsAdmin } from "@/lib/admin";
 export const Route = createFileRoute("/_authenticated/profile")({
   component: ProfilePage,
 });
@@ -113,27 +110,7 @@ function ProfilePage() {
         <PlanAndAISection />
         <ThemeSelector />
       </section>
-
-      <AdminEntry />
     </div>
-  );
-}
-
-/* ---------------- Admin entry (admins only) ---------------- */
-
-function AdminEntry() {
-  const adminQ = useAdminQuery({ queryKey: ["is-admin"], queryFn: fetchIsAdmin });
-  if (!adminQ.data) return null;
-  return (
-    <Link to="/admin" className="block">
-      <PremiumCard className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold">ניהול Viora</p>
-          <p className="text-xs text-muted-foreground">מעבר לאזור ניהול המערכת</p>
-        </div>
-        <Sparkles className="h-4 w-4 text-primary" aria-hidden />
-      </PremiumCard>
-    </Link>
   );
 }
 

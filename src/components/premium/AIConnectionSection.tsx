@@ -38,7 +38,7 @@ function formatWhen(iso: string | null): string | null {
 
 /** Compact plan + AI status row for Profile / Settings. */
 export function PlanAndAISection({ className }: { className?: string }) {
-  const { hydrated, isPremium, isConnected, connection, setPlan } = useVioraPlanUI();
+  const { hydrated, isPremium, isConnected, connection } = useVioraPlanUI();
   const [manageOpen, setManageOpen] = useState(false);
   const validatedAt = formatWhen(connection.lastValidatedAt);
 
@@ -101,36 +101,6 @@ export function PlanAndAISection({ className }: { className?: string }) {
           <ChevronLeft className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
         </button>
       </PremiumCard>
-
-      {/* Temporary QA control — lets you review every state of this design. */}
-      <div className="mt-2 flex items-center justify-between gap-3 rounded-xl border border-dashed border-border/60 px-3 py-1.5 opacity-70">
-        <p className="text-[10px] font-medium tracking-wide text-muted-foreground">
-          תצוגת מצב · כלי QA זמני
-        </p>
-        <div className="flex gap-1">
-          <button
-            type="button"
-            onClick={() => setPlan("free")}
-            className={cn(
-              "rounded-full px-2.5 py-0.5 text-[10px] font-bold transition",
-              !isPremium ? "bg-foreground/10 text-foreground" : "text-muted-foreground",
-            )}
-          >
-            Free
-          </button>
-          <button
-            type="button"
-            onClick={() => setPlan("premium")}
-            className={cn(
-              "rounded-full px-2.5 py-0.5 text-[10px] font-bold transition",
-              isPremium ? "bg-primary/15 text-primary" : "text-muted-foreground",
-            )}
-          >
-            Premium
-          </button>
-        </div>
-      </div>
-
 
       <ManageAISheet open={manageOpen} onOpenChange={setManageOpen} />
     </section>
