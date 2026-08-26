@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { BuildInfo } from "@/components/BuildInfo";
+import { AboutMediaManager } from "@/components/admin/AboutMediaManager";
 import { MediaInboxCard } from "@/components/media/MediaInboxCard";
 import { Button } from "@/components/ui/button";
 import { PremiumCard, SectionHeader } from "@/components/ui-kit/Section";
@@ -229,6 +230,11 @@ export function ManagementCenter() {
           <BuildInfo />
         </div>
       </header>
+
+      <section>
+        <SectionHeader className="mb-2" title="צוות וגלריות" subtitle="About media management" />
+        <AboutMediaManager />
+      </section>
 
       <section>
         <SectionHeader

@@ -2,6 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { ArrowLeft, HeartPulse } from "lucide-react";
 import { VioraLogo } from "@/components/brand/VioraLogo";
 import { ABOUT_PEOPLE, type AboutPerson } from "@/lib/about-people";
+import { useAboutMedia } from "@/hooks/use-about-media";
+import { primaryAboutMedia, type PublishedAboutMedia } from "@/lib/about-media";
 
 const BELIEFS = [
   { title: "אדם לפני אלגוריתם", body: "המערכת יכולה לעזור להבין ולהמליץ. האדם מחליט." },
@@ -16,6 +18,9 @@ const BELIEFS = [
 export function AboutVioraPage() {
   const founder = ABOUT_PEOPLE[0];
   const advisors = ABOUT_PEOPLE.slice(1);
+  const mediaQ = useAboutMedia();
+  const media = mediaQ.data ?? [];
+  const teamImage = primaryAboutMedia(media, "team");
   return (
     <main className="min-h-screen overflow-x-hidden bg-background text-foreground" dir="rtl">
       <header className="absolute inset-x-0 top-0 z-20 mx-auto flex max-w-6xl items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+1rem)]">
@@ -46,8 +51,15 @@ export function AboutVioraPage() {
       </section>
       <section className="px-5 py-16 sm:py-24">
         <div className="mx-auto grid max-w-5xl gap-8 sm:grid-cols-[0.8fr_1.2fr] sm:items-center">
-          <div className="aspect-[4/5] overflow-hidden rounded-[2rem] border border-border/60 bg-gradient-to-br from-primary/15 via-muted/30 to-background p-6">
-            <div className="flex h-full flex-col justify-end">
+          <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-border/60 bg-gradient-to-br from-primary/15 via-muted/30 to-background p-6">
+            {primaryAboutMedia(media, "kobi") && (
+              <img
+                src={primaryAboutMedia(media, "kobi")!.publicUrl}
+                alt={primaryAboutMedia(media, "kobi")!.alt_text || founder.name}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            )}
+            <div className="relative flex h-full flex-col justify-end">
               <HeartPulse className="mb-auto h-7 w-7 text-primary" />
               <p className="text-xs font-semibold tracking-[0.18em] text-primary">FOUNDER</p>
               <h2 className="mt-2 text-3xl font-black">{founder.name}</h2>
@@ -72,21 +84,35 @@ export function AboutVioraPage() {
           </div>
           <div className="mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {advisors.map((person) => (
-              <PersonCard key={person.slug} person={person} />
+              <PersonCard
+                key={person.slug}
+                person={person}
+                primary={primaryAboutMedia(media, person.slug)}
+              />
             ))}
           </div>
         </div>
       </section>
-      <section className="px-5 py-16 sm:py-24">
-        <div className="mx-auto max-w-6xl">
-          <p className="text-xs font-semibold tracking-[0.18em] text-primary">TEAM GALLERY</p>
-          <h2 className="mt-2 text-3xl font-black">גלריית צוות Viora</h2>
-          <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground">
-            הגלריה תיפתח כאשר יהיו זמינים נכסי צוות מאושרים. עד אז אנחנו שומרים את הבמה לסיפורים
-            אמיתיים בלבד.
-          </p>
-        </div>
-      </section>
+      {teamImage && (
+        <section className="px-5 py-16 sm:py-24">
+          <div className="mx-auto max-w-6xl">
+            <p className="text-xs font-semibold tracking-[0.18em] text-primary">TEAM GALLERY</p>
+            <h2 className="mt-2 text-3xl font-black">צוות Viora</h2>
+            <figure className="mt-8 overflow-hidden rounded-[2rem] border border-border/60 bg-muted">
+              <img
+                src={teamImage.publicUrl}
+                alt={teamImage.alt_text || "צוות Viora"}
+                className="max-h-[38rem] w-full object-cover"
+              />
+              {teamImage.caption && (
+                <figcaption className="p-4 text-sm text-muted-foreground">
+                  {teamImage.caption}
+                </figcaption>
+              )}
+            </figure>
+          </div>
+        </section>
+      )}
       <section id="principles" className="bg-foreground px-5 py-16 text-background sm:py-24">
         <div className="mx-auto max-w-6xl">
           <p className="text-xs font-semibold tracking-[0.18em] text-primary">WHAT WE BELIEVE</p>
@@ -139,15 +165,21 @@ function StoryLink({ person }: { person: AboutPerson }) {
   );
 }
 
-function PersonCard({ person }: { person: AboutPerson }) {
-  const cover = person.image?.replace("-hero", "-cover");
+function PersonCard({
+  person,
+  primary,
+}: {
+  person: AboutPerson;
+  primary: PublishedAboutMedia | null;
+}) {
+  const cover = primary?.publicUrl ?? person.image?.replace("-hero", "-cover");
   return (
     <article className="w-[78vw] max-w-[19rem] shrink-0 snap-center overflow-hidden rounded-[1.75rem] border border-border/60 bg-background sm:w-72">
       {cover && (
         <div className="relative aspect-[4/5] overflow-hidden bg-muted">
           <img
             src={cover}
-            alt={person.name}
+            alt={primary?.alt_text || person.name}
             className="h-full w-full object-cover transition duration-500 hover:scale-[1.02]"
             style={{ objectPosition: person.imagePosition }}
           />

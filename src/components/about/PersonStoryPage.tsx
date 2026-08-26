@@ -3,8 +3,15 @@ import { ArrowRight, Quote } from "lucide-react";
 
 import { VioraLogo } from "@/components/brand/VioraLogo";
 import type { AboutPerson } from "@/lib/about-people";
+import { useAboutMedia } from "@/hooks/use-about-media";
+import { primaryAboutMedia } from "@/lib/about-media";
 
 export function PersonStoryPage({ person }: { person: AboutPerson }) {
+  const mediaQ = useAboutMedia(person.slug);
+  const media = mediaQ.data ?? [];
+  const primary = primaryAboutMedia(media, person.slug);
+  const hero = primary?.publicUrl ?? person.image;
+  const gallery = media.filter((item) => item.id !== primary?.id);
   return (
     <main className="min-h-screen overflow-x-hidden bg-background text-foreground" dir="rtl">
       <header className="absolute inset-x-0 top-0 z-20 mx-auto flex max-w-6xl items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+1rem)]">
@@ -18,11 +25,11 @@ export function PersonStoryPage({ person }: { person: AboutPerson }) {
       </header>
 
       <section className="relative isolate min-h-[34rem] overflow-hidden bg-[#101613] text-white sm:min-h-[42rem]">
-        {person.image ? (
+        {hero ? (
           <>
             <img
-              src={person.image}
-              alt={person.name}
+              src={hero}
+              alt={primary?.alt_text || person.name}
               className="absolute inset-0 -z-20 h-full w-full object-cover"
               style={{ objectPosition: person.imagePosition }}
             />
@@ -79,6 +86,34 @@ export function PersonStoryPage({ person }: { person: AboutPerson }) {
           </div>
         </div>
       </article>
+
+      {gallery.length > 0 && (
+        <section className="border-t border-border/50 px-5 py-14 sm:py-20">
+          <div className="mx-auto max-w-5xl">
+            <p className="text-xs font-semibold tracking-[0.16em] text-primary">GALLERY</p>
+            <h2 className="mt-2 text-2xl font-black">עוד מהסיפור של {person.name}</h2>
+            <div className="mt-7 grid gap-4 sm:grid-cols-2">
+              {gallery.map((item) => (
+                <figure
+                  key={item.id}
+                  className="overflow-hidden rounded-2xl border border-border/60 bg-muted/20"
+                >
+                  <img
+                    src={item.publicUrl}
+                    alt={item.alt_text || person.name}
+                    className="aspect-[4/3] w-full object-cover"
+                  />
+                  {item.caption && (
+                    <figcaption className="p-3 text-xs leading-5 text-muted-foreground">
+                      {item.caption}
+                    </figcaption>
+                  )}
+                </figure>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <footer className="border-t border-border/50 px-5 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-8">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">

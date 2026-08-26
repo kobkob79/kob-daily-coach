@@ -48,6 +48,8 @@ import { buildAdaptiveGreeting, buildTodaysFocus, buildWeeklyProgress } from "@/
 import { buildCoachMessage, buildQuickActions, type QuickAction } from "@/lib/home-coach";
 import { HomeHero } from "@/components/home/HomeHero";
 import { HomeCardStack, HomeCard, HomeStat } from "@/components/home/HomeCardStack";
+import { useAboutMedia } from "@/hooks/use-about-media";
+import { primaryAboutMedia } from "@/lib/about-media";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -62,6 +64,8 @@ function Dashboard() {
   const todayIso = format(now, "yyyy-MM-dd");
   const yesterdayIso = format(subDays(now, 1), "yyyy-MM-dd");
   const queryClient = useQueryClient();
+  const teamMediaQ = useAboutMedia("team");
+  const teamImage = primaryAboutMedia(teamMediaQ.data ?? [], "team");
 
   const intakeQ = useQuery({
     queryKey: ["day-intake", bioDay],
@@ -751,8 +755,18 @@ function Dashboard() {
         to="/about"
         className="group relative block min-h-28 overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-l from-primary/14 via-card to-card px-5 py-5 shadow-soft transition active:scale-[0.99]"
       >
+        {teamImage && (
+          <>
+            <img
+              src={teamImage.publicUrl}
+              alt={teamImage.alt_text || "צוות Viora"}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <span className="absolute inset-0 bg-gradient-to-l from-black/80 via-black/55 to-black/20" />
+          </>
+        )}
         <div className="absolute -left-8 -top-10 h-32 w-32 rounded-full bg-primary/12 blur-2xl" />
-        <div className="relative flex items-center gap-4">
+        <div className={cn("relative flex items-center gap-4", teamImage && "text-white")}>
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
             <Users className="h-6 w-6" />
           </span>
