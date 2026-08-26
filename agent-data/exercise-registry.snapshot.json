@@ -4,14 +4,14 @@
   "readOnly": true,
   "summary": {
     "totalExercises": 150,
-    "completedExercises": 9,
+    "completedExercises": 10,
     "partialExercises": 0,
-    "notStartedExercises": 141,
-    "coversComplete": 9,
-    "infographicsComplete": 9,
-    "thumbnailsComplete": 9,
+    "notStartedExercises": 140,
+    "coversComplete": 10,
+    "infographicsComplete": 10,
+    "thumbnailsComplete": 10,
     "demosComplete": 0,
-    "overallProgressPercent": 6
+    "overallProgressPercent": 6.666666666666667
   },
   "nextRecommendedExercise": {
     "exerciseId": "677e458d-0206-48f1-a340-d1a75fe972e6",
@@ -1626,19 +1626,17 @@
       "canonicalHebrewName": "פשיטת ברכיים במכונה",
       "englishName": "Leg Extension",
       "muscleGroup": "legs_glutes",
-      "status": "NOT_STARTED",
+      "status": "COMPLETE",
       "media": {
-        "hasCover": false,
-        "hasInfographic": false,
-        "hasThumbnail": false,
+        "hasCover": true,
+        "hasInfographic": true,
+        "hasThumbnail": true,
         "hasDemo": false
       },
       "missingAssets": [
-        "cover",
-        "infographic",
-        "thumbnail",
         "demo"
-      ]
+      ],
+      "lastUpdated": "2026-08-26T14:07:07.954Z"
     },
     {
       "exerciseId": "837b8981-7ea5-4567-96a0-f83d1b600c3e",
