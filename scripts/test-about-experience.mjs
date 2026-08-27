@@ -31,6 +31,11 @@ assert.match(gallery, /popstate/);
 assert.match(gallery, /onTouchEnd/);
 assert.match(dashboard, /aspect-video/);
 assert.match(dashboard, /object-contain/);
+assert.match(people, /אשכנזייה שנולדה וגדלה בתל אביב/);
+assert.doesNotMatch(people, /נולדה וגדלה באשקלון|משפחה מרוקאית|סבתה שאלה/);
+const aboutPage = await read("src/components/about/AboutVioraPage.tsx");
+assert.match(aboutPage, /teamMedia = primaryFirst/);
+assert.match(aboutPage, /<StoryGallery[\s\S]*items={teamMedia}/);
 for (const stage of ["מכין תמונה", "מכווץ", "מעלה", "הושלם", "נכשל"])
   assert.match(manager, new RegExp(stage));
 assert.match(manager, /for \(const job of jobs\) await uploadOne\(job\)/);
@@ -42,6 +47,8 @@ console.log(
     inline_story_gallery: "PASS",
     mobile_snap_and_viewer: "PASS",
     home_contain_image: "PASS",
+    team_gallery_primary_first: "PASS",
+    shiran_tel_aviv_identity: "PASS",
     five_image_sequential_state_model: "PASS",
   }),
 );

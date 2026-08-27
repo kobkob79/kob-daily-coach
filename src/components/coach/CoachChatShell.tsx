@@ -34,7 +34,7 @@ interface FailedMessage {
   userMessageId: string;
 }
 
-type QuotaState = "loading" | "available" | "exhausted" | "error";
+type QuotaState = "loading" | "available" | "unlimited" | "exhausted" | "error";
 
 const QUOTA_EXHAUSTED_CODES = new Set([
   "ADVISOR_DAILY_QUOTA_EXCEEDED",
@@ -79,7 +79,7 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
 
   const hasStarted = messages.some((message) => message.role === "user");
   const isQuotaExhausted = quotaState === "exhausted";
-  const canSend = quotaState === "available";
+  const canSend = quotaState === "available" || quotaState === "unlimited";
   const resolvedUserAvatarUrl = userAvatarUrl ?? profileAvatarQuery.data;
   const userName = profileQuery.data?.display_name ?? profileQuery.data?.full_name;
   const userInitial = userName?.trim().charAt(0);
@@ -92,7 +92,9 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
         setQuotaState("error");
         return;
       }
-      setQuotaState(result.quota.allowed ? "available" : "exhausted");
+      setQuotaState(
+        result.unlimited ? "unlimited" : result.quota.allowed ? "available" : "exhausted",
+      );
     } catch {
       setQuotaState("error");
     }
@@ -198,46 +200,48 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
         <p>ההמלצות הן כלליות בלבד ואינן תחליף לייעוץ רפואי או מקצועי.</p>
       </div>
 
-      <div
-        role="status"
-        className={
-          canSend
-            ? "rounded-2xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-medium text-foreground"
-            : isQuotaExhausted
-              ? "rounded-2xl border border-primary/35 bg-primary/10 px-3 py-2.5 shadow-sm"
-              : "rounded-2xl border border-border/60 bg-muted/35 px-3 py-2 text-xs font-medium text-muted-foreground"
-        }
-      >
-        {quotaState === "loading" && "בודקים את זמינות השאלה היומית…"}
-        {quotaState === "available" && "השאלה היומית שלך זמינה"}
-        {quotaState === "exhausted" && (
-          <div className="flex items-center gap-2.5">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
-              <CalendarClock className="h-4 w-4" aria-hidden />
-            </span>
-            <div className="min-w-0 leading-snug">
-              <p className="text-sm font-bold text-foreground">השאלה היומית נוצלה להיום</p>
-              <p className="mt-0.5 text-xs font-medium text-muted-foreground">
-                שאלה חדשה תחכה לך מחר
-              </p>
+      {quotaState !== "unlimited" && (
+        <div
+          role="status"
+          className={
+            canSend
+              ? "rounded-2xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-medium text-foreground"
+              : isQuotaExhausted
+                ? "rounded-2xl border border-primary/35 bg-primary/10 px-3 py-2.5 shadow-sm"
+                : "rounded-2xl border border-border/60 bg-muted/35 px-3 py-2 text-xs font-medium text-muted-foreground"
+          }
+        >
+          {quotaState === "loading" && "בודקים את זמינות השאלה היומית…"}
+          {quotaState === "available" && "השאלה היומית שלך זמינה"}
+          {quotaState === "exhausted" && (
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+                <CalendarClock className="h-4 w-4" aria-hidden />
+              </span>
+              <div className="min-w-0 leading-snug">
+                <p className="text-sm font-bold text-foreground">השאלה היומית נוצלה להיום</p>
+                <p className="mt-0.5 text-xs font-medium text-muted-foreground">
+                  שאלה חדשה תחכה לך מחר
+                </p>
+              </div>
             </div>
-          </div>
-        )}
-        {quotaState === "error" && (
-          <div className="flex items-center justify-between gap-2">
-            <span>לא הצלחנו לבדוק את זמינות השאלה כרגע.</span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="min-h-11 shrink-0 px-2 text-xs"
-              onClick={() => void loadQuota()}
-            >
-              ניסיון נוסף
-            </Button>
-          </div>
-        )}
-      </div>
+          )}
+          {quotaState === "error" && (
+            <div className="flex items-center justify-between gap-2">
+              <span>לא הצלחנו לבדוק את זמינות השאלה כרגע.</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="min-h-11 shrink-0 px-2 text-xs"
+                onClick={() => void loadQuota()}
+              >
+                ניסיון נוסף
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       {!hasStarted && (
         <section>

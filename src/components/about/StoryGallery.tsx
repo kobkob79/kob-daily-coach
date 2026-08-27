@@ -7,9 +7,13 @@ import { cn } from "@/lib/utils";
 export function StoryGallery({
   items,
   personName,
+  title = "רגעים מהדרך",
+  eyebrow = "STORY GALLERY",
 }: {
   items: readonly PublishedAboutMedia[];
   personName: string;
+  title?: string;
+  eyebrow?: string;
 }) {
   const [active, setActive] = useState(0);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -40,9 +44,9 @@ export function StoryGallery({
 
   return (
     <section aria-labelledby="story-gallery-title" className="py-2">
-      <p className="text-xs font-semibold tracking-[0.16em] text-primary">STORY GALLERY</p>
+      <p className="text-xs font-semibold tracking-[0.16em] text-primary">{eyebrow}</p>
       <h2 id="story-gallery-title" className="mt-2 text-2xl font-black sm:text-3xl">
-        רגעים מהדרך
+        {title}
       </h2>
 
       <div className="mt-7 sm:hidden">
@@ -90,22 +94,24 @@ export function StoryGallery({
             </button>
           ))}
         </div>
-        <div className="mt-2 flex items-center justify-between">
-          <span className="text-xs font-semibold text-muted-foreground">
-            {active + 1} מתוך {items.length}
-          </span>
-          <div className="flex gap-1.5" aria-hidden="true">
-            {items.map((item, index) => (
-              <span
-                key={item.id}
-                className={cn(
-                  "h-1.5 rounded-full transition-[width] motion-reduce:transition-none",
-                  index === active ? "w-5 bg-primary" : "w-1.5 bg-muted-foreground/30",
-                )}
-              />
-            ))}
+        {items.length > 1 && (
+          <div className="mt-2 flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground">
+              {active + 1} מתוך {items.length}
+            </span>
+            <div className="flex gap-1.5" aria-hidden="true">
+              {items.map((item, index) => (
+                <span
+                  key={item.id}
+                  className={cn(
+                    "h-1.5 rounded-full transition-[width] motion-reduce:transition-none",
+                    index === active ? "w-5 bg-primary" : "w-1.5 bg-muted-foreground/30",
+                  )}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div className="mt-8 hidden grid-cols-12 gap-4 sm:grid">

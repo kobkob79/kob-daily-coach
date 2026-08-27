@@ -138,11 +138,7 @@ export function AboutMediaManager() {
       return true;
     });
     if (selected.length > available)
-      return toast.error(
-        subject === "team"
-          ? "לתמונת הצוות ניתן לשמור תמונה פעילה אחת."
-          : `אפשר לשמור עד ${getAboutMediaLimit(subject)} תמונות פעילות.`,
-      );
+      return toast.error(`אפשר לשמור עד ${getAboutMediaLimit(subject)} תמונות פעילות.`);
     for (const file of selected) {
       const validation = validateAboutMediaSourceFile(file);
       if (validation) return toast.error(validation);
@@ -217,9 +213,7 @@ export function AboutMediaManager() {
         <Upload className="mx-auto h-5 w-5 text-primary" />
         <p className="mt-2 text-xs font-semibold">JPEG, PNG או WebP · כיווץ אוטומטי לפני העלאה</p>
         <p className="mt-1 text-[10px] text-muted-foreground">
-          {subject === "team"
-            ? "תמונה פעילה אחת"
-            : `עד ${getAboutMediaLimit(subject)} תמונות פעילות`}
+          עד {getAboutMediaLimit(subject)} תמונות פעילות
         </p>
         <Button
           className="mt-3"
@@ -236,7 +230,7 @@ export function AboutMediaManager() {
           className="sr-only"
           type="file"
           accept="image/jpeg,image/png,image/webp"
-          multiple={subject !== "team"}
+          multiple
           onChange={(event) => {
             void uploadFiles(event.target.files);
             event.currentTarget.value = "";

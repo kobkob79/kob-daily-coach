@@ -13,6 +13,8 @@ export interface QuotaProtectedAdvisorDependencies {
   quotaStore?: AdvisorQuotaStore;
   generateResponse?: AdvisorResponseGenerator;
   logEvent?: AdvisorServerEventLogger;
+  /** Trusted server authorization result. Never populate from request data. */
+  quotaExempt?: boolean;
 }
 
 function getErrorCategory(error: unknown): string | undefined {
@@ -29,6 +31,10 @@ export async function generateQuotaProtectedAdvisorResponse(
     dependencies.quotaStore ?? (await import("./quota.server")).supabaseAdvisorQuotaStore;
   const generateResponse = dependencies.generateResponse ?? generateAdvisorResponse;
   const logEvent = dependencies.logEvent ?? logAdvisorServerEvent;
+
+  if (dependencies.quotaExempt) {
+    return generateResponse(request);
+  }
   let claim;
 
   try {

@@ -1,9 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, HeartPulse } from "lucide-react";
 import { VioraLogo } from "@/components/brand/VioraLogo";
+import { StoryGallery } from "@/components/about/StoryGallery";
 import { ABOUT_PEOPLE, type AboutPerson } from "@/lib/about-people";
 import { useAboutMedia } from "@/hooks/use-about-media";
-import { primaryAboutMedia, type PublishedAboutMedia } from "@/lib/about-media";
+import { primaryAboutMedia, primaryFirst, type PublishedAboutMedia } from "@/lib/about-media";
 
 const BELIEFS = [
   { title: "אדם לפני אלגוריתם", body: "המערכת יכולה לעזור להבין ולהמליץ. האדם מחליט." },
@@ -20,7 +21,7 @@ export function AboutVioraPage() {
   const advisors = ABOUT_PEOPLE.slice(1);
   const mediaQ = useAboutMedia();
   const media = mediaQ.data ?? [];
-  const teamImage = primaryAboutMedia(media, "team");
+  const teamMedia = primaryFirst(media.filter((item) => item.subject === "team"));
   return (
     <main className="min-h-screen overflow-x-hidden bg-background text-foreground" dir="rtl">
       <header className="absolute inset-x-0 top-0 z-20 mx-auto flex max-w-6xl items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+1rem)]">
@@ -49,6 +50,18 @@ export function AboutVioraPage() {
           </div>
         </div>
       </section>
+      {teamMedia.length > 0 && (
+        <section className="px-5 py-16 sm:py-24">
+          <div className="mx-auto max-w-6xl">
+            <StoryGallery
+              items={teamMedia}
+              personName="צוות Viora"
+              eyebrow="TEAM GALLERY"
+              title="צוות Viora"
+            />
+          </div>
+        </section>
+      )}
       <section className="px-5 py-16 sm:py-24">
         <div className="mx-auto grid max-w-5xl gap-8 sm:grid-cols-[0.8fr_1.2fr] sm:items-center">
           <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-border/60 bg-gradient-to-br from-primary/15 via-muted/30 to-background p-6">
@@ -97,26 +110,6 @@ export function AboutVioraPage() {
           </div>
         </div>
       </section>
-      {teamImage && (
-        <section className="px-5 py-16 sm:py-24">
-          <div className="mx-auto max-w-6xl">
-            <p className="text-xs font-semibold tracking-[0.18em] text-primary">TEAM GALLERY</p>
-            <h2 className="mt-2 text-3xl font-black">צוות Viora</h2>
-            <figure className="mt-8 overflow-hidden rounded-[2rem] border border-border/60 bg-muted">
-              <img
-                src={teamImage.signedUrl}
-                alt={teamImage.alt_text || "צוות Viora"}
-                className="max-h-[38rem] w-full object-cover"
-              />
-              {teamImage.caption && (
-                <figcaption className="p-4 text-sm text-muted-foreground">
-                  {teamImage.caption}
-                </figcaption>
-              )}
-            </figure>
-          </div>
-        </section>
-      )}
       <section id="principles" className="bg-foreground px-5 py-16 text-background sm:py-24">
         <div className="mx-auto max-w-6xl">
           <p className="text-xs font-semibold tracking-[0.18em] text-primary">WHAT WE BELIEVE</p>

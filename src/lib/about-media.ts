@@ -55,7 +55,11 @@ export function validateAboutMediaSourceFile(file: Pick<File, "size" | "type">):
 }
 
 export function getAboutMediaLimit(subject: AboutMediaSubject): number {
-  return subject === "team" ? 1 : 5;
+  return ABOUT_MEDIA_SUBJECTS.includes(subject) ? 5 : 0;
+}
+
+export function primaryFirst(items: readonly PublishedAboutMedia[]) {
+  return [...items].sort((left, right) => Number(right.is_primary) - Number(left.is_primary));
 }
 
 export function primaryAboutMedia(

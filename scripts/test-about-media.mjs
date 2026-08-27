@@ -37,7 +37,8 @@ try {
     ),
     /6MB/,
   );
-  assert.equal(media.getAboutMediaLimit("team"), 1);
+  assert.equal(media.getAboutMediaLimit("team"), 5);
+  assert.equal(media.getAboutMediaLimit("kobi"), 5);
   assert.equal(media.getAboutMediaLimit("shiran"), 5);
   assert.equal(media.ABOUT_MEDIA_SIGNED_URL_TTL_SECONDS, 3600);
   assert.equal(media.ABOUT_MEDIA_CACHE_MS, 45 * 60_000);
@@ -70,6 +71,14 @@ try {
     /grant execute on function public\.reorder_about_media\(text, uuid\[\]\) to service_role/i,
   );
 
+  const expansion = await readFile(
+    `${root}/supabase/migrations/20260827171927_expand_about_team_media_limit.sql`,
+    "utf8",
+  );
+  assert.match(expansion, /create or replace function public\.validate_about_media_limits/i);
+  assert.match(expansion, /if active_count >= 5/i);
+  assert.doesNotMatch(expansion, /delete|truncate|drop table/i);
+
   const serverFunctions = await readFile(`${root}/src/lib/about-media.functions.ts`, "utf8");
   assert.match(serverFunctions, /\.eq\("is_active", true\)/);
   assert.match(serverFunctions, /createSignedUrls\(/);
@@ -86,7 +95,7 @@ try {
       jpeg_png_webp_validation: "PASS",
       unsupported_mime_rejected: "PASS",
       six_mb_limit: "PASS",
-      team_single_and_person_five_limits: "PASS",
+      team_kobi_and_person_five_limits: "PASS",
       private_bucket: "PASS",
       active_only_signed_urls: "PASS",
       fixed_subject_validation: "PASS",

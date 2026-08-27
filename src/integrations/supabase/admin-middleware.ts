@@ -10,7 +10,7 @@ export class AdminForbiddenError extends Error {
   }
 }
 
-async function userHasAdminRole(userId: string): Promise<boolean> {
+export async function userHasAdminRole(userId: string): Promise<boolean> {
   const { supabaseAdmin } = await import("./client.server");
   const { data, error } = await supabaseAdmin
     .from("user_roles")
