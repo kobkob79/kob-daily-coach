@@ -10,7 +10,7 @@ export function PersonStoryPage({ person }: { person: AboutPerson }) {
   const mediaQ = useAboutMedia(person.slug);
   const media = mediaQ.data ?? [];
   const primary = primaryAboutMedia(media, person.slug);
-  const hero = primary?.publicUrl ?? person.image;
+  const hero = primary?.signedUrl ?? person.image;
   const gallery = media.filter((item) => item.id !== primary?.id);
   return (
     <main className="min-h-screen overflow-x-hidden bg-background text-foreground" dir="rtl">
@@ -32,6 +32,14 @@ export function PersonStoryPage({ person }: { person: AboutPerson }) {
               alt={primary?.alt_text || person.name}
               className="absolute inset-0 -z-20 h-full w-full object-cover"
               style={{ objectPosition: person.imagePosition }}
+              onError={(event) => {
+                if (
+                  person.image &&
+                  event.currentTarget.src !== new URL(person.image, window.location.href).href
+                )
+                  event.currentTarget.src = person.image;
+                else event.currentTarget.hidden = true;
+              }}
             />
             <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black via-black/45 to-black/20" />
           </>
@@ -99,9 +107,12 @@ export function PersonStoryPage({ person }: { person: AboutPerson }) {
                   className="overflow-hidden rounded-2xl border border-border/60 bg-muted/20"
                 >
                   <img
-                    src={item.publicUrl}
+                    src={item.signedUrl}
                     alt={item.alt_text || person.name}
                     className="aspect-[4/3] w-full object-cover"
+                    onError={(event) => {
+                      event.currentTarget.closest("figure")?.classList.add("hidden");
+                    }}
                   />
                   {item.caption && (
                     <figcaption className="p-3 text-xs leading-5 text-muted-foreground">

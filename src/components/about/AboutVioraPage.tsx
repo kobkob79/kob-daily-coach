@@ -54,9 +54,13 @@ export function AboutVioraPage() {
           <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-border/60 bg-gradient-to-br from-primary/15 via-muted/30 to-background p-6">
             {primaryAboutMedia(media, "kobi") && (
               <img
-                src={primaryAboutMedia(media, "kobi")!.publicUrl}
+                src={primaryAboutMedia(media, "kobi")!.signedUrl}
                 alt={primaryAboutMedia(media, "kobi")!.alt_text || founder.name}
                 className="absolute inset-0 h-full w-full object-cover"
+                onError={(event) => {
+                  if (founder.image) event.currentTarget.src = founder.image;
+                  else event.currentTarget.hidden = true;
+                }}
               />
             )}
             <div className="relative flex h-full flex-col justify-end">
@@ -100,7 +104,7 @@ export function AboutVioraPage() {
             <h2 className="mt-2 text-3xl font-black">צוות Viora</h2>
             <figure className="mt-8 overflow-hidden rounded-[2rem] border border-border/60 bg-muted">
               <img
-                src={teamImage.publicUrl}
+                src={teamImage.signedUrl}
                 alt={teamImage.alt_text || "צוות Viora"}
                 className="max-h-[38rem] w-full object-cover"
               />
@@ -172,7 +176,7 @@ function PersonCard({
   person: AboutPerson;
   primary: PublishedAboutMedia | null;
 }) {
-  const cover = primary?.publicUrl ?? person.image?.replace("-hero", "-cover");
+  const cover = primary?.signedUrl ?? person.image?.replace("-hero", "-cover");
   return (
     <article className="w-[78vw] max-w-[19rem] shrink-0 snap-center overflow-hidden rounded-[1.75rem] border border-border/60 bg-background sm:w-72">
       {cover && (
@@ -182,6 +186,15 @@ function PersonCard({
             alt={primary?.alt_text || person.name}
             className="h-full w-full object-cover transition duration-500 hover:scale-[1.02]"
             style={{ objectPosition: person.imagePosition }}
+            onError={(event) => {
+              const fallback = person.image?.replace("-hero", "-cover");
+              if (
+                fallback &&
+                event.currentTarget.src !== new URL(fallback, window.location.href).href
+              )
+                event.currentTarget.src = fallback;
+              else event.currentTarget.hidden = true;
+            }}
           />
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent px-5 pb-5 pt-16 text-white">
             <h3 className="text-2xl font-black">{person.name}</h3>

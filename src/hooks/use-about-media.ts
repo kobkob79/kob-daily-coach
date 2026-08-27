@@ -1,12 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { fetchPublishedAboutMedia, type AboutMediaSubject } from "@/lib/about-media";
+import { ABOUT_MEDIA_CACHE_MS, type AboutMediaSubject } from "@/lib/about-media";
+import { getPublishedAboutMedia } from "@/lib/about-media.functions";
 
 export function useAboutMedia(subject?: AboutMediaSubject) {
   return useQuery({
     queryKey: ["about-media", subject ?? "all"],
-    queryFn: () => fetchPublishedAboutMedia(subject),
-    staleTime: 5 * 60_000,
+    queryFn: () => getPublishedAboutMedia({ data: { subject } }),
+    staleTime: ABOUT_MEDIA_CACHE_MS,
+    gcTime: ABOUT_MEDIA_CACHE_MS,
+    refetchInterval: ABOUT_MEDIA_CACHE_MS,
+    refetchOnMount: true,
     retry: 1,
   });
 }

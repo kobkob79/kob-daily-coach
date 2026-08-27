@@ -6,10 +6,13 @@ import {
   ABOUT_MEDIA_BUCKET,
   ABOUT_MEDIA_MAX_BYTES,
   ABOUT_MEDIA_MIME_TYPES,
+  ABOUT_MEDIA_SIGNED_URL_TTL_SECONDS,
   ABOUT_MEDIA_SUBJECTS,
   getAboutMediaLimit,
+  type AdminAboutMediaRecord,
   type AboutMediaRecord,
   type AboutMediaSubject,
+  type PublishedAboutMedia,
 } from "@/lib/about-media";
 
 type AdminInput = Record<string, unknown>;
@@ -46,6 +49,62 @@ async function listSubject(client: SupabaseClient, subject: AboutMediaSubject) {
   return data as AboutMediaRecord[];
 }
 
+async function createActiveSignedUrlMap(
+  client: SupabaseClient,
+  records: readonly AboutMediaRecord[],
+): Promise<Map<string, string>> {
+  const active = records.filter(
+    (record) => record.is_active && record.storage_bucket === ABOUT_MEDIA_BUCKET,
+  );
+  if (active.length === 0) return new Map();
+
+  const { data, error } = await client.storage.from(ABOUT_MEDIA_BUCKET).createSignedUrls(
+    active.map((record) => record.storage_path),
+    ABOUT_MEDIA_SIGNED_URL_TTL_SECONDS,
+  );
+  if (error || !data || data.length !== active.length)
+    throw new Error("ABOUT_MEDIA_SIGNING_FAILED");
+
+  return new Map(
+    active.map((record, index) => {
+      const signedUrl = data[index]?.signedUrl;
+      if (!signedUrl) throw new Error("ABOUT_MEDIA_SIGNING_FAILED");
+      return [record.id, signedUrl];
+    }),
+  );
+}
+
+export const getPublishedAboutMedia = createServerFn({ method: "GET" })
+  .inputValidator((raw: unknown) => {
+    const value = raw as { subject?: unknown } | undefined;
+    return { subject: value?.subject == null ? undefined : subjectOf(value.subject) };
+  })
+  .handler(async ({ data }) => {
+    const client = await adminClient();
+    let query = client
+      .from("about_media")
+      .select(
+        "id,subject,storage_bucket,storage_path,caption,alt_text,sort_order,is_primary,is_active,created_at,updated_at",
+      )
+      .eq("is_active", true)
+      .order("sort_order")
+      .order("created_at");
+    if (data.subject) query = query.eq("subject", data.subject);
+    const { data: records, error } = await query;
+    if (error) throw new Error("ABOUT_MEDIA_UNAVAILABLE");
+    const activeRecords = records as AboutMediaRecord[];
+    const signedUrls = await createActiveSignedUrlMap(client, activeRecords);
+    return activeRecords.map((record): PublishedAboutMedia => ({
+      id: record.id,
+      subject: record.subject,
+      caption: record.caption,
+      alt_text: record.alt_text,
+      sort_order: record.sort_order,
+      is_primary: record.is_primary,
+      signedUrl: signedUrls.get(record.id)!,
+    }));
+  });
+
 export const getAdminAboutMedia = createServerFn({ method: "GET" })
   .middleware([requireAdminAuth])
   .handler(async () => {
@@ -56,7 +115,12 @@ export const getAdminAboutMedia = createServerFn({ method: "GET" })
       .order("subject")
       .order("sort_order");
     if (error) throw new Error("ABOUT_MEDIA_READ_FAILED");
-    return data as AboutMediaRecord[];
+    const records = data as AboutMediaRecord[];
+    const signedUrls = await createActiveSignedUrlMap(client, records);
+    return records.map((record): AdminAboutMediaRecord => ({
+      ...record,
+      signedUrl: signedUrls.get(record.id) ?? null,
+    }));
   });
 
 export const uploadAboutMedia = createServerFn({ method: "POST" })

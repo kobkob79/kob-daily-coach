@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   MorningIntake,
   type DayIntake,
@@ -66,6 +66,8 @@ function Dashboard() {
   const queryClient = useQueryClient();
   const teamMediaQ = useAboutMedia("team");
   const teamImage = primaryAboutMedia(teamMediaQ.data ?? [], "team");
+  const [teamImageFailed, setTeamImageFailed] = useState(false);
+  useEffect(() => setTeamImageFailed(false), [teamImage?.signedUrl]);
 
   const intakeQ = useQuery({
     queryKey: ["day-intake", bioDay],
@@ -755,18 +757,24 @@ function Dashboard() {
         to="/about"
         className="group relative block min-h-28 overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-l from-primary/14 via-card to-card px-5 py-5 shadow-soft transition active:scale-[0.99]"
       >
-        {teamImage && (
+        {teamImage && !teamImageFailed && (
           <>
             <img
-              src={teamImage.publicUrl}
+              src={teamImage.signedUrl}
               alt={teamImage.alt_text || "צוות Viora"}
               className="absolute inset-0 h-full w-full object-cover"
+              onError={() => setTeamImageFailed(true)}
             />
             <span className="absolute inset-0 bg-gradient-to-l from-black/80 via-black/55 to-black/20" />
           </>
         )}
         <div className="absolute -left-8 -top-10 h-32 w-32 rounded-full bg-primary/12 blur-2xl" />
-        <div className={cn("relative flex items-center gap-4", teamImage && "text-white")}>
+        <div
+          className={cn(
+            "relative flex items-center gap-4",
+            teamImage && !teamImageFailed && "text-white",
+          )}
+        >
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
             <Users className="h-6 w-6" />
           </span>

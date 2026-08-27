@@ -39,12 +39,15 @@ try {
   );
   assert.equal(media.getAboutMediaLimit("team"), 1);
   assert.equal(media.getAboutMediaLimit("shiran"), 5);
+  assert.equal(media.ABOUT_MEDIA_SIGNED_URL_TTL_SECONDS, 3600);
+  assert.equal(media.ABOUT_MEDIA_CACHE_MS, 45 * 60_000);
 
   const migration = await readFile(
     `${root}/supabase/migrations/20260826180750_create_about_team_media.sql`,
     "utf8",
   );
   assert.match(migration, /file_size_limit[\s\S]*6291456/);
+  assert.match(migration, /'viora-team-media',[\s\S]*false,[\s\S]*6291456/);
   assert.match(migration, /image\/jpeg/);
   assert.match(migration, /image\/png/);
   assert.match(migration, /image\/webp/);
@@ -61,13 +64,29 @@ try {
     /grant execute on function public\.reorder_about_media\(text, uuid\[\]\) to service_role/i,
   );
 
+  const serverFunctions = await readFile(`${root}/src/lib/about-media.functions.ts`, "utf8");
+  assert.match(serverFunctions, /\.eq\("is_active", true\)/);
+  assert.match(serverFunctions, /createSignedUrls\(/);
+  assert.match(serverFunctions, /ABOUT_MEDIA_SIGNED_URL_TTL_SECONDS/);
+  assert.match(serverFunctions, /subjectOf\(value\.subject\)/);
+  assert.doesNotMatch(serverFunctions, /getPublicUrl/);
+
+  const browserModule = await readFile(`${root}/src/lib/about-media.ts`, "utf8");
+  assert.doesNotMatch(browserModule, /integrations\/supabase\/client/);
+  assert.doesNotMatch(browserModule, /getPublicUrl/);
+
   console.log(
     JSON.stringify({
       jpeg_png_webp_validation: "PASS",
       unsupported_mime_rejected: "PASS",
       six_mb_limit: "PASS",
       team_single_and_person_five_limits: "PASS",
-      public_active_read_only: "PASS",
+      private_bucket: "PASS",
+      active_only_signed_urls: "PASS",
+      fixed_subject_validation: "PASS",
+      signed_url_expiry_and_cache: "PASS",
+      no_client_service_role_or_public_url: "PASS",
+      public_active_metadata_read_only: "PASS",
       authenticated_direct_writes_absent: "PASS",
       one_primary_constraint: "PASS",
       primary_rpc_service_role_only: "PASS",

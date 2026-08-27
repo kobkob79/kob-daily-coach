@@ -22,8 +22,8 @@ import {
   ABOUT_MEDIA_SUBJECTS,
   getAboutMediaLimit,
   validateAboutMediaFile,
-  type AboutMediaRecord,
   type AboutMediaSubject,
+  type AdminAboutMediaRecord,
 } from "@/lib/about-media";
 import {
   deleteAboutMedia,
@@ -55,11 +55,6 @@ async function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-function publicUrl(record: AboutMediaRecord) {
-  const base = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  return `${base}/storage/v1/object/public/${record.storage_bucket}/${record.storage_path}`;
-}
-
 export function AboutMediaManager() {
   const queryClient = useQueryClient();
   const uploadInput = useRef<HTMLInputElement>(null);
@@ -72,7 +67,12 @@ export function AboutMediaManager() {
     () => (query.data ?? []).filter((item) => item.subject === subject),
     [query.data, subject],
   );
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+  const invalidate = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
+      queryClient.invalidateQueries({ queryKey: ["about-media"] }),
+    ]);
+  };
 
   const action = useMutation({
     mutationFn: async (work: () => Promise<unknown>) => work(),
@@ -126,7 +126,7 @@ export function AboutMediaManager() {
   };
 
   return (
-    <PremiumCard className="space-y-4 border-border/70 bg-card/85 p-3.5 shadow-sm" dir="rtl">
+    <PremiumCard className="space-y-4 border-border/70 bg-card/85 p-3.5 shadow-sm">
       <div className="flex items-center gap-3">
         <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/12 text-primary">
           <ImagePlus className="h-5 w-5" />
@@ -255,7 +255,7 @@ function MediaEditor({
   onReplace,
   onDelete,
 }: {
-  record: AboutMediaRecord;
+  record: AdminAboutMediaRecord;
   index: number;
   total: number;
   disabled: boolean;
@@ -270,11 +270,13 @@ function MediaEditor({
   return (
     <article className="grid gap-3 rounded-2xl border border-border/60 bg-background/60 p-3 sm:grid-cols-[8rem_1fr]">
       <div className="relative aspect-square overflow-hidden rounded-xl bg-muted">
-        <img
-          src={publicUrl(record)}
-          alt={record.alt_text || SUBJECT_LABELS[record.subject]}
-          className="h-full w-full object-cover"
-        />
+        {record.signedUrl && (
+          <img
+            src={record.signedUrl}
+            alt={record.alt_text || SUBJECT_LABELS[record.subject]}
+            className="h-full w-full object-cover"
+          />
+        )}
         {record.is_primary && (
           <span className="absolute right-2 top-2 rounded-full bg-primary px-2 py-1 text-[9px] font-bold text-primary-foreground">
             ראשית
