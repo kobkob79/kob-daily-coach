@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      about_media: {
+        Row: {
+          alt_text: string | null
+          caption: string | null
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          is_primary: boolean
+          sort_order: number
+          storage_bucket: string
+          storage_path: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          alt_text?: string | null
+          caption?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean
+          is_primary?: boolean
+          sort_order?: number
+          storage_bucket?: string
+          storage_path: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          alt_text?: string | null
+          caption?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          is_primary?: boolean
+          sort_order?: number
+          storage_bucket?: string
+          storage_path?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       advisor_daily_usage: {
         Row: {
           created_at: string
@@ -1373,6 +1418,14 @@ export type Database = {
       release_advisor_daily_quota: {
         Args: { p_claim_token: string; p_user_id: string }
         Returns: boolean
+      }
+      reorder_about_media: {
+        Args: { p_ids: string[]; p_subject: string }
+        Returns: undefined
+      }
+      set_about_media_primary: {
+        Args: { p_media_id: string }
+        Returns: undefined
       }
     }
     Enums: {
