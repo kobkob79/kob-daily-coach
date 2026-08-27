@@ -1,10 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Quote } from "lucide-react";
+import { ArrowRight, MessageCircle, Quote } from "lucide-react";
 
 import { VioraLogo } from "@/components/brand/VioraLogo";
 import type { AboutPerson } from "@/lib/about-people";
 import { useAboutMedia } from "@/hooks/use-about-media";
 import { primaryAboutMedia } from "@/lib/about-media";
+import { StoryGallery } from "@/components/about/StoryGallery";
 
 export function PersonStoryPage({ person }: { person: AboutPerson }) {
   const mediaQ = useAboutMedia(person.slug);
@@ -76,55 +77,44 @@ export function PersonStoryPage({ person }: { person: AboutPerson }) {
           </blockquote>
           <div className="space-y-14">
             {person.sections.map((section, index) => (
-              <section key={section.title}>
-                <p className="text-xs font-semibold tracking-[0.16em] text-primary">0{index + 1}</p>
-                <h2 className="mt-2 text-2xl font-black sm:text-3xl">{section.title}</h2>
-                <div className="mt-6 space-y-5 text-[15px] leading-8 text-muted-foreground sm:text-base sm:leading-9">
-                  {section.paragraphs.map((paragraph) => (
-                    <p key={paragraph}>{paragraph}</p>
-                  ))}
-                </div>
-                {section.quote && (
-                  <blockquote className="mt-8 rounded-2xl bg-muted/35 p-5 text-base font-semibold leading-8">
-                    <Quote className="mb-3 h-5 w-5 text-primary" />„{section.quote}”
-                  </blockquote>
-                )}
-              </section>
+              <div key={section.title} className="space-y-14">
+                <section>
+                  <p className="text-xs font-semibold tracking-[0.16em] text-primary">
+                    0{index + 1}
+                  </p>
+                  <h2 className="mt-2 text-2xl font-black sm:text-3xl">{section.title}</h2>
+                  <div className="mt-6 space-y-5 text-[15px] leading-8 text-muted-foreground sm:text-base sm:leading-9">
+                    {section.paragraphs.map((paragraph) => (
+                      <p key={paragraph}>{paragraph}</p>
+                    ))}
+                  </div>
+                  {section.quote && (
+                    <blockquote className="mt-8 rounded-2xl bg-muted/35 p-5 text-base font-semibold leading-8">
+                      <Quote className="mb-3 h-5 w-5 text-primary" />„{section.quote}”
+                    </blockquote>
+                  )}
+                </section>
+                {index === 1 && <StoryGallery items={gallery} personName={person.name} />}
+              </div>
             ))}
           </div>
+          {person.slug !== "kobi" && (
+            <div className="mt-14 rounded-3xl border border-primary/25 bg-primary/8 p-6 text-center">
+              <h2 className="text-xl font-black">רוצים להמשיך את השיחה?</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                אפשר לפתוח שיחה אישית עם {person.name} ב־Viora.
+              </p>
+              <Link
+                to="/coach/$advisorId"
+                params={{ advisorId: person.slug }}
+                className="mt-5 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <MessageCircle className="h-4 w-4" /> בואו נדבר
+              </Link>
+            </div>
+          )}
         </div>
       </article>
-
-      {gallery.length > 0 && (
-        <section className="border-t border-border/50 px-5 py-14 sm:py-20">
-          <div className="mx-auto max-w-5xl">
-            <p className="text-xs font-semibold tracking-[0.16em] text-primary">GALLERY</p>
-            <h2 className="mt-2 text-2xl font-black">עוד מהסיפור של {person.name}</h2>
-            <div className="mt-7 grid gap-4 sm:grid-cols-2">
-              {gallery.map((item) => (
-                <figure
-                  key={item.id}
-                  className="overflow-hidden rounded-2xl border border-border/60 bg-muted/20"
-                >
-                  <img
-                    src={item.signedUrl}
-                    alt={item.alt_text || person.name}
-                    className="aspect-[4/3] w-full object-cover"
-                    onError={(event) => {
-                      event.currentTarget.closest("figure")?.classList.add("hidden");
-                    }}
-                  />
-                  {item.caption && (
-                    <figcaption className="p-3 text-xs leading-5 text-muted-foreground">
-                      {item.caption}
-                    </figcaption>
-                  )}
-                </figure>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
 
       <footer className="border-t border-border/50 px-5 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-8">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">

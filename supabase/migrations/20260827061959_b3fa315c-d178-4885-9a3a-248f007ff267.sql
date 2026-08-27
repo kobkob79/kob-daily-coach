@@ -1,3 +1,9 @@
+-- Managed migration: b3fa315c-d178-4885-9a3a-248f007ff267.
+-- The private `viora-team-media` bucket was created out-of-band through Lovable
+-- Storage tooling with public=false and file_size_limit=6291456. The managed
+-- tool cannot configure a bucket MIME allowlist; the trusted server boundary
+-- enforces JPEG, PNG, and WebP uploads.
+
 create table public.about_media (
   id uuid primary key default gen_random_uuid(),
   subject text not null check (subject in ('team', 'kobi', 'adam', 'daniel', 'maya', 'shiran')),

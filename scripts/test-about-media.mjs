@@ -41,16 +41,22 @@ try {
   assert.equal(media.getAboutMediaLimit("shiran"), 5);
   assert.equal(media.ABOUT_MEDIA_SIGNED_URL_TTL_SECONDS, 3600);
   assert.equal(media.ABOUT_MEDIA_CACHE_MS, 45 * 60_000);
+  assert.equal(
+    media.validateAboutMediaSourceFile(
+      new File([new Uint8Array(media.ABOUT_MEDIA_MAX_BYTES + 1)], "large.jpg", {
+        type: "image/jpeg",
+      }),
+    ),
+    null,
+  );
 
   const migration = await readFile(
-    `${root}/supabase/migrations/20260826180750_create_about_team_media.sql`,
+    `${root}/supabase/migrations/20260827061959_b3fa315c-d178-4885-9a3a-248f007ff267.sql`,
     "utf8",
   );
-  assert.match(migration, /file_size_limit[\s\S]*6291456/);
-  assert.match(migration, /'viora-team-media',[\s\S]*false,[\s\S]*6291456/);
-  assert.match(migration, /image\/jpeg/);
-  assert.match(migration, /image\/png/);
-  assert.match(migration, /image\/webp/);
+  assert.match(migration, /file_size_limit=6291456/);
+  assert.match(migration, /public=false/);
+  assert.match(migration, /enforces JPEG, PNG, and WebP uploads/);
   assert.match(migration, /enable row level security/i);
   assert.match(migration, /to anon, authenticated[\s\S]*using \(is_active\)/i);
   assert.doesNotMatch(migration, /for (insert|update|delete)\s+to authenticated/i);

@@ -18,13 +18,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PremiumCard } from "@/components/ui-kit/Section";
 import {
-  ABOUT_MEDIA_BUCKET,
   ABOUT_MEDIA_SUBJECTS,
   getAboutMediaLimit,
-  validateAboutMediaFile,
+  validateAboutMediaSourceFile,
   type AboutMediaSubject,
   type AdminAboutMediaRecord,
 } from "@/lib/about-media";
+import { optimizeAboutMediaFile } from "@/lib/about-media-optimizer";
 import {
   deleteAboutMedia,
   getAdminAboutMedia,
@@ -45,6 +45,14 @@ const SUBJECT_LABELS: Record<AboutMediaSubject, string> = {
   shiran: "שירן",
 };
 const QUERY_KEY = ["admin", "about-media"] as const;
+type UploadStage = "מכין תמונה" | "מכווץ" | "מעלה" | "הושלם" | "נכשל";
+type UploadJob = {
+  id: string;
+  file: File;
+  stage: UploadStage;
+  optimizedSize?: number;
+  error?: string;
+};
 
 async function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -55,13 +63,22 @@ async function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
+function formatBytes(bytes: number) {
+  return bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toFixed(1)}MB`
+    : `${Math.max(1, Math.round(bytes / 1024))}KB`;
+}
+
 export function AboutMediaManager() {
   const queryClient = useQueryClient();
   const uploadInput = useRef<HTMLInputElement>(null);
   const replaceInput = useRef<HTMLInputElement>(null);
+  const submittedFingerprints = useRef(new Set<string>());
   const [subject, setSubject] = useState<AboutMediaSubject>("team");
   const [replaceId, setReplaceId] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
+  const [uploadJobs, setUploadJobs] = useState<UploadJob[]>([]);
+  const [isBatchUploading, setIsBatchUploading] = useState(false);
   const query = useQuery({ queryKey: QUERY_KEY, queryFn: getAdminAboutMedia });
   const records = useMemo(
     () => (query.data ?? []).filter((item) => item.subject === subject),
@@ -84,10 +101,42 @@ export function AboutMediaManager() {
     onSettled: () => setProgress(null),
   });
 
+  const updateJob = (id: string, update: Partial<UploadJob>) =>
+    setUploadJobs((jobs) => jobs.map((job) => (job.id === id ? { ...job, ...update } : job)));
+
+  const uploadOne = async (job: UploadJob) => {
+    try {
+      updateJob(job.id, { stage: "מכווץ", error: undefined });
+      const optimized = await optimizeAboutMediaFile(job.file);
+      updateJob(job.id, { stage: "מעלה", optimizedSize: optimized.size });
+      await uploadAboutMedia({
+        data: {
+          subject,
+          dataUrl: await fileToDataUrl(optimized),
+          altText: SUBJECT_LABELS[subject],
+        },
+      });
+      updateJob(job.id, { stage: "הושלם" });
+      await invalidate();
+    } catch (error) {
+      updateJob(job.id, {
+        stage: "נכשל",
+        error: error instanceof Error ? error.message : "ההעלאה נכשלה.",
+      });
+    }
+  };
+
   const uploadFiles = async (files: FileList | null) => {
-    if (!files?.length || action.isPending) return;
+    if (!files?.length || action.isPending || isBatchUploading) return;
     const available = getAboutMediaLimit(subject) - records.filter((item) => item.is_active).length;
-    const selected = Array.from(files);
+    const fingerprints = new Set<string>();
+    const selected = Array.from(files).filter((file) => {
+      const fingerprint = `${file.name}:${file.size}:${file.lastModified}`;
+      if (fingerprints.has(fingerprint) || submittedFingerprints.current.has(fingerprint))
+        return false;
+      fingerprints.add(fingerprint);
+      return true;
+    });
     if (selected.length > available)
       return toast.error(
         subject === "team"
@@ -95,26 +144,33 @@ export function AboutMediaManager() {
           : `אפשר לשמור עד ${getAboutMediaLimit(subject)} תמונות פעילות.`,
       );
     for (const file of selected) {
-      const validation = validateAboutMediaFile(file);
+      const validation = validateAboutMediaSourceFile(file);
       if (validation) return toast.error(validation);
     }
-    action.mutate(async () => {
-      for (const [index, file] of selected.entries()) {
-        setProgress(`מעלה ${index + 1} מתוך ${selected.length}`);
-        await uploadAboutMedia({
-          data: { subject, dataUrl: await fileToDataUrl(file), altText: SUBJECT_LABELS[subject] },
-        });
-      }
-    });
+    const jobs = selected.map((file) => ({
+      id: crypto.randomUUID(),
+      file,
+      stage: "מכין תמונה" as const,
+    }));
+    for (const fingerprint of fingerprints) submittedFingerprints.current.add(fingerprint);
+    setUploadJobs(jobs);
+    setIsBatchUploading(true);
+    for (const job of jobs) await uploadOne(job);
+    setIsBatchUploading(false);
   };
 
   const replaceFile = async (file: File | undefined) => {
     if (!file || !replaceId) return;
-    const validation = validateAboutMediaFile(file);
+    const validation = validateAboutMediaSourceFile(file);
     if (validation) return toast.error(validation);
-    action.mutate(async () =>
-      replaceAboutMedia({ data: { id: replaceId, dataUrl: await fileToDataUrl(file) } }),
-    );
+    action.mutate(async () => {
+      setProgress("מכווץ");
+      const optimized = await optimizeAboutMediaFile(file);
+      setProgress("מעלה");
+      return replaceAboutMedia({
+        data: { id: replaceId, dataUrl: await fileToDataUrl(optimized) },
+      });
+    });
   };
 
   const move = (index: number, direction: -1 | 1) => {
@@ -159,7 +215,7 @@ export function AboutMediaManager() {
 
       <div className="rounded-2xl border border-dashed border-primary/35 bg-primary/5 p-4 text-center">
         <Upload className="mx-auto h-5 w-5 text-primary" />
-        <p className="mt-2 text-xs font-semibold">JPEG, PNG או WebP · עד 6MB</p>
+        <p className="mt-2 text-xs font-semibold">JPEG, PNG או WebP · כיווץ אוטומטי לפני העלאה</p>
         <p className="mt-1 text-[10px] text-muted-foreground">
           {subject === "team"
             ? "תמונה פעילה אחת"
@@ -168,7 +224,9 @@ export function AboutMediaManager() {
         <Button
           className="mt-3"
           size="sm"
-          disabled={action.isPending || records.length >= getAboutMediaLimit(subject)}
+          disabled={
+            action.isPending || isBatchUploading || records.length >= getAboutMediaLimit(subject)
+          }
           onClick={() => uploadInput.current?.click()}
         >
           {progress ?? "בחירת תמונות"}
@@ -185,6 +243,48 @@ export function AboutMediaManager() {
           }}
         />
       </div>
+
+      {uploadJobs.length > 0 && (
+        <div className="space-y-2" aria-live="polite">
+          {uploadJobs.map((job) => (
+            <div
+              key={job.id}
+              className="flex items-center gap-3 rounded-xl border border-border/60 bg-background/60 p-3 text-xs"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-semibold">{job.file.name}</p>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  מקור {formatBytes(job.file.size)}
+                  {job.optimizedSize ? ` · אחרי כיווץ ${formatBytes(job.optimizedSize)}` : ""}
+                </p>
+                {job.error && <p className="mt-1 text-[10px] text-destructive">{job.error}</p>}
+              </div>
+              <span
+                className={cn(
+                  "shrink-0 font-bold",
+                  job.stage === "נכשל"
+                    ? "text-destructive"
+                    : job.stage === "הושלם"
+                      ? "text-primary"
+                      : "text-muted-foreground",
+                )}
+              >
+                {job.stage}
+              </span>
+              {job.stage === "נכשל" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={isBatchUploading}
+                  onClick={() => void uploadOne(job)}
+                >
+                  ניסיון נוסף
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {query.isPending ? (
         <div className="grid min-h-24 place-items-center">

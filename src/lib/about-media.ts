@@ -2,6 +2,7 @@ export const ABOUT_MEDIA_BUCKET = "viora-team-media";
 export const ABOUT_MEDIA_SUBJECTS = ["team", "kobi", "adam", "daniel", "maya", "shiran"] as const;
 export const ABOUT_MEDIA_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 export const ABOUT_MEDIA_MAX_BYTES = 6 * 1024 * 1024;
+export const ABOUT_MEDIA_OPTIMIZED_TARGET_BYTES = Math.floor(5.5 * 1024 * 1024);
 export const ABOUT_MEDIA_SIGNED_URL_TTL_SECONDS = 60 * 60;
 export const ABOUT_MEDIA_CACHE_MS = 45 * 60_000;
 
@@ -40,6 +41,16 @@ export function validateAboutMediaFile(file: Pick<File, "size" | "type">): strin
     return "אפשר להעלות רק תמונות JPEG, PNG או WebP.";
   }
   if (file.size > ABOUT_MEDIA_MAX_BYTES) return "התמונה גדולה מ־6MB.";
+  if (file.size === 0) return "קובץ התמונה ריק.";
+  return null;
+}
+
+/** Validation for a local source image before browser optimization. */
+export function validateAboutMediaSourceFile(file: Pick<File, "size" | "type">): string | null {
+  if (!ABOUT_MEDIA_MIME_TYPES.includes(file.type as (typeof ABOUT_MEDIA_MIME_TYPES)[number])) {
+    return "אפשר לבחור רק תמונות JPEG, PNG או WebP.";
+  }
+  if (file.size === 0) return "קובץ התמונה ריק.";
   return null;
 }
 

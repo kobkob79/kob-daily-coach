@@ -755,36 +755,38 @@ function Dashboard() {
 
       <Link
         to="/about"
-        className="group relative block min-h-28 overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-l from-primary/14 via-card to-card px-5 py-5 shadow-soft transition active:scale-[0.99]"
+        className="group block overflow-hidden rounded-[2rem] border border-primary/20 bg-card shadow-soft transition active:scale-[0.99] sm:grid sm:grid-cols-[1.35fr_1fr]"
       >
         {teamImage && !teamImageFailed && (
-          <>
+          <span className="relative block aspect-video overflow-hidden bg-muted sm:order-2 sm:aspect-auto sm:min-h-52">
+            <img
+              src={teamImage.signedUrl}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 h-full w-full scale-110 object-cover opacity-35 blur-2xl"
+            />
             <img
               src={teamImage.signedUrl}
               alt={teamImage.alt_text || "צוות Viora"}
-              className="absolute inset-0 h-full w-full object-cover"
+              className="relative h-full w-full object-contain"
               onError={() => setTeamImageFailed(true)}
             />
-            <span className="absolute inset-0 bg-gradient-to-l from-black/80 via-black/55 to-black/20" />
-          </>
+          </span>
         )}
-        <div className="absolute -left-8 -top-10 h-32 w-32 rounded-full bg-primary/12 blur-2xl" />
-        <div
-          className={cn(
-            "relative flex items-center gap-4",
-            teamImage && !teamImageFailed && "text-white",
-          )}
-        >
+        <div className="relative flex min-h-40 items-center gap-4 bg-gradient-to-l from-primary/10 via-card to-card p-6 sm:order-1">
+          <div className="absolute -left-8 -top-10 h-32 w-32 rounded-full bg-primary/12 blur-2xl" />
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
             <Users className="h-6 w-6" />
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-lg font-extrabold">הכירו את Viora</span>
-            <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+            <span className="mt-2 block text-sm leading-6 text-muted-foreground">
               הסיפור, האנשים והגישה שמאחורי Viora
             </span>
+            <span className="mt-4 inline-flex rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground">
+              הכירו אותנו
+            </span>
           </span>
-          <span className="shrink-0 text-xs font-bold text-primary">הכירו אותנו</span>
         </div>
       </Link>
 
