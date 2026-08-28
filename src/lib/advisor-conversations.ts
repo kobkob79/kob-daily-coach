@@ -206,6 +206,13 @@ export const ADVISOR_LAST_MESSAGE_SNIPPET_MAX_LENGTH = 160;
 /** Production gate: disclose per-send provider context use and obtain clear user consent. */
 export const ADVISOR_CONTEXT_PRIVACY_NOTICE_REQUIRED = true;
 
+export function normalizeAdvisorConversationSnippet(value: string): string {
+  const normalized = value.normalize("NFKC").replace(/\s+/g, " ").trim();
+  return normalized.length <= ADVISOR_LAST_MESSAGE_SNIPPET_MAX_LENGTH
+    ? normalized
+    : `${normalized.slice(0, ADVISOR_LAST_MESSAGE_SNIPPET_MAX_LENGTH - 1)}…`;
+}
+
 export interface AdvisorHistoryMessage {
   role: AdvisorMessageRole;
   content: string;

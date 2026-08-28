@@ -118,7 +118,9 @@ export function createSupabaseAdvisorContextDataSource(
           .limit(10),
         supabase
           .from("bio_days")
-          .select("*")
+          .select(
+            "id,user_id,timezone,starts_at,ends_at,local_date,source,status,corrected_at,created_at,updated_at",
+          )
           .eq("user_id", userId)
           .lte("starts_at", nowIso)
           .or(`ends_at.is.null,ends_at.gt.${nowIso}`)

@@ -63,6 +63,10 @@ assert.match(
 );
 assert.match(migration, /advisor_id in \('adam', 'daniel', 'maya', 'shiran'\)/);
 assert.match(migration, /create or replace function public\.complete_advisor_turn/);
+assert.match(migration, /returns public\.advisor_messages/);
+assert.match(migration, /conversation\.status = 'active'/);
+assert.match(migration, /for update of message, conversation/);
+assert.match(migration, /return v_assistant/);
 assert.match(migration, /create or replace function public\.fail_advisor_turn/);
 assert.match(migration, /create or replace function public\.create_advisor_conversation/);
 assert.match(migration, /pg_advisory_xact_lock/);

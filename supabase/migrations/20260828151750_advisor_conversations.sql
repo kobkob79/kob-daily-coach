@@ -280,7 +280,7 @@ create or replace function public.complete_advisor_turn(
   p_reasoning_tokens integer default null,
   p_total_tokens integer default null
 )
-returns void
+returns public.advisor_messages
 language plpgsql
 security invoker
 set search_path = ''
@@ -291,15 +291,21 @@ declare
   v_conversation_id uuid;
   v_turn_id uuid;
   v_updated integer;
+  v_assistant public.advisor_messages;
 begin
   select message.conversation_id, message.turn_id
   into v_conversation_id, v_turn_id
   from public.advisor_messages as message
+  join public.advisor_conversations as conversation
+    on conversation.id = message.conversation_id
+    and conversation.user_id = message.user_id
   where message.id = p_user_message_id
     and message.user_id = p_user_id
     and message.role = 'user'
     and message.status = 'generating'
-  for update;
+    and conversation.status = 'active'
+    and conversation.deleted_at is null
+  for update of message, conversation;
 
   if not found then
     raise exception 'Advisor turn is not eligible for completion';
@@ -358,11 +364,13 @@ begin
     p_reasoning_tokens,
     p_total_tokens,
     v_now
-  );
+  ) returning * into v_assistant;
 
   update public.advisor_conversations
   set last_message_at = v_now
   where id = v_conversation_id and user_id = p_user_id and deleted_at is null;
+
+  return v_assistant;
 end;
 $$;
 

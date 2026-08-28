@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   ADVISOR_HISTORY_MAX_MESSAGES,
   boundCompletedAdvisorHistory,
+  normalizeAdvisorConversationSnippet,
   type AdvisorContextFlag,
   type AdvisorQuotaPresentation,
   type SendAdvisorMessageInput,
@@ -109,6 +110,18 @@ export async function sendPersistentAdvisorMessage(
     return { status: "error", error: { code: "NOT_FOUND", retryable: false } };
   }
 
+  if (
+    input.retryOfMessageId &&
+    !(await store.isEligibleRetry(
+      userId,
+      input.conversationId,
+      input.retryOfMessageId,
+      input.clientRequestId,
+    ))
+  ) {
+    return { status: "error", error: { code: "RETRY_NOT_ALLOWED", retryable: false } };
+  }
+
   const begun = await store.beginTurn({
     conversationId: input.conversationId,
     userId,
@@ -177,9 +190,9 @@ export async function sendPersistentAdvisorMessage(
     quota = dailyQuota(claim.quota);
   }
 
-  await store.markGenerating(userId, begun.message.id);
   let contextFlags: AdvisorContextFlag[] = [];
   try {
+    await store.markGenerating(userId, begun.message.id);
     const history = boundCompletedAdvisorHistory(
       await store.completedHistory(userId, input.conversationId, ADVISOR_HISTORY_MAX_MESSAGES),
     );
@@ -251,7 +264,7 @@ export async function sendPersistentAdvisorMessage(
           status: conversation.status,
           isCurrent: conversation.is_current,
           lastMessageAt: assistantMessage.completedAt,
-          lastMessageSnippet: response.text.slice(0, 160),
+          lastMessageSnippet: normalizeAdvisorConversationSnippet(response.text),
           createdAt: conversation.created_at,
           updatedAt: conversation.updated_at,
         },

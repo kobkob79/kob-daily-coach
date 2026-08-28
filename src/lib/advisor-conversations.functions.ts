@@ -14,13 +14,19 @@ const advisorId = z.enum(["adam", "daniel", "maya", "shiran"]);
 const uuid = z.string().uuid();
 const listSchema = z.object({
   advisorId: advisorId.optional(),
-  cursor: z.object({ beforeLastMessageAt: z.string(), beforeId: uuid }).nullable().optional(),
+  cursor: z
+    .object({ beforeLastMessageAt: z.string().datetime({ offset: true }), beforeId: uuid })
+    .nullable()
+    .optional(),
   limit: z.number().int().min(1).max(50).optional(),
 });
 const createSchema = z.object({ advisorId, title: z.string().max(120).optional() });
 const messagesSchema = z.object({
   conversationId: uuid,
-  cursor: z.object({ beforeOrdinal: z.string() }).nullable().optional(),
+  cursor: z
+    .object({ beforeOrdinal: z.string().regex(/^[1-9]\d*$/) })
+    .nullable()
+    .optional(),
   limit: z.number().int().min(1).max(100).optional(),
 });
 const renameSchema = z.object({ conversationId: uuid, title: z.string().min(1).max(120) });
@@ -28,9 +34,28 @@ const deleteSchema = z.object({ conversationId: uuid });
 const sendSchema = z.object({
   conversationId: uuid,
   clientRequestId: uuid,
-  message: z.string().min(1).max(4000),
+  message: z.string().trim().min(1).max(4000),
   retryOfMessageId: uuid.optional(),
 });
+
+function parseInput<T extends z.ZodType>(schema: T, input: unknown): z.output<T> | null {
+  const result = schema.safeParse(input);
+  return result.success ? result.data : null;
+}
+
+type ValidatedSendInput =
+  { valid: true; value: z.output<typeof sendSchema> } | { valid: false; tooLong: boolean };
+
+function parseSendInput(input: unknown): ValidatedSendInput {
+  const tooLong =
+    typeof input === "object" &&
+    input !== null &&
+    "message" in input &&
+    typeof input.message === "string" &&
+    input.message.length > 4000;
+  const result = sendSchema.safeParse(input);
+  return result.success ? { valid: true, value: result.data } : { valid: false, tooLong };
+}
 
 async function serverDependencies() {
   const [{ supabaseAdvisorConversationStore }, { supabaseAdvisorQuotaStore }, admin] =
@@ -49,10 +74,18 @@ function unavailable() {
   };
 }
 
+function invalidRequest() {
+  return {
+    status: "error" as const,
+    error: { code: "INVALID_REQUEST" as const, retryable: false },
+  };
+}
+
 export const listAdvisorConversationsServer = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => listSchema.parse(input ?? {}))
+  .validator((input: unknown) => parseInput(listSchema, input ?? {}))
   .handler(async ({ data, context }): Promise<ListAdvisorConversationsResult> => {
+    if (!data) return invalidRequest();
     try {
       const { supabaseAdvisorConversationStore: store } = await serverDependencies();
       return {
@@ -70,8 +103,9 @@ export const listAdvisorConversationsServer = createServerFn({ method: "GET" })
 
 export const createAdvisorConversationServer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => createSchema.parse(input))
+  .validator((input: unknown) => parseInput(createSchema, input))
   .handler(async ({ data, context }): Promise<CreateAdvisorConversationResult> => {
+    if (!data) return invalidRequest();
     try {
       const { supabaseAdvisorConversationStore: store } = await serverDependencies();
       const { normalizeAdvisorTitle } =
@@ -90,8 +124,9 @@ export const createAdvisorConversationServer = createServerFn({ method: "POST" }
 
 export const getAdvisorConversationMessagesServer = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => messagesSchema.parse(input))
+  .validator((input: unknown) => parseInput(messagesSchema, input))
   .handler(async ({ data, context }): Promise<GetAdvisorConversationMessagesResult> => {
+    if (!data) return invalidRequest();
     try {
       const userId = String(context.userId);
       const {
@@ -140,8 +175,9 @@ export const getAdvisorConversationMessagesServer = createServerFn({ method: "GE
 
 export const renameAdvisorConversationServer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => renameSchema.parse(input))
+  .validator((input: unknown) => parseInput(renameSchema, input))
   .handler(async ({ data, context }): Promise<RenameAdvisorConversationResult> => {
+    if (!data) return invalidRequest();
     try {
       const { supabaseAdvisorConversationStore: store } = await serverDependencies();
       const { normalizeAdvisorTitle } =
@@ -164,8 +200,9 @@ export const renameAdvisorConversationServer = createServerFn({ method: "POST" }
 
 export const deleteAdvisorConversationServer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => deleteSchema.parse(input))
+  .validator((input: unknown) => parseInput(deleteSchema, input))
   .handler(async ({ data, context }): Promise<DeleteAdvisorConversationResult> => {
+    if (!data) return invalidRequest();
     try {
       const { supabaseAdvisorConversationStore: store } = await serverDependencies();
       await store.softDelete(String(context.userId), data.conversationId);
@@ -180,20 +217,30 @@ export const deleteAdvisorConversationServer = createServerFn({ method: "POST" }
 
 export const sendAdvisorMessageServer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => sendSchema.parse(input))
+  .validator(parseSendInput)
   .handler(async ({ data, context }): Promise<SendAdvisorMessageResult> => {
+    if (!data.valid) {
+      return {
+        status: "error",
+        error: {
+          code: data.tooLong ? "MESSAGE_TOO_LONG" : "INVALID_REQUEST",
+          retryable: false,
+        },
+      };
+    }
+    const input = data.value;
     const userId = String(context.userId);
     try {
       const { supabaseAdvisorConversationStore, supabaseAdvisorQuotaStore, admin } =
         await serverDependencies();
       const conversation = await supabaseAdvisorConversationStore.findOwned(
         userId,
-        data.conversationId,
+        input.conversationId,
       );
       if (!conversation) return { status: "error", error: { code: "NOT_FOUND", retryable: false } };
       const { sendPersistentAdvisorMessage } =
         await import("@/lib/advisor-core/server/advisor-conversation-flow.server");
-      return sendPersistentAdvisorMessage(userId, conversation.advisor_id, data, {
+      return sendPersistentAdvisorMessage(userId, conversation.advisor_id, input, {
         conversationStore: supabaseAdvisorConversationStore,
         quotaStore: supabaseAdvisorQuotaStore,
         supabase: context.supabase,

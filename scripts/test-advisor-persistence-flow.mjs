@@ -51,7 +51,13 @@ assert.deepEqual(
   bounded,
 );
 
-function fixture({ allowed = true, admin = false, providerFails = false } = {}) {
+function fixture({
+  allowed = true,
+  admin = false,
+  providerFails = false,
+  retryEligible = true,
+  markGeneratingFails = false,
+} = {}) {
   const now = "2026-08-28T12:00:00.000Z";
   const conversation = {
     id: "conversation-1",
@@ -95,7 +101,12 @@ function fixture({ allowed = true, admin = false, providerFails = false } = {}) 
       requests.set(input.clientRequestId, message);
       return { created: true, message };
     },
+    async isEligibleRetry(_userId, _conversationId, _retryOfMessageId, clientRequestId) {
+      assert.notEqual(clientRequestId, "original-request-id");
+      return retryEligible;
+    },
     async markGenerating(_userId, messageId) {
+      if (markGeneratingFails) throw new Error("synthetic generating transition failure");
       for (const message of requests.values())
         if (message.id === messageId) message.status = "generating";
     },
@@ -274,6 +285,45 @@ const wrongOwnerResult = await sendPersistentAdvisorMessage(
 assert.equal(wrongOwnerResult.status, "error");
 assert.equal(wrongOwnerResult.error.code, "NOT_FOUND");
 assert.equal(wrongOwner.events.claims, 0);
+
+const invalidRetry = fixture({ retryEligible: false });
+const invalidRetryResult = await sendPersistentAdvisorMessage(
+  "user-1",
+  "daniel",
+  { ...input, retryOfMessageId: "failed-message-1" },
+  invalidRetry.dependencies,
+);
+assert.equal(invalidRetryResult.status, "error");
+assert.equal(invalidRetryResult.error.code, "RETRY_NOT_ALLOWED");
+assert.equal(invalidRetry.events.claims, 0);
+
+const validRetry = fixture();
+const validRetryResult = await sendPersistentAdvisorMessage(
+  "user-1",
+  "daniel",
+  {
+    ...input,
+    clientRequestId: "22222222-2222-4222-8222-222222222222",
+    retryOfMessageId: "failed-message-1",
+  },
+  validRetry.dependencies,
+);
+assert.equal(validRetryResult.status, "success");
+assert.equal(validRetry.events.providerCalls, 1);
+
+const interrupted = fixture({ markGeneratingFails: true });
+const interruptedResult = await sendPersistentAdvisorMessage(
+  "user-1",
+  "daniel",
+  input,
+  interrupted.dependencies,
+);
+assert.equal(interruptedResult.status, "error");
+assert.deepEqual(interrupted.events.failures[0], {
+  messageId: "user-1",
+  claimToken: "claim-1",
+  status: "provider_failed",
+});
 
 console.log(
   "Advisor persistence flow regression: PASS (auth boundary, idempotency hooks, quota lifecycle, 6-turn history, store:false)",

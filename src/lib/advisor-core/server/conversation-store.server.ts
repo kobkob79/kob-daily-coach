@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
-  ADVISOR_LAST_MESSAGE_SNIPPET_MAX_LENGTH,
+  normalizeAdvisorConversationSnippet,
   type AdvisorConversationDto,
   type AdvisorConversationPageCursor,
   type AdvisorMessageDto,
@@ -103,6 +103,12 @@ export interface AdvisorConversationStore {
   rename(userId: string, conversationId: string, title: string): Promise<AdvisorConversationDto>;
   softDelete(userId: string, conversationId: string): Promise<void>;
   beginTurn(input: BeginAdvisorTurnInput): Promise<BeginAdvisorTurnResult>;
+  isEligibleRetry(
+    userId: string,
+    conversationId: string,
+    retryOfMessageId: string,
+    clientRequestId: string,
+  ): Promise<boolean>;
   markGenerating(userId: string, userMessageId: string): Promise<void>;
   completeTurn(input: CompleteAdvisorTurnInput): Promise<AdvisorMessageDto>;
   failTurn(
@@ -131,10 +137,7 @@ export function normalizeAdvisorTitle(value: string): string {
 }
 
 export function normalizeAdvisorSnippet(value: string): string {
-  const normalized = value.normalize("NFKC").replace(/\s+/g, " ").trim();
-  return normalized.length <= ADVISOR_LAST_MESSAGE_SNIPPET_MAX_LENGTH
-    ? normalized
-    : `${normalized.slice(0, ADVISOR_LAST_MESSAGE_SNIPPET_MAX_LENGTH - 1)}…`;
+  return normalizeAdvisorConversationSnippet(value);
 }
 
 function conversationDto(
@@ -331,6 +334,21 @@ export const supabaseAdvisorConversationStore: AdvisorConversationStore = {
     return { created: false, message: existing.data as MessageRow };
   },
 
+  async isEligibleRetry(userId, conversationId, retryOfMessageId, clientRequestId) {
+    const { data, error } = await client()
+      .from("advisor_messages")
+      .select("id")
+      .eq("id", retryOfMessageId)
+      .eq("user_id", userId)
+      .eq("conversation_id", conversationId)
+      .eq("role", "user")
+      .in("status", ["provider_failed", "finalize_failed", "interrupted"])
+      .neq("client_request_id", clientRequestId)
+      .maybeSingle();
+    if (error) throw new AdvisorPersistenceError();
+    return data !== null;
+  },
+
   async markGenerating(userId, userMessageId) {
     const result = await client()
       .from("advisor_messages")
@@ -344,7 +362,7 @@ export const supabaseAdvisorConversationStore: AdvisorConversationStore = {
   },
 
   async completeTurn(input) {
-    const { error } = await client().rpc("complete_advisor_turn", {
+    const result = await client().rpc("complete_advisor_turn", {
       p_user_id: input.userId,
       p_user_message_id: input.userMessageId,
       p_assistant_message_id: input.assistantMessageId,
@@ -358,14 +376,7 @@ export const supabaseAdvisorConversationStore: AdvisorConversationStore = {
       p_reasoning_tokens: input.usage?.reasoningTokens ?? null,
       p_total_tokens: input.usage?.totalTokens ?? null,
     });
-    if (error) throw new AdvisorPersistenceError();
-    const assistant = await client()
-      .from("advisor_messages")
-      .select("*")
-      .eq("id", input.assistantMessageId)
-      .eq("user_id", input.userId)
-      .single();
-    return messageDto((await requireMutation(assistant)) as MessageRow);
+    return messageDto((await requireMutation(result)) as MessageRow);
   },
 
   async failTurn(userId, userMessageId, claimToken, status, safeErrorCategory) {
