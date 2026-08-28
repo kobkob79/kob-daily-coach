@@ -263,3 +263,205 @@ revoke execute on function public.enforce_advisor_message_owner()
 grant execute on function public.protect_advisor_conversation_ownership() to service_role;
 grant execute on function public.protect_advisor_message_identity() to service_role;
 grant execute on function public.enforce_advisor_message_owner() to service_role;
+
+-- Complete a provider-successful turn and consume its Free quota in one DB transaction.
+-- A null claim token is reserved for the already-authorized Admin server path.
+create or replace function public.complete_advisor_turn(
+  p_user_id uuid,
+  p_user_message_id uuid,
+  p_assistant_message_id uuid,
+  p_claim_token uuid,
+  p_content text,
+  p_provider text,
+  p_model text,
+  p_provider_response_id text,
+  p_input_tokens integer default null,
+  p_output_tokens integer default null,
+  p_reasoning_tokens integer default null,
+  p_total_tokens integer default null
+)
+returns void
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_now timestamptz := statement_timestamp();
+  v_usage_date date := (timezone('utc', v_now))::date;
+  v_conversation_id uuid;
+  v_turn_id uuid;
+  v_updated integer;
+begin
+  select message.conversation_id, message.turn_id
+  into v_conversation_id, v_turn_id
+  from public.advisor_messages as message
+  where message.id = p_user_message_id
+    and message.user_id = p_user_id
+    and message.role = 'user'
+    and message.status = 'generating'
+  for update;
+
+  if not found then
+    raise exception 'Advisor turn is not eligible for completion';
+  end if;
+
+  if p_claim_token is not null then
+    update public.advisor_daily_usage as usage
+    set
+      successful_questions = 1,
+      reservation_token = null,
+      reservation_expires_at = null
+    where usage.user_id = p_user_id
+      and usage.usage_date = v_usage_date
+      and usage.successful_questions = 0
+      and usage.reservation_token = p_claim_token;
+
+    get diagnostics v_updated = row_count;
+    if v_updated <> 1 then
+      raise exception 'Advisor quota claim could not be finalized';
+    end if;
+  end if;
+
+  update public.advisor_messages
+  set status = 'completed', completed_at = v_now, failed_at = null
+  where id = p_user_message_id and user_id = p_user_id;
+
+  insert into public.advisor_messages (
+    id,
+    conversation_id,
+    user_id,
+    turn_id,
+    role,
+    content,
+    status,
+    provider,
+    model,
+    provider_response_id,
+    input_tokens,
+    output_tokens,
+    reasoning_tokens,
+    total_tokens,
+    completed_at
+  ) values (
+    p_assistant_message_id,
+    v_conversation_id,
+    p_user_id,
+    v_turn_id,
+    'assistant',
+    p_content,
+    'completed',
+    p_provider,
+    p_model,
+    p_provider_response_id,
+    p_input_tokens,
+    p_output_tokens,
+    p_reasoning_tokens,
+    p_total_tokens,
+    v_now
+  );
+
+  update public.advisor_conversations
+  set last_message_at = v_now
+  where id = v_conversation_id and user_id = p_user_id and deleted_at is null;
+end;
+$$;
+
+-- Record a safe failure and release any matching reservation atomically.
+create or replace function public.fail_advisor_turn(
+  p_user_id uuid,
+  p_user_message_id uuid,
+  p_claim_token uuid,
+  p_status text,
+  p_safe_error_category text
+)
+returns void
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_now timestamptz := statement_timestamp();
+  v_usage_date date := (timezone('utc', v_now))::date;
+  v_updated integer;
+begin
+  if p_status not in ('quota_rejected', 'provider_failed', 'finalize_failed', 'interrupted') then
+    raise exception 'Unsupported advisor failure status';
+  end if;
+
+  update public.advisor_messages
+  set
+    status = p_status,
+    safe_error_category = p_safe_error_category,
+    failed_at = case when p_status = 'quota_rejected' then null else v_now end,
+    completed_at = null
+  where id = p_user_message_id
+    and user_id = p_user_id
+    and role = 'user'
+    and status in ('pending_quota', 'generating');
+
+  get diagnostics v_updated = row_count;
+  if v_updated <> 1 then
+    raise exception 'Advisor turn is not eligible for failure transition';
+  end if;
+
+  if p_claim_token is not null then
+    update public.advisor_daily_usage as usage
+    set reservation_token = null, reservation_expires_at = null
+    where usage.user_id = p_user_id
+      and usage.usage_date = v_usage_date
+      and usage.successful_questions = 0
+      and usage.reservation_token = p_claim_token;
+  end if;
+end;
+$$;
+
+revoke execute on function public.complete_advisor_turn(
+  uuid, uuid, uuid, uuid, text, text, text, text, integer, integer, integer, integer
+) from public, anon, authenticated;
+revoke execute on function public.fail_advisor_turn(uuid, uuid, uuid, text, text)
+  from public, anon, authenticated;
+
+grant execute on function public.complete_advisor_turn(
+  uuid, uuid, uuid, uuid, text, text, text, text, integer, integer, integer, integer
+) to service_role;
+grant execute on function public.fail_advisor_turn(uuid, uuid, uuid, text, text)
+  to service_role;
+
+-- Switch the current conversation and create its replacement atomically.
+create or replace function public.create_advisor_conversation(
+  p_id uuid,
+  p_user_id uuid,
+  p_advisor_id text,
+  p_title text
+)
+returns public.advisor_conversations
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_conversation public.advisor_conversations;
+begin
+  perform pg_advisory_xact_lock(hashtextextended(p_user_id::text || ':' || p_advisor_id, 0));
+
+  update public.advisor_conversations
+  set is_current = false
+  where user_id = p_user_id
+    and advisor_id = p_advisor_id
+    and is_current
+    and deleted_at is null;
+
+  insert into public.advisor_conversations (
+    id, user_id, advisor_id, title, is_current, last_message_at
+  ) values (
+    p_id, p_user_id, p_advisor_id, p_title, true, statement_timestamp()
+  ) returning * into v_conversation;
+
+  return v_conversation;
+end;
+$$;
+
+revoke execute on function public.create_advisor_conversation(uuid, uuid, text, text)
+  from public, anon, authenticated;
+grant execute on function public.create_advisor_conversation(uuid, uuid, text, text)
+  to service_role;

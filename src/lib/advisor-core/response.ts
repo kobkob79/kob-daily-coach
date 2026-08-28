@@ -7,6 +7,14 @@ export interface AdvisorChatResponse {
   response_id: string;
   text: string;
   quota?: AdvisorDailyQuota;
+  provider_metadata?: {
+    provider: "openai" | "mock";
+    model: string;
+    input_tokens?: number;
+    output_tokens?: number;
+    reasoning_tokens?: number;
+    total_tokens?: number;
+  };
 }
 
 export type AdvisorCoreErrorCode =

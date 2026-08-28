@@ -8,6 +8,7 @@ import {
   ADVISOR_HISTORY_MAX_TURNS,
   ADVISOR_LAST_MESSAGE_SNIPPET_MAX_LENGTH,
   ADVISOR_MESSAGE_STATUSES,
+  ADVISOR_CONTEXT_PRIVACY_NOTICE_REQUIRED,
 } from "../src/lib/advisor-conversations.ts";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -61,6 +62,13 @@ assert.match(
   /retried\.status in \('provider_failed', 'finalize_failed', 'interrupted'\)/,
 );
 assert.match(migration, /advisor_id in \('adam', 'daniel', 'maya', 'shiran'\)/);
+assert.match(migration, /create or replace function public\.complete_advisor_turn/);
+assert.match(migration, /create or replace function public\.fail_advisor_turn/);
+assert.match(migration, /create or replace function public\.create_advisor_conversation/);
+assert.match(migration, /pg_advisory_xact_lock/);
+assert.match(migration, /successful_questions = 1/);
+assert.match(migration, /reservation_token = null/);
+assert.match(migration, /to service_role/g);
 
 assert.deepEqual(ADVISOR_CONVERSATION_STATUSES, ["active", "archived", "deleted"]);
 assert.deepEqual(ADVISOR_MESSAGE_STATUSES, [
@@ -87,6 +95,7 @@ assert.deepEqual(ADVISOR_CONVERSATION_ERROR_CODES, [
 assert.equal(ADVISOR_HISTORY_MAX_TURNS, 6);
 assert.equal(ADVISOR_HISTORY_MAX_MESSAGES, 12);
 assert.equal(ADVISOR_LAST_MESSAGE_SNIPPET_MAX_LENGTH, 160);
+assert.equal(ADVISOR_CONTEXT_PRIVACY_NOTICE_REQUIRED, true);
 
 for (const operation of [
   "listAdvisorConversations",

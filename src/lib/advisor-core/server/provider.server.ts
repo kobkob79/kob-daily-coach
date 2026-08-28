@@ -2,11 +2,15 @@ import type { AdvisorConfig } from "../types";
 import type { AdvisorChatRequest } from "../request";
 import type { AdvisorChatResponse } from "../response";
 import { getVioraAIProvider } from "./config.server";
+import type { AdvisorMessageRole } from "@/lib/advisor-conversations";
+import type { AdvisorContextBridgeResult } from "./advisor-context-bridge.server";
 
 export interface AdvisorProviderInput {
   advisor: AdvisorConfig;
   instructions: string;
   request: AdvisorChatRequest;
+  history?: ReadonlyArray<{ role: AdvisorMessageRole; content: string }>;
+  context?: Omit<AdvisorContextBridgeResult["context"], "userId">;
 }
 
 export interface AdvisorAIProvider {

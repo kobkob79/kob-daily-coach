@@ -202,3 +202,30 @@ export interface AdvisorConversationOperations {
 export const ADVISOR_HISTORY_MAX_TURNS = 6;
 export const ADVISOR_HISTORY_MAX_MESSAGES = 12;
 export const ADVISOR_LAST_MESSAGE_SNIPPET_MAX_LENGTH = 160;
+
+/** Production gate: disclose per-send provider context use and obtain clear user consent. */
+export const ADVISOR_CONTEXT_PRIVACY_NOTICE_REQUIRED = true;
+
+export interface AdvisorHistoryMessage {
+  role: AdvisorMessageRole;
+  content: string;
+  turnId: string;
+  ordinal: number;
+}
+
+export function boundCompletedAdvisorHistory(history: readonly AdvisorHistoryMessage[]) {
+  const turns = new Map<string, AdvisorHistoryMessage[]>();
+  for (const message of history) {
+    const turn = turns.get(message.turnId) ?? [];
+    turn.push(message);
+    turns.set(message.turnId, turn);
+  }
+  return [...turns.values()]
+    .filter(
+      (turn) => turn.length === 2 && turn[0]?.role === "user" && turn[1]?.role === "assistant",
+    )
+    .slice(-ADVISOR_HISTORY_MAX_TURNS)
+    .flat()
+    .slice(-ADVISOR_HISTORY_MAX_MESSAGES)
+    .map(({ role, content }) => ({ role, content }));
+}

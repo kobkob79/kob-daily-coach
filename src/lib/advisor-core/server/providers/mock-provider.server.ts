@@ -1,4 +1,5 @@
 import type { AdvisorAIProvider, AdvisorProviderInput } from "../provider.server";
+import { VIORA_ADVISOR_MODEL } from "../config.server";
 
 function mockResponseId(advisorId: AdvisorProviderInput["request"]["advisor_id"]): string {
   return `mock_${advisorId}_${crypto.randomUUID()}`;
@@ -31,6 +32,7 @@ export const mockAdvisorProvider: AdvisorAIProvider = {
       conversation_id: input.request.conversation_id,
       response_id: mockResponseId(input.request.advisor_id),
       text: createMockText(input),
+      provider_metadata: { provider: "mock", model: VIORA_ADVISOR_MODEL },
     };
   },
 };

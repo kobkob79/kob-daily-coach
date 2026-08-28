@@ -5,6 +5,7 @@ import { advisorChatRequestSchema, type AdvisorChatRequest } from "../request";
 import { AdvisorCoreError, type AdvisorChatResponse } from "../response";
 import { isAdvisorId } from "../types";
 import { getAdvisorAIProvider } from "./provider.server";
+import type { AdvisorProviderInput } from "./provider.server";
 
 export function validateAdvisorChatRequest(input: unknown): AdvisorChatRequest {
   const advisorId =
@@ -26,7 +27,10 @@ export function validateAdvisorChatRequest(input: unknown): AdvisorChatRequest {
   }
 }
 
-export async function generateAdvisorResponse(input: unknown): Promise<AdvisorChatResponse> {
+export async function generateAdvisorResponse(
+  input: unknown,
+  options: Pick<AdvisorProviderInput, "history" | "context"> = {},
+): Promise<AdvisorChatResponse> {
   const request = validateAdvisorChatRequest(input);
 
   let advisor;
@@ -44,5 +48,7 @@ export async function generateAdvisorResponse(input: unknown): Promise<AdvisorCh
     advisor,
     instructions: buildAdvisorInstructions(advisor),
     request,
+    history: options.history,
+    context: options.context,
   });
 }
