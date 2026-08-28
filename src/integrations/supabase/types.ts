@@ -158,6 +158,101 @@ export type Database = {
         }
         Relationships: []
       }
+      bio_day_event_assignments: {
+        Row: {
+          assignment_metadata: Json
+          bio_day_id: string
+          created_at: string
+          id: string
+          source: string
+          source_domain: string
+          source_record_id: string
+          source_table: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assignment_metadata?: Json
+          bio_day_id: string
+          created_at?: string
+          id?: string
+          source: string
+          source_domain: string
+          source_record_id: string
+          source_table: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assignment_metadata?: Json
+          bio_day_id?: string
+          created_at?: string
+          id?: string
+          source?: string
+          source_domain?: string
+          source_record_id?: string
+          source_table?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bio_day_event_assignments_bio_day_id_fkey"
+            columns: ["bio_day_id"]
+            isOneToOne: false
+            referencedRelation: "bio_days"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bio_days: {
+        Row: {
+          boundary_metadata: Json
+          corrected_at: string | null
+          correction_metadata: Json | null
+          created_at: string
+          ends_at: string | null
+          id: string
+          local_date: string
+          source: string
+          starts_at: string
+          status: string
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          boundary_metadata?: Json
+          corrected_at?: string | null
+          correction_metadata?: Json | null
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          local_date: string
+          source: string
+          starts_at: string
+          status?: string
+          timezone: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          boundary_metadata?: Json
+          corrected_at?: string | null
+          correction_metadata?: Json | null
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          local_date?: string
+          source?: string
+          starts_at?: string
+          status?: string
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       body_measurements: {
         Row: {
           area: string
