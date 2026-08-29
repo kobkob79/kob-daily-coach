@@ -1,54 +1,81 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import {
-  ArrowRight,
-  CalendarClock,
-  LoaderCircle,
-  RotateCcw,
-  Send,
-  ShieldAlert,
-  UserRound,
-} from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ArrowRight, CalendarClock, History, LoaderCircle, Plus, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  generateAdvisorResponseServer,
-  getAdvisorDailyQuotaServer,
-} from "@/lib/advisor-chat.functions";
+  createAdvisorConversationServer,
+  deleteAdvisorConversationServer,
+  getAdvisorConversationMessagesServer,
+  listAdvisorConversationsServer,
+  renameAdvisorConversationServer,
+  sendAdvisorMessageServer,
+} from "@/lib/advisor-conversations.functions";
+import {
+  ADVISOR_PENDING_MAX_POLLS,
+  ADVISOR_PENDING_POLL_INTERVAL_MS,
+  advisorConversationErrorMessage,
+  advisorConversationStorageKey,
+  createAdvisorMessagesPayload,
+  createAdvisorSendPayload,
+  hasGeneratingAdvisorMessage,
+  mergeAdvisorMessages,
+  quotaPresentationToClientState,
+  removeAdvisorConversation,
+  selectRestoredAdvisorConversation,
+  shouldFollowLatestMessage,
+  upsertAdvisorConversation,
+  type AdvisorClientQuotaState,
+} from "@/lib/advisor-conversation-client";
+import type {
+  AdvisorContextFlag,
+  AdvisorConversationDto,
+  AdvisorConversationPageCursor,
+  AdvisorMessageDto,
+  AdvisorPageCursor,
+} from "@/lib/advisor-conversations";
 import type { CoachAdvisor } from "@/lib/coach-advisors";
 import { fetchProfile, PROFILE_BUCKET } from "@/lib/profile";
-import { AdvisorMessageContent } from "./AdvisorMessageContent";
+import {
+  AdvisorContextNotice,
+  ChatComposer,
+  ChatFailureState,
+  ChatMessageBubble,
+  ConversationList,
+  ConversationSkeleton,
+  DeleteConversationDialog,
+  NewMessageChip,
+  RenameConversationDialog,
+} from "./conversations";
 import { AdvisorVisual } from "./AdvisorVisual";
-
-interface ChatMessage {
-  id: string;
-  role: "advisor" | "user";
-  text: string;
-}
-
-interface FailedMessage {
-  text: string;
-  userMessageId: string;
-}
-
-type QuotaState = "loading" | "available" | "unlimited" | "exhausted" | "error";
-
-const QUOTA_EXHAUSTED_CODES = new Set([
-  "ADVISOR_DAILY_QUOTA_EXCEEDED",
-  "ADVISOR_DAILY_QUOTA_EXHAUSTED",
-]);
-
-function createLocalId(prefix: string): string {
-  return `${prefix}_${crypto.randomUUID()}`;
-}
 
 interface CoachChatShellProps {
   advisor: CoachAdvisor;
   userAvatarUrl?: string;
 }
+
+type ViewState = "loading" | "ready" | "error";
+
+const introMessage = (advisor: CoachAdvisor): AdvisorMessageDto => ({
+  id: `intro-${advisor.id}`,
+  conversationId: `intro-${advisor.id}`,
+  turnId: `intro-${advisor.id}`,
+  retryOfMessageId: null,
+  role: "assistant",
+  content: advisor.intro,
+  status: "completed",
+  createdAt: "1970-01-01T00:00:00.000Z",
+  completedAt: "1970-01-01T00:00:00.000Z",
+  failedAt: null,
+});
 
 async function createProfileAvatarUrl(path: string): Promise<string> {
   const { data, error } = await supabase.storage.from(PROFILE_BUCKET).createSignedUrl(path, 3600);
@@ -56,18 +83,33 @@ async function createProfileAvatarUrl(path: string): Promise<string> {
   return data.signedUrl;
 }
 
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
 export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) {
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: `intro_${advisor.id}`, role: "advisor", text: advisor.intro },
-  ]);
-  const [conversationId] = useState(() => createLocalId(`conversation_${advisor.id}`));
-  const [isLoading, setIsLoading] = useState(false);
-  const [failedMessage, setFailedMessage] = useState<FailedMessage | null>(null);
-  const [quotaState, setQuotaState] = useState<QuotaState>("loading");
-  const conversationEndRef = useRef<HTMLDivElement>(null);
-  const hasInteractedRef = useRef(false);
+  const [viewState, setViewState] = useState<ViewState>("loading");
+  const [conversations, setConversations] = useState<AdvisorConversationDto[]>([]);
+  const [activeConversation, setActiveConversation] = useState<AdvisorConversationDto | null>(null);
+  const [messages, setMessages] = useState<AdvisorMessageDto[]>([]);
+  const [contextFlags, setContextFlags] = useState<readonly AdvisorContextFlag[]>([]);
+  const [quotaState, setQuotaState] = useState<AdvisorClientQuotaState>("loading");
+  const [conversationCursor, setConversationCursor] =
+    useState<AdvisorConversationPageCursor | null>(null);
+  const [messageCursor, setMessageCursor] = useState<AdvisorPageCursor | null>(null);
+  const [isSending, setIsSending] = useState(false);
+  const [isMutating, setIsMutating] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [operationError, setOperationError] = useState<string | null>(null);
+  const [renameTarget, setRenameTarget] = useState<AdvisorConversationDto | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdvisorConversationDto | null>(null);
+  const [showNewMessageChip, setShowNewMessageChip] = useState(false);
+  const mountedRef = useRef(true);
   const requestInFlightRef = useRef(false);
+  const messageViewportRef = useRef<HTMLDivElement>(null);
+  const nearBottomRef = useRef(true);
+  const forceFollowRef = useRef(false);
+
   const profileQuery = useQuery({ queryKey: ["profile"], queryFn: fetchProfile });
   const profileAvatarPath = profileQuery.data?.avatar_url ?? null;
   const profileAvatarQuery = useQuery({
@@ -76,109 +118,322 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
     enabled: !userAvatarUrl && Boolean(profileAvatarPath),
     staleTime: 50 * 60 * 1000,
   });
+  const resolvedUserAvatarUrl = userAvatarUrl ?? profileAvatarQuery.data;
+  const userName = profileQuery.data?.display_name ?? profileQuery.data?.full_name;
+
+  const scrollToLatest = useCallback((behavior: ScrollBehavior = "smooth") => {
+    const viewport = messageViewportRef.current;
+    if (!viewport) return;
+    viewport.scrollTo({ top: viewport.scrollHeight, behavior });
+    nearBottomRef.current = true;
+    setShowNewMessageChip(false);
+  }, []);
+
+  const applyLoadedConversation = useCallback(
+    async (conversation: AdvisorConversationDto) => {
+      const result = await getAdvisorConversationMessagesServer({
+        data: createAdvisorMessagesPayload(conversation.id),
+      });
+      if (!mountedRef.current) return false;
+      if (result.status !== "success") {
+        setOperationError(
+          result.status === "error"
+            ? advisorConversationErrorMessage(result.error.code)
+            : "השיחה עדיין נטענת. אפשר לנסות שוב בעוד רגע.",
+        );
+        if (result.status === "error" && result.error.code === "PERSISTENCE_UNAVAILABLE") {
+          setViewState("error");
+          setQuotaState("error");
+        }
+        return false;
+      }
+      if (result.data.conversation.advisorId !== advisor.id) {
+        setOperationError("השיחה אינה שייכת ליועץ הזה.");
+        return false;
+      }
+      setActiveConversation(result.data.conversation);
+      setMessages([...result.data.messages.items]);
+      setMessageCursor(result.data.messages.nextCursor);
+      setContextFlags(result.data.contextFlags);
+      setQuotaState(quotaPresentationToClientState(result.data.quota));
+      setViewState("ready");
+      window.localStorage.setItem(
+        advisorConversationStorageKey(advisor.id),
+        result.data.conversation.id,
+      );
+      return true;
+    },
+    [advisor.id],
+  );
+
+  const loadConversationList = useCallback(
+    async (preferredId?: string | null) => {
+      setViewState("loading");
+      setOperationError(null);
+      try {
+        const result = await listAdvisorConversationsServer({
+          data: { advisorId: advisor.id, cursor: null, limit: 50 },
+        });
+        if (!mountedRef.current) return;
+        if (result.status !== "success") {
+          setViewState("error");
+          setQuotaState("error");
+          setOperationError(
+            result.status === "error"
+              ? advisorConversationErrorMessage(result.error.code)
+              : "השיחות עדיין נטענות. אפשר לנסות שוב בעוד רגע.",
+          );
+          return;
+        }
+        setConversations([...result.data.items]);
+        setConversationCursor(result.data.nextCursor);
+        const storedId =
+          preferredId ?? window.localStorage.getItem(advisorConversationStorageKey(advisor.id));
+        const restored = selectRestoredAdvisorConversation(result.data.items, advisor.id, storedId);
+        if (!restored) {
+          setActiveConversation(null);
+          setMessages([]);
+          setContextFlags([]);
+          setQuotaState("loading");
+          setViewState("ready");
+          return;
+        }
+        await applyLoadedConversation(restored);
+      } catch {
+        if (!mountedRef.current) return;
+        setViewState("error");
+        setQuotaState("error");
+        setOperationError("השיחות אינן זמינות כרגע. אפשר לנסות שוב מאוחר יותר.");
+      }
+    },
+    [advisor.id, applyLoadedConversation],
+  );
+
+  useEffect(() => {
+    mountedRef.current = true;
+    void loadConversationList();
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [loadConversationList]);
+
+  useEffect(() => {
+    if (!messageViewportRef.current) return;
+    if (forceFollowRef.current || nearBottomRef.current) {
+      forceFollowRef.current = false;
+      window.requestAnimationFrame(() => scrollToLatest(messages.length ? "smooth" : "auto"));
+    } else if (messages.length) setShowNewMessageChip(true);
+  }, [messages, isSending, scrollToLatest]);
+
+  const createConversation = useCallback(async (): Promise<AdvisorConversationDto | null> => {
+    setIsMutating(true);
+    setOperationError(null);
+    try {
+      const result = await createAdvisorConversationServer({ data: { advisorId: advisor.id } });
+      if (result.status !== "success") {
+        setOperationError(
+          result.status === "error"
+            ? advisorConversationErrorMessage(result.error.code)
+            : "השיחה עדיין נוצרת. אפשר לנסות שוב בעוד רגע.",
+        );
+        return null;
+      }
+      const conversation = result.data.conversation;
+      setConversations((current) => upsertAdvisorConversation(current, conversation));
+      setActiveConversation(conversation);
+      setMessages([]);
+      setContextFlags([]);
+      setMessageCursor(null);
+      window.localStorage.setItem(advisorConversationStorageKey(advisor.id), conversation.id);
+      await applyLoadedConversation(conversation);
+      setIsHistoryOpen(false);
+      return conversation;
+    } catch {
+      setOperationError("לא הצלחנו ליצור שיחה חדשה כרגע.");
+      return null;
+    } finally {
+      setIsMutating(false);
+    }
+  }, [advisor.id, applyLoadedConversation]);
+
+  const pollPendingTurn = useCallback(async (conversationId: string) => {
+    for (let attempt = 0; attempt < ADVISOR_PENDING_MAX_POLLS; attempt += 1) {
+      await wait(ADVISOR_PENDING_POLL_INTERVAL_MS);
+      if (!mountedRef.current) return false;
+      const result = await getAdvisorConversationMessagesServer({
+        data: createAdvisorMessagesPayload(conversationId),
+      });
+      if (result.status !== "success") continue;
+      setMessages([...result.data.messages.items]);
+      setMessageCursor(result.data.messages.nextCursor);
+      setContextFlags(result.data.contextFlags);
+      setQuotaState(quotaPresentationToClientState(result.data.quota));
+      if (!hasGeneratingAdvisorMessage(result.data.messages.items)) return true;
+    }
+    setOperationError("התשובה עדיין מתעכבת. אפשר לרענן את השיחה בלי לשלוח שוב.");
+    return false;
+  }, []);
+
+  const sendMessage = useCallback(
+    async (text: string, retryOfMessageId?: string): Promise<boolean> => {
+      const clean = text.trim();
+      if (!clean || requestInFlightRef.current) return false;
+      let conversation = activeConversation;
+      if (!conversation) conversation = await createConversation();
+      if (!conversation) return false;
+      requestInFlightRef.current = true;
+      forceFollowRef.current = true;
+      setIsSending(true);
+      setOperationError(null);
+      const clientRequestId = crypto.randomUUID();
+      try {
+        const result = await sendAdvisorMessageServer({
+          data: createAdvisorSendPayload({
+            conversationId: conversation.id,
+            clientRequestId,
+            message: clean,
+            retryOfMessageId,
+          }),
+        });
+        if (result.status === "pending") {
+          await pollPendingTurn(conversation.id);
+          return true;
+        }
+        if (result.status === "error") {
+          if (result.error.code === "DAILY_QUOTA_EXCEEDED") setQuotaState("exhausted");
+          setOperationError(advisorConversationErrorMessage(result.error.code));
+          if (result.error.code !== "PERSISTENCE_UNAVAILABLE")
+            await applyLoadedConversation(conversation);
+          return result.error.code !== "PERSISTENCE_UNAVAILABLE";
+        }
+        const completed = [result.data.userMessage, result.data.assistantMessage].filter(
+          (message): message is AdvisorMessageDto => Boolean(message),
+        );
+        setMessages((current) => mergeAdvisorMessages(current, completed));
+        setActiveConversation(result.data.conversation);
+        setConversations((current) => upsertAdvisorConversation(current, result.data.conversation));
+        setQuotaState(quotaPresentationToClientState(result.data.quota));
+        setContextFlags(result.data.contextFlags);
+        return true;
+      } catch {
+        setOperationError("החיבור נקטע. אפשר לרענן את השיחה; לא נשלח ניסיון נוסף אוטומטית.");
+        return false;
+      } finally {
+        requestInFlightRef.current = false;
+        setIsSending(false);
+      }
+    },
+    [activeConversation, applyLoadedConversation, createConversation, pollPendingTurn],
+  );
+
+  const switchConversation = async (conversationId: string) => {
+    const conversation = conversations.find((item) => item.id === conversationId);
+    if (!conversation || conversation.advisorId !== advisor.id) {
+      setOperationError("השיחה אינה שייכת ליועץ הזה.");
+      return;
+    }
+    setIsHistoryOpen(false);
+    setViewState("loading");
+    setMessages([]);
+    await applyLoadedConversation(conversation);
+  };
+
+  const loadMoreConversations = async () => {
+    if (!conversationCursor || isMutating) return;
+    setIsMutating(true);
+    try {
+      const result = await listAdvisorConversationsServer({
+        data: { advisorId: advisor.id, cursor: conversationCursor, limit: 50 },
+      });
+      if (result.status === "success") {
+        setConversations((current) => [
+          ...current,
+          ...result.data.items.filter((item) => !current.some((known) => known.id === item.id)),
+        ]);
+        setConversationCursor(result.data.nextCursor);
+      }
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const loadOlderMessages = async () => {
+    if (!activeConversation || !messageCursor || isMutating) return;
+    setIsMutating(true);
+    const previousHeight = messageViewportRef.current?.scrollHeight ?? 0;
+    try {
+      const result = await getAdvisorConversationMessagesServer({
+        data: createAdvisorMessagesPayload(activeConversation.id, messageCursor),
+      });
+      if (result.status === "success") {
+        setMessages((current) => mergeAdvisorMessages(current, result.data.messages.items, true));
+        setMessageCursor(result.data.messages.nextCursor);
+        window.requestAnimationFrame(() => {
+          const viewport = messageViewportRef.current;
+          if (viewport) viewport.scrollTop += viewport.scrollHeight - previousHeight;
+        });
+      }
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const renameConversation = async (title: string) => {
+    if (!renameTarget) return;
+    const result = await renameAdvisorConversationServer({
+      data: { conversationId: renameTarget.id, title },
+    });
+    if (result.status !== "success") {
+      setOperationError(
+        result.status === "error"
+          ? advisorConversationErrorMessage(result.error.code)
+          : "שינוי השם עדיין בטיפול.",
+      );
+      return;
+    }
+    setConversations((current) => upsertAdvisorConversation(current, result.data.conversation));
+    if (activeConversation?.id === result.data.conversation.id)
+      setActiveConversation(result.data.conversation);
+  };
+
+  const deleteConversation = async () => {
+    if (!deleteTarget) return;
+    const deletedId = deleteTarget.id;
+    const result = await deleteAdvisorConversationServer({ data: { conversationId: deletedId } });
+    if (result.status !== "success") {
+      setOperationError(
+        result.status === "error"
+          ? advisorConversationErrorMessage(result.error.code)
+          : "המחיקה עדיין בטיפול.",
+      );
+      return;
+    }
+    const remaining = removeAdvisorConversation(conversations, deletedId);
+    setConversations(remaining);
+    if (activeConversation?.id === deletedId) {
+      window.localStorage.removeItem(advisorConversationStorageKey(advisor.id));
+      const replacement = selectRestoredAdvisorConversation(remaining, advisor.id, null);
+      if (replacement) await applyLoadedConversation(replacement);
+      else {
+        setActiveConversation(null);
+        setMessages([]);
+        setContextFlags([]);
+        setQuotaState("loading");
+      }
+    }
+    setDeleteTarget(null);
+  };
 
   const hasStarted = messages.some((message) => message.role === "user");
   const isQuotaExhausted = quotaState === "exhausted";
-  const canSend = quotaState === "available" || quotaState === "unlimited";
-  const resolvedUserAvatarUrl = userAvatarUrl ?? profileAvatarQuery.data;
-  const userName = profileQuery.data?.display_name ?? profileQuery.data?.full_name;
-  const userInitial = userName?.trim().charAt(0);
-
-  const loadQuota = useCallback(async () => {
-    setQuotaState("loading");
-    try {
-      const result = await getAdvisorDailyQuotaServer();
-      if (!result.ok) {
-        setQuotaState("error");
-        return;
-      }
-      setQuotaState(
-        result.unlimited ? "unlimited" : result.quota.allowed ? "available" : "exhausted",
-      );
-    } catch {
-      setQuotaState("error");
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadQuota();
-  }, [loadQuota]);
-
-  useEffect(() => {
-    if (!hasInteractedRef.current) return;
-    conversationEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [messages, isLoading, failedMessage]);
-
-  const sendMessage = async (
-    text: string,
-    appendUserMessage = true,
-    existingUserMessageId?: string,
-  ) => {
-    const clean = text.trim();
-    if (!clean || requestInFlightRef.current || !canSend) return;
-
-    hasInteractedRef.current = true;
-    requestInFlightRef.current = true;
-    setFailedMessage(null);
-    setIsLoading(true);
-
-    const userMessageId = existingUserMessageId ?? createLocalId("user");
-
-    if (appendUserMessage) {
-      setMessages((current) => [...current, { id: userMessageId, role: "user", text: clean }]);
-    }
-
-    try {
-      const result = await generateAdvisorResponseServer({
-        data: {
-          advisor_id: advisor.id,
-          message: clean,
-          conversation_id: conversationId,
-        },
-      });
-      if (!result.ok) {
-        if (QUOTA_EXHAUSTED_CODES.has(result.error_code)) {
-          setMessages((current) => current.filter((message) => message.id !== userMessageId));
-          setFailedMessage(null);
-          setQuotaState("exhausted");
-          return;
-        }
-
-        setFailedMessage({ text: clean, userMessageId });
-        return;
-      }
-
-      const response = result.response;
-      const responseText = response.text?.trim();
-
-      if (!responseText) {
-        throw new Error("Empty advisor response");
-      }
-
-      setMessages((current) => [
-        ...current,
-        { id: response.response_id, role: "advisor", text: responseText },
-      ]);
-      if (response.quota?.remaining === 0 || response.quota?.allowed === false) {
-        setQuotaState("exhausted");
-      }
-      setInput((current) => (current.trim() === clean ? "" : current));
-    } catch {
-      setFailedMessage({ text: clean, userMessageId });
-    } finally {
-      requestInFlightRef.current = false;
-      setIsLoading(false);
-    }
-  };
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    void sendMessage(input);
-  };
+  const canSend =
+    viewState === "ready" &&
+    !isMutating &&
+    (activeConversation === null || quotaState === "available" || quotaState === "unlimited");
 
   return (
-    <div dir="rtl" className="space-y-3 pb-4">
-      <header className="flex items-center gap-3">
+    <div dir="rtl" className="min-w-0 space-y-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+      <header className="flex min-w-0 items-center gap-3">
         <Button asChild variant="ghost" size="icon" aria-label="חזרה ליועצים">
           <Link to="/coach">
             <ArrowRight className="h-5 w-5" />
@@ -189,23 +444,30 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
           <h1 className="truncate text-xl font-extrabold">{advisor.name}</h1>
           <p className="truncate text-xs text-muted-foreground">{advisor.field}</p>
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="min-h-11 shrink-0 gap-1.5"
+          onClick={() => setIsHistoryOpen(true)}
+          aria-label={`פתיחת רשימת השיחות עם ${advisor.name}`}
+        >
+          <History className="h-4 w-4" aria-hidden /> שיחות
+        </Button>
       </header>
 
-      <div>
-        <AdvisorVisual advisor={advisor} variant="hero" />
-      </div>
-
+      <AdvisorVisual advisor={advisor} variant="hero" />
       <div className="flex gap-2 rounded-2xl border border-border/60 bg-muted/25 p-3 text-xs leading-relaxed text-muted-foreground">
         <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
         <p>ההמלצות הן כלליות בלבד ואינן תחליף לייעוץ רפואי או מקצועי.</p>
       </div>
 
-      {quotaState !== "unlimited" && (
+      {activeConversation && quotaState !== "unlimited" && (
         <div
           role="status"
           className={
-            canSend
-              ? "rounded-2xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-medium text-foreground"
+            quotaState === "available"
+              ? "rounded-2xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-medium"
               : isQuotaExhausted
                 ? "rounded-2xl border border-primary/35 bg-primary/10 px-3 py-2.5 shadow-sm"
                 : "rounded-2xl border border-border/60 bg-muted/35 px-3 py-2 text-xs font-medium text-muted-foreground"
@@ -219,31 +481,91 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
                 <CalendarClock className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0 leading-snug">
-                <p className="text-sm font-bold text-foreground">השאלה היומית נוצלה להיום</p>
-                <p className="mt-0.5 text-xs font-medium text-muted-foreground">
-                  שאלה חדשה תחכה לך מחר
-                </p>
+                <p className="text-sm font-bold">השאלה היומית נוצלה להיום</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">שאלה חדשה תחכה לך מחר</p>
               </div>
             </div>
           )}
-          {quotaState === "error" && (
-            <div className="flex items-center justify-between gap-2">
-              <span>לא הצלחנו לבדוק את זמינות השאלה כרגע.</span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="min-h-11 shrink-0 px-2 text-xs"
-                onClick={() => void loadQuota()}
-              >
-                ניסיון נוסף
-              </Button>
-            </div>
-          )}
+          {quotaState === "error" && "לא הצלחנו לבדוק את זמינות השאלה כרגע."}
         </div>
       )}
 
-      {!hasStarted && (
+      <AdvisorContextNotice flags={contextFlags} />
+      {operationError && (
+        <div
+          role="alert"
+          className="rounded-2xl border border-destructive/25 bg-destructive/5 px-3 py-2.5 text-xs"
+        >
+          {operationError}
+        </div>
+      )}
+
+      {viewState === "error" ? (
+        <ChatFailureState onRetry={() => void loadConversationList(activeConversation?.id)} />
+      ) : (
+        <div className="relative min-w-0">
+          <section
+            ref={messageViewportRef}
+            onScroll={(event) => {
+              const viewport = event.currentTarget;
+              nearBottomRef.current = shouldFollowLatestMessage(
+                viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight,
+              );
+              if (nearBottomRef.current) setShowNewMessageChip(false);
+            }}
+            className="max-h-[56dvh] min-h-48 min-w-0 space-y-2 overflow-x-hidden overflow-y-auto overscroll-contain px-0.5 py-1"
+            aria-label={`שיחה עם ${advisor.name}`}
+            aria-live="polite"
+          >
+            {messageCursor && (
+              <div className="text-center">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void loadOlderMessages()}
+                  disabled={isMutating}
+                >
+                  הצגת הודעות קודמות
+                </Button>
+              </div>
+            )}
+            {viewState === "loading" ? (
+              <ConversationSkeleton />
+            ) : (
+              <>
+                {!messages.length && (
+                  <ChatMessageBubble
+                    message={introMessage(advisor)}
+                    advisor={advisor}
+                    userAvatarUrl={resolvedUserAvatarUrl}
+                    userName={userName}
+                  />
+                )}
+                {messages.map((message) => (
+                  <ChatMessageBubble
+                    key={message.id}
+                    message={message}
+                    advisor={advisor}
+                    userAvatarUrl={resolvedUserAvatarUrl}
+                    userName={userName}
+                    onRetry={(messageId, text) => void sendMessage(text, messageId)}
+                  />
+                ))}
+                {isSending && (
+                  <div className="flex max-w-[88%] items-center gap-2 rounded-3xl rounded-tr-md border border-border/60 bg-card/70 px-4 py-3 text-xs text-muted-foreground">
+                    <LoaderCircle className="h-4 w-4 animate-spin text-primary" aria-hidden />{" "}
+                    {advisor.name} מכין תשובה…
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+          {showNewMessageChip && <NewMessageChip onClick={() => scrollToLatest()} />}
+        </div>
+      )}
+
+      {!hasStarted && viewState === "ready" && (
         <section>
           <h2 className="mb-1.5 text-sm font-bold">אפשר להתחיל מכאן</h2>
           <div className="grid grid-cols-2 gap-1.5">
@@ -252,8 +574,8 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
                 key={action}
                 type="button"
                 onClick={() => void sendMessage(action)}
-                disabled={isLoading || !canSend}
-                className="min-h-11 rounded-2xl border border-border/60 bg-card/60 px-3 py-2 text-right text-xs font-medium leading-snug transition active:scale-[0.98] active:border-primary/40 disabled:pointer-events-none disabled:opacity-50"
+                disabled={isSending || !canSend}
+                className="min-h-11 min-w-0 rounded-2xl border border-border/60 bg-card/60 px-3 py-2 text-right text-xs font-medium leading-snug transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
               >
                 {action}
               </button>
@@ -262,121 +584,74 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
         </section>
       )}
 
-      <section className="space-y-2" aria-label={`שיחה עם ${advisor.name}`} aria-live="polite">
-        {messages.map((message) => {
-          const isAdvisor = message.role === "advisor";
-          return (
-            <div
-              key={message.id}
-              dir={isAdvisor ? "rtl" : "ltr"}
-              className={
-                isAdvisor
-                  ? "flex w-full max-w-[96%] items-end gap-2 overflow-visible"
-                  : "mr-auto flex w-full max-w-[94%] items-end gap-2 overflow-visible"
-              }
-            >
-              <Avatar className="z-10 h-9 w-9 shrink-0 self-end border border-primary/20 bg-card shadow-sm ring-2 ring-background">
-                {isAdvisor ? (
-                  <>
-                    <AvatarImage
-                      src={advisor.media.cover}
-                      alt={advisor.name}
-                      className="object-cover"
-                      style={{ objectPosition: advisor.media.coverPosition }}
-                    />
-                    <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">
-                      {advisor.initials}
-                    </AvatarFallback>
-                  </>
-                ) : (
-                  <>
-                    {resolvedUserAvatarUrl && (
-                      <AvatarImage
-                        src={resolvedUserAvatarUrl}
-                        alt="תמונת הפרופיל שלך"
-                        className="object-cover"
-                      />
-                    )}
-                    <AvatarFallback className="bg-muted text-xs font-bold text-muted-foreground">
-                      {userInitial || <UserRound className="h-4 w-4" aria-hidden />}
-                    </AvatarFallback>
-                  </>
-                )}
-              </Avatar>
+      <ChatComposer
+        onSend={(message) => sendMessage(message)}
+        disabled={!canSend}
+        isLoading={isSending}
+        isQuotaExhausted={isQuotaExhausted}
+        quotaState={activeConversation ? quotaState : "available"}
+        placeholder={`כתבו ל${advisor.name}…`}
+      />
 
-              <div
-                className={
-                  isAdvisor
-                    ? "min-w-0 flex-1 rounded-3xl rounded-tr-md border border-border/60 bg-card/70 px-4 py-3"
-                    : "min-w-0 flex-1 whitespace-pre-wrap break-words rounded-3xl rounded-tl-md border border-primary/25 bg-primary/10 px-4 py-3 text-right text-sm leading-6"
+      <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+        <SheetContent side="right" className="w-[min(88vw,24rem)] overflow-y-auto" dir="rtl">
+          <SheetHeader className="text-right">
+            <SheetTitle>השיחות עם {advisor.name}</SheetTitle>
+            <SheetDescription>אפשר לחזור לשיחה, לשנות לה שם או להסיר אותה.</SheetDescription>
+          </SheetHeader>
+          <Button
+            type="button"
+            className="mt-5 min-h-11 w-full gap-2"
+            onClick={() => void createConversation()}
+            disabled={isMutating}
+          >
+            <Plus className="h-4 w-4" aria-hidden /> שיחה חדשה
+          </Button>
+          <div className="mt-4">
+            {viewState === "loading" ? (
+              <ConversationSkeleton />
+            ) : conversations.length ? (
+              <ConversationList
+                conversations={conversations}
+                onSelect={(id) => void switchConversation(id)}
+                onRename={(id) =>
+                  setRenameTarget(conversations.find((item) => item.id === id) ?? null)
                 }
-                dir="rtl"
-              >
-                {isAdvisor ? <AdvisorMessageContent text={message.text} /> : message.text}
-              </div>
-            </div>
-          );
-        })}
-
-        {isLoading && (
-          <div className="flex max-w-[88%] items-center gap-2 rounded-3xl rounded-tr-md border border-border/60 bg-card/70 px-4 py-3 text-xs text-muted-foreground">
-            <LoaderCircle className="h-4 w-4 animate-spin text-primary" aria-hidden />
-            {advisor.name} מכין תשובה…
+                onDelete={(id) =>
+                  setDeleteTarget(conversations.find((item) => item.id === id) ?? null)
+                }
+              />
+            ) : (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                אין שיחות שמורות עדיין.
+              </p>
+            )}
           </div>
-        )}
-
-        {failedMessage && !isLoading && (
-          <div className="max-w-[88%] rounded-2xl border border-destructive/25 bg-destructive/5 px-3 py-2.5 text-xs">
-            <p>לא הצלחנו לקבל תשובה כרגע. אפשר לנסות שוב.</p>
+          {conversationCursor && (
             <Button
               type="button"
               variant="ghost"
-              size="sm"
-              className="mt-1.5 min-h-11 px-2 text-xs"
-              onClick={() =>
-                void sendMessage(failedMessage.text, false, failedMessage.userMessageId)
-              }
+              className="mt-3 w-full"
+              onClick={() => void loadMoreConversations()}
+              disabled={isMutating}
             >
-              <RotateCcw className="h-3.5 w-3.5" aria-hidden />
-              ניסיון נוסף
+              טעינת שיחות נוספות
             </Button>
-          </div>
-        )}
+          )}
+        </SheetContent>
+      </Sheet>
 
-        <div ref={conversationEndRef} />
-      </section>
-
-      <form
-        onSubmit={submit}
-        className="sticky bottom-0 flex gap-2 rounded-2xl border border-border/60 bg-background/90 p-2 backdrop-blur-xl"
-      >
-        <Input
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
-          placeholder={
-            quotaState === "loading"
-              ? "בודקים זמינות…"
-              : isQuotaExhausted
-                ? "השאלה היומית נוצלה להיום"
-                : quotaState === "error"
-                  ? "לא ניתן לשלוח עד לבדיקת הזמינות"
-                  : `כתבו ל${advisor.name}…`
-          }
-          className="h-12"
-          autoComplete="off"
-          aria-label={`הודעה ל${advisor.name}`}
-          disabled={isLoading || !canSend}
-        />
-        <Button
-          type="submit"
-          size="icon"
-          className="h-12 w-12 shrink-0"
-          disabled={isLoading || !canSend || !input.trim()}
-        >
-          <Send className="h-4 w-4 rtl:-scale-x-100" aria-hidden />
-          <span className="sr-only">שליחה</span>
-        </Button>
-      </form>
+      <RenameConversationDialog
+        isOpen={Boolean(renameTarget)}
+        onOpenChange={(open) => !open && setRenameTarget(null)}
+        currentTitle={renameTarget?.title ?? "שיחה ללא שם"}
+        onRename={renameConversation}
+      />
+      <DeleteConversationDialog
+        isOpen={Boolean(deleteTarget)}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onConfirm={deleteConversation}
+      />
     </div>
   );
 }

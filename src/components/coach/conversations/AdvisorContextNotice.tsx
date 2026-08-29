@@ -18,12 +18,14 @@ const contextTranslations: Record<string, string> = {
   limitations: "מגבלות",
 };
 
-export function AdvisorContextNotice({ flags }: AdvisorContextNoticeProps) {
-  // Extract keys of flags that are not missing/stale/conflicting directly,
-  // but translate them to natural Hebrew indicating they might need update.
-  const hasIssues = flags.length > 0;
+const stateTranslations = {
+  missing: "חסר",
+  stale: "דורש עדכון",
+  conflicting: "לא תואם למידע אחר",
+} as const;
 
-  if (!hasIssues) return null;
+export function AdvisorContextNotice({ flags }: AdvisorContextNoticeProps) {
+  if (!flags.length) return null;
 
   return (
     <div
@@ -32,10 +34,14 @@ export function AdvisorContextNotice({ flags }: AdvisorContextNoticeProps) {
     >
       <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
       <div>
-        <p className="font-bold">ההמלצות הן כלליות בלבד ואינן תחליף לייעוץ רפואי או מקצועי.</p>
+        <p className="font-bold">כדאי לשים לב למידע שעליו מבוססת התשובה</p>
         <p className="mt-1">
-          שימו לב, ייתכן שחסר מידע עדכני לגבי:{" "}
-          {flags.map((f) => contextTranslations[f.key] || f.key).join(", ")}.
+          {flags
+            .map(
+              (flag) =>
+                `${contextTranslations[flag.key] || flag.key}: ${stateTranslations[flag.state]}`,
+            )
+            .join(" · ")}
         </p>
       </div>
     </div>

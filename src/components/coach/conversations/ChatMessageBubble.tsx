@@ -26,7 +26,7 @@ export function ChatMessageBubble({
   const isFailed =
     message.status === "provider_failed" ||
     message.status === "finalize_failed" ||
-    message.status === "quota_rejected";
+    message.status === "interrupted";
 
   return (
     <div

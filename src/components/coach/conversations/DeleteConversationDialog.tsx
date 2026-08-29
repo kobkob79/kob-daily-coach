@@ -38,7 +38,7 @@ export function DeleteConversationDialog({
         <DialogHeader>
           <DialogTitle>מחיקת שיחה</DialogTitle>
           <DialogDescription>
-            האם אתם בטוחים שברצונכם למחוק שיחה זו לצמיתות? לא ניתן יהיה לשחזר את ההיסטוריה.
+            השיחה תוסר מרשימת השיחות ולא תהיה זמינה עוד באפליקציה.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2">

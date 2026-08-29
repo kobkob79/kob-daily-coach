@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 interface ChatComposerProps {
-  onSend: (message: string) => void;
+  onSend: (message: string) => boolean | Promise<boolean>;
   disabled?: boolean;
   isLoading?: boolean;
   placeholder?: string;
@@ -22,12 +22,12 @@ export function ChatComposer({
 }: ChatComposerProps) {
   const [input, setInput] = useState("");
 
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
     const clean = input.trim();
     if (!clean || disabled || isLoading) return;
-    onSend(clean);
-    setInput("");
+    const accepted = await onSend(clean);
+    if (accepted) setInput("");
   };
 
   const currentPlaceholder =
@@ -43,8 +43,8 @@ export function ChatComposer({
 
   return (
     <form
-      onSubmit={submit}
-      className="sticky bottom-0 flex gap-2 rounded-2xl border border-border/60 bg-background/90 p-2 backdrop-blur-xl"
+      onSubmit={(event) => void submit(event)}
+      className="sticky bottom-[env(safe-area-inset-bottom)] z-20 flex gap-2 rounded-2xl border border-border/60 bg-background/95 p-2 shadow-sm backdrop-blur-xl"
       dir="rtl"
     >
       <Input
@@ -53,6 +53,7 @@ export function ChatComposer({
         placeholder={currentPlaceholder}
         className="h-12"
         autoComplete="off"
+        aria-label="הודעה ליועץ"
         disabled={isInputDisabled}
       />
       <Button
