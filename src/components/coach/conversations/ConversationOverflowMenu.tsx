@@ -24,7 +24,7 @@ export function ConversationOverflowMenu({
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 focus:ring-offset-background"
+          className="h-11 w-11 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 focus:ring-offset-background"
           aria-label={`אפשרויות עבור ${title}`}
         >
           <MoreVertical className="h-4 w-4" aria-hidden />

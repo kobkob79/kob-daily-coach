@@ -39,7 +39,7 @@ export function AdvisorContextNotice({ flags }: AdvisorContextNoticeProps) {
           {flags
             .map(
               (flag) =>
-                `${contextTranslations[flag.key] || flag.key}: ${stateTranslations[flag.state]}`,
+                `${contextTranslations[flag.key] ?? "מידע נוסף"}: ${stateTranslations[flag.state]}`,
             )
             .join(" · ")}
         </p>
