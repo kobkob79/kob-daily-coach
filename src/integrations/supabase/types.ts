@@ -59,6 +59,45 @@ export type Database = {
         }
         Relationships: []
       }
+      advisor_conversations: {
+        Row: {
+          advisor_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          is_current: boolean
+          last_message_at: string | null
+          status: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          advisor_id: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          is_current?: boolean
+          last_message_at?: string | null
+          status?: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          advisor_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          is_current?: boolean
+          last_message_at?: string | null
+          status?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       advisor_daily_usage: {
         Row: {
           created_at: string
@@ -88,6 +127,96 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      advisor_messages: {
+        Row: {
+          client_request_id: string | null
+          completed_at: string | null
+          content: string
+          conversation_id: string
+          created_at: string
+          failed_at: string | null
+          id: string
+          input_tokens: number | null
+          model: string | null
+          ordinal: number
+          output_tokens: number | null
+          provider: string | null
+          provider_response_id: string | null
+          reasoning_tokens: number | null
+          retry_of_message_id: string | null
+          role: string
+          safe_error_category: string | null
+          status: string
+          total_tokens: number | null
+          turn_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_request_id?: string | null
+          completed_at?: string | null
+          content: string
+          conversation_id: string
+          created_at?: string
+          failed_at?: string | null
+          id?: string
+          input_tokens?: number | null
+          model?: string | null
+          ordinal?: never
+          output_tokens?: number | null
+          provider?: string | null
+          provider_response_id?: string | null
+          reasoning_tokens?: number | null
+          retry_of_message_id?: string | null
+          role: string
+          safe_error_category?: string | null
+          status: string
+          total_tokens?: number | null
+          turn_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_request_id?: string | null
+          completed_at?: string | null
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          failed_at?: string | null
+          id?: string
+          input_tokens?: number | null
+          model?: string | null
+          ordinal?: never
+          output_tokens?: number | null
+          provider?: string | null
+          provider_response_id?: string | null
+          reasoning_tokens?: number | null
+          retry_of_message_id?: string | null
+          role?: string
+          safe_error_category?: string | null
+          status?: string
+          total_tokens?: number | null
+          turn_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "advisor_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "advisor_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "advisor_messages_retry_of_message_id_fkey"
+            columns: ["retry_of_message_id"]
+            isOneToOne: false
+            referencedRelation: "advisor_messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_memory: {
         Row: {
@@ -1478,6 +1607,88 @@ export type Database = {
           resets_at: string
           used: number
         }[]
+      }
+      complete_advisor_turn: {
+        Args: {
+          p_assistant_message_id: string
+          p_claim_token: string
+          p_content: string
+          p_input_tokens?: number
+          p_model: string
+          p_output_tokens?: number
+          p_provider: string
+          p_provider_response_id: string
+          p_reasoning_tokens?: number
+          p_total_tokens?: number
+          p_user_id: string
+          p_user_message_id: string
+        }
+        Returns: {
+          client_request_id: string | null
+          completed_at: string | null
+          content: string
+          conversation_id: string
+          created_at: string
+          failed_at: string | null
+          id: string
+          input_tokens: number | null
+          model: string | null
+          ordinal: number
+          output_tokens: number | null
+          provider: string | null
+          provider_response_id: string | null
+          reasoning_tokens: number | null
+          retry_of_message_id: string | null
+          role: string
+          safe_error_category: string | null
+          status: string
+          total_tokens: number | null
+          turn_id: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "advisor_messages"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_advisor_conversation: {
+        Args: {
+          p_advisor_id: string
+          p_id: string
+          p_title: string
+          p_user_id: string
+        }
+        Returns: {
+          advisor_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          is_current: boolean
+          last_message_at: string | null
+          status: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "advisor_conversations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      fail_advisor_turn: {
+        Args: {
+          p_claim_token: string
+          p_safe_error_category: string
+          p_status: string
+          p_user_id: string
+          p_user_message_id: string
+        }
+        Returns: undefined
       }
       finalize_advisor_daily_quota: {
         Args: { p_claim_token: string; p_user_id: string }
