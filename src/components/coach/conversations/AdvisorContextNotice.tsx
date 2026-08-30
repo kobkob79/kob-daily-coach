@@ -16,12 +16,18 @@ const contextTranslations: Record<string, string> = {
   sleep: "שינה",
   recovery: "התאוששות",
   limitations: "מגבלות",
+  medical: "מידע רפואי מאושר",
+  progress: "מגמת התקדמות",
+  contextSharing: "שיתוף הקשר אישי",
+  contextBudget: "היקף ההקשר",
 };
 
 const stateTranslations = {
   missing: "חסר",
   stale: "דורש עדכון",
   conflicting: "לא תואם למידע אחר",
+  disabled: "כבוי",
+  limited: "צומצם למידע החשוב ביותר",
 } as const;
 
 export function AdvisorContextNotice({ flags }: AdvisorContextNoticeProps) {

@@ -4,6 +4,7 @@ export { ConversationSkeleton } from "./ConversationSkeleton";
 export { ChatMessageBubble } from "./ChatMessageBubble";
 export { ChatComposer } from "./ChatComposer";
 export { AdvisorContextNotice } from "./AdvisorContextNotice";
+export { AdvisorContextConsentCard } from "./AdvisorContextConsentCard";
 export { ConversationOverflowMenu } from "./ConversationOverflowMenu";
 export { RenameConversationDialog } from "./RenameConversationDialog";
 export { DeleteConversationDialog } from "./DeleteConversationDialog";
