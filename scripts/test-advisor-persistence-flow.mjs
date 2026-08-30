@@ -72,7 +72,14 @@ function fixture({
   };
   const requests = new Map();
   const assistants = new Map();
-  const events = { claims: 0, providerCalls: 0, failures: [], completions: 0 };
+  const events = {
+    claims: 0,
+    providerCalls: 0,
+    failures: [],
+    completions: 0,
+    contextConsentReads: 0,
+  };
+  let contextConsent = true;
   let sequence = 0;
   const store = {
     async findOwned(userId, conversationId) {
@@ -180,6 +187,11 @@ function fixture({
     quotaStore,
     supabase: {},
     quotaExempt: admin,
+    async hasContextConsent(userId) {
+      assert.equal(userId, "user-1");
+      events.contextConsentReads += 1;
+      return contextConsent;
+    },
     async buildContext(userId, advisorId) {
       assert.equal(userId, "user-1");
       assert.equal(advisorId, "daniel");
@@ -213,7 +225,14 @@ function fixture({
       };
     },
   };
-  return { dependencies, events };
+  return {
+    dependencies,
+    events,
+    requestCount: () => requests.size,
+    setContextConsent: (enabled) => {
+      contextConsent = enabled;
+    },
+  };
 }
 
 const input = {
@@ -234,6 +253,26 @@ assert.equal(duplicate.status, "success");
 assert.equal(success.events.claims, 1);
 assert.equal(success.events.providerCalls, 1);
 assert.equal(success.events.completions, 1);
+assert.equal(success.events.contextConsentReads, 1);
+assert.deepEqual(duplicate.data.contextFlags, []);
+assert.equal(duplicate.data.assistantMessage.content, "answer");
+assert.equal(success.requestCount(), 1);
+const historicalAssistant = structuredClone(duplicate.data.assistantMessage);
+
+success.setContextConsent(false);
+const revokedReplay = await sendPersistentAdvisorMessage(
+  "user-1",
+  "daniel",
+  input,
+  success.dependencies,
+);
+assert.equal(revokedReplay.status, "success");
+assert.deepEqual(revokedReplay.data.contextFlags, [{ key: "contextSharing", state: "disabled" }]);
+assert.deepEqual(revokedReplay.data.assistantMessage, historicalAssistant);
+assert.equal(success.events.contextConsentReads, 2);
+assert.equal(success.events.providerCalls, 1);
+assert.equal(success.events.completions, 1);
+assert.equal(success.requestCount(), 1);
 
 const concurrent = fixture();
 const concurrentResults = await Promise.all([

@@ -60,6 +60,17 @@ export interface AdvisorConversationFlowDependencies {
   quotaExempt: boolean;
   generateResponse?: AdvisorResponseGenerator;
   buildContext?: typeof buildAdvisorContextForUser;
+  hasContextConsent?: (userId: string) => Promise<boolean>;
+}
+
+async function currentContextSharingFlags(
+  userId: string,
+  dependencies: AdvisorConversationFlowDependencies,
+): Promise<AdvisorContextFlag[]> {
+  const hasConsent =
+    dependencies.hasContextConsent ??
+    createSupabaseAdvisorContextDataSource(dependencies.supabase).hasConsent;
+  return (await hasConsent(userId)) ? [] : [{ key: "contextSharing", state: "disabled" }];
 }
 
 function dailyQuota(
@@ -139,6 +150,12 @@ export async function sendPersistentAdvisorMessage(
         input.conversationId,
         begun.message.turn_id,
       );
+      let contextFlags: AdvisorContextFlag[];
+      try {
+        contextFlags = await currentContextSharingFlags(userId, dependencies);
+      } catch {
+        return { status: "error", error: { code: "PERSISTENCE_UNAVAILABLE", retryable: true } };
+      }
       return {
         status: "success",
         data: {
@@ -156,7 +173,7 @@ export async function sendPersistentAdvisorMessage(
           userMessage,
           assistantMessage: assistant ? messageDto(assistant) : null,
           quota: await currentQuota(userId, dependencies),
-          contextFlags: [],
+          contextFlags,
         },
       };
     }
