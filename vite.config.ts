@@ -6,6 +6,20 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
+import { resolve } from "node:path";
+import type { Plugin } from "vite";
+
+function normalizeWindowsRootForLovableMcp(): Plugin {
+  return {
+    name: "normalize-windows-root-for-lovable-mcp",
+    enforce: "pre",
+    configResolved(config) {
+      if (process.platform === "win32") {
+        (config as { root: string }).root = resolve(config.root);
+      }
+    },
+  };
+}
 
 export default defineConfig({
   tanstackStart: {
@@ -14,6 +28,6 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
-    plugins: [mcpPlugin()],
+    plugins: [normalizeWindowsRootForLovableMcp(), mcpPlugin()],
   },
 });
