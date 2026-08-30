@@ -46,6 +46,7 @@ import type { CoachAdvisor } from "@/lib/coach-advisors";
 import { fetchProfile, PROFILE_BUCKET } from "@/lib/profile";
 import {
   AdvisorContextNotice,
+  AdvisorContextConsentCard,
   ChatComposer,
   ChatFailureState,
   ChatMessageBubble,
@@ -461,6 +462,13 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
         <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
         <p>ההמלצות הן כלליות בלבד ואינן תחליף לייעוץ רפואי או מקצועי.</p>
       </div>
+
+      <AdvisorContextConsentCard
+        onChanged={async (enabled) => {
+          if (activeConversation) await applyLoadedConversation(activeConversation);
+          else setContextFlags(enabled ? [] : [{ key: "contextSharing", state: "disabled" }]);
+        }}
+      />
 
       {activeConversation && quotaState !== "unlimited" && (
         <div
