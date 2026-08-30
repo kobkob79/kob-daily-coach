@@ -12,7 +12,40 @@ export type AdvisorContextKey =
   | "workouts"
   | "sleep"
   | "recovery"
-  | "limitations";
+  | "limitations"
+  | "medical"
+  | "progress";
+
+export interface SafeMedicalIssue {
+  conditionLabel: string;
+  categoryLabel: string | null;
+  status: "active" | "monitoring" | "resolved";
+  severityBand: "low" | "medium" | "high";
+  activityLimitation: string | null;
+  sensitivityCategory: string | null;
+  recoveryStatus: string | null;
+  safetyGuidance: string | null;
+  effectiveDate: string | null;
+  freshness: "current" | "stale";
+}
+
+export interface SafeProgressSummary {
+  weightTrend: {
+    direction: "up" | "down" | "stable" | "insufficient_data";
+    changeKg: number | null;
+    fromDate: string | null;
+    toDate: string | null;
+  };
+  bodyMeasurementTrends: Array<{
+    area: string;
+    direction: "up" | "down" | "stable" | "insufficient_data";
+    changeCm: number | null;
+    fromDate: string | null;
+    toDate: string | null;
+  }>;
+  observedAt: string | null;
+  freshness: "current" | "stale" | "missing";
+}
 
 export interface ContextFact<T> {
   state: ContextState;
@@ -35,6 +68,8 @@ export interface AdvisorContextInput {
   goals?: string[];
   bioDay?: BioDayRecord | null;
   shift?: { kind: string; source: string; observedAt?: string | null } | null;
+  medical?: SafeMedicalIssue[];
+  progress?: SafeProgressSummary | null;
   timeline: UnifiedTimelineItem[];
   conflicts?: AdvisorContextKey[];
 }
@@ -214,15 +249,35 @@ export function buildAdvisorContextSnapshot(input: AdvisorContextInput): Advisor
         input.now,
         conflicting("limitations"),
       ),
+      medical: fact(
+        input.medical?.length ? input.medical : null,
+        input.medical
+          ?.map((issue) => issue.effectiveDate)
+          .filter(Boolean)
+          .sort()
+          .at(-1) ?? null,
+        ["medical_issues"],
+        "reported",
+        input.now,
+        conflicting("medical"),
+      ),
+      progress: fact(
+        input.progress,
+        input.progress?.observedAt ?? null,
+        ["weights_history", "body_measurements"],
+        "measured",
+        input.now,
+        conflicting("progress"),
+      ),
     },
   };
 }
 
 const SELECTOR_KEYS = {
   adam: ["profile", "bioDay", "shift", "sleep", "recovery"],
-  daniel: ["profile", "bioDay", "workouts", "limitations"],
-  maya: ["profile", "bioDay", "recovery", "limitations"],
-  shiran: ["profile", "bioDay", "goals", "nutrition", "hydration"],
+  daniel: ["profile", "bioDay", "workouts", "limitations", "medical"],
+  maya: ["profile", "bioDay", "recovery", "limitations", "medical", "progress"],
+  shiran: ["profile", "bioDay", "goals", "nutrition", "hydration", "progress"],
 } as const satisfies Record<string, readonly AdvisorContextKey[]>;
 
 export type ContextAdvisorId = keyof typeof SELECTOR_KEYS;

@@ -5,6 +5,8 @@ import {
   type AdvisorContextInput,
   type AdvisorContextKey,
   type ContextAdvisorId,
+  type SafeMedicalIssue,
+  type SafeProgressSummary,
 } from "../../advisor-context-snapshot.ts";
 import type { AdvisorContextFlag } from "../../advisor-conversations.ts";
 import { buildUnifiedTimeline, type UnifiedTimelineInput } from "../../unified-timeline.ts";
@@ -15,11 +17,14 @@ export interface AdvisorContextSourceData {
   goals: string[];
   bioDay: AdvisorContextInput["bioDay"];
   shift: AdvisorContextInput["shift"];
+  medical: SafeMedicalIssue[];
+  progress: SafeProgressSummary | null;
   timelineInput: UnifiedTimelineInput;
   conflicts: AdvisorContextKey[];
 }
 
 export interface AdvisorContextDataSource {
+  hasConsent(userId: string): Promise<boolean>;
   load(userId: string, now: Date): Promise<AdvisorContextSourceData>;
 }
 
@@ -58,6 +63,12 @@ export async function buildAdvisorContextForUser(
   now = new Date(),
   logMetadata: AdvisorContextMetadataLogger = logAdvisorContextMetadata,
 ): Promise<AdvisorContextBridgeResult> {
+  if (!(await source.hasConsent(userId))) {
+    return {
+      context: { userId, generatedAt: now.toISOString(), facts: {} },
+      contextFlags: [{ key: "contextSharing", state: "disabled" }],
+    };
+  }
   const data = await source.load(userId, now);
   const timeline = buildUnifiedTimeline(data.timelineInput);
   const snapshot = buildAdvisorContextSnapshot({
@@ -67,6 +78,8 @@ export async function buildAdvisorContextForUser(
     goals: data.goals,
     bioDay: data.bioDay,
     shift: data.shift,
+    medical: data.medical,
+    progress: data.progress,
     timeline,
     conflicts: data.conflicts,
   });
@@ -82,6 +95,27 @@ export async function buildAdvisorContextForUser(
   return { context, contextFlags: safeFlags(context) };
 }
 
+function trend(values: Array<{ value: number; date: string }>) {
+  if (values.length < 2) {
+    return {
+      direction: "insufficient_data" as const,
+      change: null,
+      fromDate: values.at(-1)?.date ?? null,
+      toDate: values[0]?.date ?? null,
+    };
+  }
+  const latest = values[0]!;
+  const earliest = values.at(-1)!;
+  const change = Math.round((latest.value - earliest.value) * 100) / 100;
+  return {
+    direction:
+      change > 0.1 ? ("up" as const) : change < -0.1 ? ("down" as const) : ("stable" as const),
+    change,
+    fromDate: earliest.date,
+    toDate: latest.date,
+  };
+}
+
 function isoDate(value: string, fallback: string): string {
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? fallback : parsed.toISOString();
@@ -91,6 +125,17 @@ export function createSupabaseAdvisorContextDataSource(
   supabase: SupabaseClient,
 ): AdvisorContextDataSource {
   return {
+    async hasConsent(userId) {
+      const result = await supabase
+        .from("advisor_context_preferences" as never)
+        .select("context_sharing_enabled")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (result.error) throw new Error("ADVISOR_CONTEXT_CONSENT_UNAVAILABLE");
+      return Boolean(
+        (result.data as { context_sharing_enabled?: boolean } | null)?.context_sharing_enabled,
+      );
+    },
     async load(userId, now) {
       const since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const sinceIso = since.toISOString();
@@ -108,6 +153,9 @@ export function createSupabaseAdvisorContextDataSource(
         sessionsResult,
         workoutsResult,
         healthResult,
+        medicalResult,
+        weightsResult,
+        measurementsResult,
       ] = await Promise.all([
         supabase.from("profiles").select("display_name").eq("id", userId).maybeSingle(),
         supabase
@@ -167,6 +215,26 @@ export function createSupabaseAdvisorContextDataSource(
           .select("id,user_id,date,pain_level,created_at")
           .eq("user_id", userId)
           .gte("date", sinceDate),
+        supabase
+          .from("medical_issues")
+          .select("title,status,importance,started_on,source_date,updated_at,verification_status")
+          .eq("user_id", userId)
+          .in("status", ["active", "monitoring"])
+          .in("verification_status", ["user_confirmed", "document_verified", "clinician_verified"])
+          .order("updated_at", { ascending: false })
+          .limit(10),
+        supabase
+          .from("weights_history")
+          .select("measured_on,weight_kg")
+          .eq("user_id", userId)
+          .order("measured_on", { ascending: false })
+          .limit(12),
+        supabase
+          .from("body_measurements")
+          .select("area,value_cm,measured_on")
+          .eq("user_id", userId)
+          .order("measured_on", { ascending: false })
+          .limit(40),
       ]);
       const results = [
         profileResult,
@@ -180,10 +248,70 @@ export function createSupabaseAdvisorContextDataSource(
         sessionsResult,
         workoutsResult,
         healthResult,
+        medicalResult,
+        weightsResult,
+        measurementsResult,
       ];
       if (results.some((result) => result.error)) throw new Error("ADVISOR_CONTEXT_UNAVAILABLE");
 
       const bio = bioDayResult.data;
+      const freshnessCutoff = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+      const medical: SafeMedicalIssue[] = (medicalResult.data ?? []).map((row) => {
+        const effectiveDate = row.source_date ?? row.started_on ?? row.updated_at;
+        return {
+          conditionLabel: row.title,
+          categoryLabel: null,
+          status: row.status as SafeMedicalIssue["status"],
+          severityBand: row.importance as SafeMedicalIssue["severityBand"],
+          activityLimitation: null,
+          sensitivityCategory: null,
+          recoveryStatus: null,
+          safetyGuidance: null,
+          effectiveDate,
+          freshness:
+            effectiveDate && Date.parse(effectiveDate) >= freshnessCutoff.getTime()
+              ? "current"
+              : "stale",
+        };
+      });
+      const weightRows = (weightsResult.data ?? []).map((row) => ({
+        value: Number(row.weight_kg),
+        date: row.measured_on,
+      }));
+      const weight = trend(weightRows);
+      const byArea = new Map<string, Array<{ value: number; date: string }>>();
+      for (const row of measurementsResult.data ?? []) {
+        const values = byArea.get(row.area) ?? [];
+        values.push({ value: Number(row.value_cm), date: row.measured_on });
+        byArea.set(row.area, values);
+      }
+      const observedAt =
+        [weightRows[0]?.date, ...(measurementsResult.data ?? []).map((row) => row.measured_on)]
+          .filter((value): value is string => Boolean(value))
+          .sort()
+          .at(-1) ?? null;
+      const progress: SafeProgressSummary | null = observedAt
+        ? {
+            weightTrend: {
+              direction: weight.direction,
+              changeKg: weight.change,
+              fromDate: weight.fromDate,
+              toDate: weight.toDate,
+            },
+            bodyMeasurementTrends: [...byArea.entries()].map(([area, values]) => {
+              const areaTrend = trend(values);
+              return {
+                area,
+                direction: areaTrend.direction,
+                changeCm: areaTrend.change,
+                fromDate: areaTrend.fromDate,
+                toDate: areaTrend.toDate,
+              };
+            }),
+            observedAt,
+            freshness: Date.parse(observedAt) >= freshnessCutoff.getTime() ? "current" : "stale",
+          }
+        : null;
       const assignments = new Map(
         (assignmentsResult.data ?? []).map((row) => [
           `${row.source_table}:${row.source_record_id}`,
@@ -222,6 +350,8 @@ export function createSupabaseAdvisorContextDataSource(
               observedAt: shiftResult.data.updated_at,
             }
           : null,
+        medical,
+        progress,
         timelineInput: {
           timezone: bio?.timezone ?? "UTC",
           bioDayAssignments: assignments,

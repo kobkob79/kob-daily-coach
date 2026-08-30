@@ -83,12 +83,15 @@ assert.deepEqual(Object.keys(selectAdvisorContext(snapshot, "daniel").facts), [
   "bioDay",
   "workouts",
   "limitations",
+  "medical",
 ]);
 assert.deepEqual(Object.keys(selectAdvisorContext(snapshot, "maya").facts), [
   "profile",
   "bioDay",
   "recovery",
   "limitations",
+  "medical",
+  "progress",
 ]);
 assert.deepEqual(Object.keys(selectAdvisorContext(snapshot, "shiran").facts), [
   "profile",
@@ -96,6 +99,7 @@ assert.deepEqual(Object.keys(selectAdvisorContext(snapshot, "shiran").facts), [
   "goals",
   "nutrition",
   "hydration",
+  "progress",
 ]);
 assert.ok(!JSON.stringify(snapshot).includes("secret detail"));
 const debug = toSafeAdvisorContextDebug(snapshot);
