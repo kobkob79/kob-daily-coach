@@ -4,14 +4,14 @@
   "readOnly": true,
   "summary": {
     "totalExercises": 150,
-    "completedExercises": 10,
+    "completedExercises": 11,
     "partialExercises": 0,
-    "notStartedExercises": 140,
-    "coversComplete": 10,
-    "infographicsComplete": 10,
-    "thumbnailsComplete": 10,
+    "notStartedExercises": 139,
+    "coversComplete": 11,
+    "infographicsComplete": 11,
+    "thumbnailsComplete": 11,
     "demosComplete": 0,
-    "overallProgressPercent": 6.666666666666667
+    "overallProgressPercent": 7.333333333333333
   },
   "nextRecommendedExercise": {
     "exerciseId": "677e458d-0206-48f1-a340-d1a75fe972e6",
@@ -1804,19 +1804,17 @@
       "canonicalHebrewName": "דדליפט רומני עם מוט",
       "englishName": "Barbell Romanian Deadlift",
       "muscleGroup": "legs_glutes",
-      "status": "NOT_STARTED",
+      "status": "COMPLETE",
       "media": {
-        "hasCover": false,
-        "hasInfographic": false,
-        "hasThumbnail": false,
+        "hasCover": true,
+        "hasInfographic": true,
+        "hasThumbnail": true,
         "hasDemo": false
       },
       "missingAssets": [
-        "cover",
-        "infographic",
-        "thumbnail",
         "demo"
-      ]
+      ],
+      "lastUpdated": "2026-08-30T12:43:13.191Z"
     },
     {
       "exerciseId": "b273f68f-3b11-4507-a1f3-ecb1abaeae2e",
