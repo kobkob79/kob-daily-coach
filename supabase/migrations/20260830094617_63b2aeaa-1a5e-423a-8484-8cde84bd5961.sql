@@ -1,0 +1,2 @@
+revoke execute on function public.create_advisor_conversation(uuid, uuid, text, text) from public, anon, authenticated;
+grant execute on function public.create_advisor_conversation(uuid, uuid, text, text) to service_role;
