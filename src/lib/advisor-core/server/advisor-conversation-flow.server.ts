@@ -17,6 +17,7 @@ import {
 } from "./advisor-context-bridge.server.ts";
 import type { AdvisorConversationStore } from "./conversation-store.server";
 import { logAdvisorServerEvent } from "./observability.server.ts";
+import { budgetAdvisorRequestContext, withBudgetFlag } from "./advisor-context-budget.server.ts";
 
 type AdvisorResponseGenerator = (
   input: unknown,
@@ -201,18 +202,22 @@ export async function sendPersistentAdvisorMessage(
       advisorId,
       createSupabaseAdvisorContextDataSource(dependencies.supabase),
     );
-    contextFlags = contextResult.contextFlags;
+    const budgeted = budgetAdvisorRequestContext(
+      {
+        generatedAt: contextResult.context.generatedAt,
+        facts: contextResult.context.facts,
+      },
+      history,
+    );
+    contextFlags = withBudgetFlag(contextResult.contextFlags, budgeted.truncated);
     const generateResponse =
       dependencies.generateResponse ??
       (await import("./generate-advisor-response.server.ts")).generateAdvisorResponse;
     const response = await generateResponse(
       { advisor_id: advisorId, conversation_id: input.conversationId, message: input.message },
       {
-        history,
-        context: {
-          generatedAt: contextResult.context.generatedAt,
-          facts: contextResult.context.facts,
-        },
+        history: budgeted.history,
+        context: budgeted.context,
       },
     );
     const metadata = response.provider_metadata;

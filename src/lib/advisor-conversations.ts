@@ -15,7 +15,7 @@ export const ADVISOR_MESSAGE_STATUSES = [
 export type AdvisorMessageStatus = (typeof ADVISOR_MESSAGE_STATUSES)[number];
 
 export type AdvisorMessageRole = "user" | "assistant";
-export type AdvisorContextFlagState = "missing" | "stale" | "conflicting";
+export type AdvisorContextFlagState = "missing" | "stale" | "conflicting" | "disabled" | "limited";
 export type AdvisorContextFlagKey =
   | "profile"
   | "goals"
@@ -26,7 +26,11 @@ export type AdvisorContextFlagKey =
   | "workouts"
   | "sleep"
   | "recovery"
-  | "limitations";
+  | "limitations"
+  | "medical"
+  | "progress"
+  | "contextSharing"
+  | "contextBudget";
 
 export interface AdvisorContextFlag {
   key: AdvisorContextFlagKey;

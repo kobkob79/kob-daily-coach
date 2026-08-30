@@ -144,6 +144,13 @@ export const getAdvisorConversationMessagesServer = createServerFn({ method: "GE
             state: value.allowed ? ("available" as const) : ("exhausted" as const),
             resetsAt: value.resets_at,
           }));
+      const { buildAdvisorContextForUser, createSupabaseAdvisorContextDataSource } =
+        await import("@/lib/advisor-core/server/advisor-context-bridge.server");
+      const contextResult = await buildAdvisorContextForUser(
+        userId,
+        conversation.advisor_id,
+        createSupabaseAdvisorContextDataSource(context.supabase),
+      );
       return {
         status: "success",
         data: {
@@ -164,7 +171,7 @@ export const getAdvisorConversationMessagesServer = createServerFn({ method: "GE
             data.cursor,
             data.limit ?? 50,
           ),
-          contextFlags: [],
+          contextFlags: contextResult.contextFlags,
           quota,
         },
       };

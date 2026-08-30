@@ -3,12 +3,17 @@ import { buildAdvisorContextForUser } from "../src/lib/advisor-core/server/advis
 
 const now = new Date("2026-08-28T12:00:00.000Z");
 const source = {
+  async hasConsent() {
+    return true;
+  },
   async load(userId) {
     return {
       profile: { displayName: "Test", timezone: "UTC" },
       goals: ["goal"],
       bioDay: null,
       shift: null,
+      medical: [],
+      progress: null,
       timelineInput: {
         timezone: "UTC",
         healthLogs: [
@@ -39,6 +44,7 @@ assert.deepEqual(Object.keys(daniel.context.facts), [
   "bioDay",
   "workouts",
   "limitations",
+  "medical",
 ]);
 assert.deepEqual(daniel.context.facts.limitations.value, { severityBands: ["high"] });
 assert.equal(JSON.stringify(daniel).includes("must never"), false);
@@ -56,6 +62,7 @@ assert.deepEqual(Object.keys(shiran.context.facts), [
   "goals",
   "nutrition",
   "hydration",
+  "progress",
 ]);
 assert.equal("limitations" in shiran.context.facts, false);
 
