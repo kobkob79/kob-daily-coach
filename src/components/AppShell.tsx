@@ -18,6 +18,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const adminQ = useQuery({ queryKey: ["is-admin"], queryFn: fetchIsAdmin });
   const [askOpen, setAskOpen] = useState(false);
   const hideBottomNav = pathname.startsWith("/workouts/session/");
+  const isAdvisorChat = /^\/coach\/[^/]+\/?$/.test(pathname);
 
   // The bottom nav is fixed, so its real height (which changes when the
   // active-workout strip appears, and with the device safe-area inset) must
@@ -58,7 +59,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const rightNav = nav.slice(mid);
 
   return (
-    <div className="relative min-h-[100dvh] bg-background text-foreground flex flex-col overflow-x-hidden">
+    <div
+      className={cn(
+        "relative flex flex-col overflow-x-hidden bg-background text-foreground",
+        isAdvisorChat ? "h-[100dvh] overflow-y-hidden" : "min-h-[100dvh]",
+      )}
+    >
       {/* Cinematic background — soft indigo + lime auras */}
       <div className="pointer-events-none fixed inset-0 z-0" aria-hidden>
         <div className="absolute -top-32 -left-24 h-[420px] w-[420px] rounded-full bg-[oklch(0.68_0.18_275/0.22)] blur-[120px]" />
@@ -66,7 +72,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="absolute bottom-0 left-1/4 h-[320px] w-[320px] rounded-full bg-[oklch(0.68_0.18_275/0.18)] blur-[100px]" />
       </div>
 
-      <header className="sticky top-0 z-40 border-b border-white/5 bg-background/50 backdrop-blur-2xl">
+      <header className="sticky top-0 z-40 shrink-0 border-b border-white/5 bg-background/50 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-5 py-4">
           <div className="flex items-center gap-1.5">
             <Link
@@ -113,7 +119,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
 
       <main
-        className="relative z-10 mx-auto w-full max-w-2xl flex-1 px-4 pt-4"
+        className={cn(
+          "relative z-10 mx-auto w-full max-w-2xl flex-1 px-4 pt-4",
+          isAdvisorChat && "min-h-0 overflow-hidden",
+        )}
         style={{ paddingBottom: hideBottomNav ? 16 : navHeight + 16 }}
       >
         {children}
