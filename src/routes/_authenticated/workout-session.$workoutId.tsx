@@ -47,9 +47,7 @@ function SessionPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workout_template_exercises")
-        .select(
-          "id,exercise_id,position,target_sets,target_reps,target_weight_kg,exercises(id,name,muscle_group)",
-        )
+        .select("id,exercise_id,position,target_sets,target_reps,target_weight_kg,exercises(id,name,muscle_group)")
         .eq("template_id", template)
         .order("position");
       if (error) throw error;
@@ -165,9 +163,7 @@ function SessionPage() {
           </Link>
         </Button>
         <p className="text-xs text-muted-foreground">
-          {t("session.exerciseOf")
-            .replace("{n}", String(Math.min(exIndex + 1, rows.length)))
-            .replace("{total}", String(rows.length))}
+          {t("session.exerciseOf").replace("{n}", String(Math.min(exIndex + 1, rows.length))).replace("{total}", String(rows.length))}
         </p>
       </div>
 
