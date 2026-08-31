@@ -59,6 +59,33 @@ export type Database = {
         }
         Relationships: []
       }
+      advisor_context_preferences: {
+        Row: {
+          consented_at: string | null
+          context_sharing_enabled: boolean
+          created_at: string
+          revoked_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          consented_at?: string | null
+          context_sharing_enabled?: boolean
+          created_at?: string
+          revoked_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          consented_at?: string | null
+          context_sharing_enabled?: boolean
+          created_at?: string
+          revoked_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       advisor_conversations: {
         Row: {
           advisor_id: string
