@@ -45,6 +45,7 @@ import {
 } from "@/lib/profile";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { PlanAndAISection } from "@/components/premium/AIConnectionSection";
+import { AccountDeletionSection } from "@/components/profile/AccountDeletionSection";
 export const Route = createFileRoute("/_authenticated/profile")({
   component: ProfilePage,
 });
@@ -109,6 +110,7 @@ function ProfilePage() {
         <SectionHeader title="חשבון והגדרות" subtitle="התאמה אישית וחיבורי החשבון שלך" />
         <PlanAndAISection />
         <ThemeSelector />
+        <AccountDeletionSection />
       </section>
     </div>
   );
