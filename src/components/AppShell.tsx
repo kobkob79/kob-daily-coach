@@ -72,7 +72,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="absolute bottom-0 left-1/4 h-[320px] w-[320px] rounded-full bg-[oklch(0.68_0.18_275/0.18)] blur-[100px]" />
       </div>
 
-      <header className="sticky top-0 z-40 shrink-0 border-b border-white/5 bg-background/50 backdrop-blur-2xl">
+      {/* In advisor chat the viewport height is the whole layout budget. On short
+          viewports (landscape phones) the app header + bottom nav ate the entire
+          message area, so both collapse there and the chat keeps its own back
+          button and composer. */}
+      <header
+        className={cn(
+          "sticky top-0 z-40 shrink-0 border-b border-white/5 bg-background/50 backdrop-blur-2xl",
+          isAdvisorChat && "[@media(max-height:560px)]:hidden",
+        )}
+      >
         <div className="mx-auto flex max-w-2xl items-center justify-between px-5 py-4">
           <div className="flex items-center gap-1.5">
             <Link
