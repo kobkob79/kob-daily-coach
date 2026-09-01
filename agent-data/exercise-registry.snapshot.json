@@ -4,14 +4,14 @@
   "readOnly": true,
   "summary": {
     "totalExercises": 150,
-    "completedExercises": 11,
+    "completedExercises": 12,
     "partialExercises": 0,
-    "notStartedExercises": 139,
-    "coversComplete": 11,
-    "infographicsComplete": 11,
-    "thumbnailsComplete": 11,
+    "notStartedExercises": 138,
+    "coversComplete": 12,
+    "infographicsComplete": 12,
+    "thumbnailsComplete": 12,
     "demosComplete": 0,
-    "overallProgressPercent": 7.333333333333333
+    "overallProgressPercent": 8
   },
   "nextRecommendedExercise": {
     "exerciseId": "677e458d-0206-48f1-a340-d1a75fe972e6",
@@ -470,19 +470,17 @@
       "canonicalHebrewName": "חתירה במכונה",
       "englishName": "Machine Row",
       "muscleGroup": "back",
-      "status": "NOT_STARTED",
+      "status": "COMPLETE",
       "media": {
-        "hasCover": false,
-        "hasInfographic": false,
-        "hasThumbnail": false,
+        "hasCover": true,
+        "hasInfographic": true,
+        "hasThumbnail": true,
         "hasDemo": false
       },
       "missingAssets": [
-        "cover",
-        "infographic",
-        "thumbnail",
         "demo"
-      ]
+      ],
+      "lastUpdated": "2026-09-01T12:54:45.204Z"
     },
     {
       "exerciseId": "dc12ba2b-d61d-471a-8510-ff8dc2ebbffa",
