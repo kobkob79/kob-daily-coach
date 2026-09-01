@@ -129,16 +129,31 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main
         className={cn(
-          "relative z-10 mx-auto w-full max-w-2xl flex-1 px-4 pt-4",
-          isAdvisorChat && "min-h-0 overflow-hidden",
+          "relative z-10 mx-auto w-full max-w-2xl flex-1 px-4",
+          isAdvisorChat
+            ? "min-h-0 overflow-hidden pt-2 pb-[var(--viora-nav-pad)] [@media(max-height:560px)]:pt-1 [@media(max-height:560px)]:pb-2"
+            : "pt-4",
         )}
-        style={{ paddingBottom: hideBottomNav ? 16 : navHeight + 16 }}
+        style={
+          isAdvisorChat
+            ? ({
+                "--viora-nav-pad": `${hideBottomNav ? 16 : navHeight + 16}px`,
+              } as React.CSSProperties)
+            : { paddingBottom: hideBottomNav ? 16 : navHeight + 16 }
+        }
       >
         {children}
       </main>
 
       {!hideBottomNav && (
-        <nav ref={navRef} className="fixed inset-x-0 bottom-0 z-40" aria-label="Primary">
+        <nav
+          ref={navRef}
+          className={cn(
+            "fixed inset-x-0 bottom-0 z-40",
+            isAdvisorChat && "[@media(max-height:560px)]:hidden",
+          )}
+          aria-label="Primary"
+        >
           {/* Active workout strip floats above the flat bar */}
           <div className="mx-auto max-w-2xl px-3 pb-2">
             <ActiveWorkoutBar />
