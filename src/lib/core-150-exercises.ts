@@ -1,3 +1,5 @@
+import { normalizeSearchText } from "./search-normalize.ts";
+
 /** Legacy names mirrored from the approved Core 150 migration, in canonical number order. */
 const LEGACY_CORE_150_EXERCISE_NAMES = `
 לחיצת חזה במוט
@@ -340,13 +342,7 @@ const CORE_150_V2_DEFINITIONS: readonly Core150Definition[] = [
 
 /** Conservative lookup normalization only; intentionally no fuzzy matching. */
 export function normalizeCore150ExerciseName(value: string): string {
-  return value
-    .trim()
-    .toLocaleLowerCase("en")
-    .replace(/[’‘`׳]/g, "'")
-    .replace(/[״“”]/g, '"')
-    .replace(/[־‐‑‒–—−]/g, "-")
-    .replace(/\s+/g, " ");
+  return normalizeSearchText(value);
 }
 
 function uniqueAliases(values: readonly string[]): readonly string[] {

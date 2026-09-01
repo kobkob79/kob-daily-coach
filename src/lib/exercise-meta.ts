@@ -4,7 +4,7 @@
  * Purely derived from the existing `exercises` columns — no schema changes.
  * Used by the Exercise Picker and the Exercise Details sheet.
  */
-import { normalizeMuscleGroup, type MuscleGroup } from "@/lib/muscle-groups";
+import { normalizeMuscleGroup, type MuscleGroup } from "./muscle-groups.ts";
 
 export type PickerExercise = {
   id: string;
@@ -17,8 +17,7 @@ export type PickerExercise = {
 };
 
 export type EquipmentKey =
-  | "machine" | "cable" | "barbell" | "dumbbell"
-  | "bodyweight" | "smith" | "band" | "other";
+  "machine" | "cable" | "barbell" | "dumbbell" | "bodyweight" | "smith" | "band" | "other";
 
 export const EQUIPMENT_CHIPS: { key: EquipmentKey; label: string; emoji: string }[] = [
   { key: "bodyweight", label: "משקל גוף", emoji: "🧍" },
@@ -64,17 +63,17 @@ export function difficultyOf(ex: PickerExercise): { label: string; tone: string 
 
 /** Secondary muscles inferred from the primary group (approximate, Hebrew). */
 const SECONDARY: Record<MuscleGroup, string[]> = {
-  "חזה": ["יד אחורית", "כתפיים"],
-  "גב": ["יד קדמית", "שרירי ליבה"],
-  "רגליים": ["שרירי ליבה", "ישבן"],
-  "כתפיים": ["יד אחורית", "שרירי ליבה"],
+  חזה: ["יד אחורית", "כתפיים"],
+  גב: ["יד קדמית", "שרירי ליבה"],
+  רגליים: ["שרירי ליבה", "ישבן"],
+  כתפיים: ["יד אחורית", "שרירי ליבה"],
   "יד קדמית": ["אמות", "כתפיים"],
   "יד אחורית": ["חזה", "כתפיים"],
-  "בטן": ["שרירי ליבה", "כופפי ירך"],
+  בטן: ["שרירי ליבה", "כופפי ירך"],
   "שרירי ליבה": ["בטן", "גב תחתון"],
-  "קרדיו": ["רגליים", "מערכת נשימה"],
-  "מוביליטי": ["שרירי ליבה", "גמישות מפרקים"],
-  "אחר": [],
+  קרדיו: ["רגליים", "מערכת נשימה"],
+  מוביליטי: ["שרירי ליבה", "גמישות מפרקים"],
+  אחר: [],
 };
 
 export function secondaryMuscles(ex: PickerExercise): string[] {

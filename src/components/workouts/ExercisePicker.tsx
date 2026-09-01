@@ -30,6 +30,8 @@ import {
 import { ExerciseDetailsSheet } from "./ExerciseDetailsSheet";
 import { cn } from "@/lib/utils";
 import { findCore150ExerciseByName, isCore150ExerciseName } from "@/lib/core-150-exercises";
+import { buildExerciseSearchHaystack, matchesExerciseQuery } from "@/lib/exercise-search";
+import { fetchAllPages, type PageRange } from "@/lib/paginate";
 
 export type { PickerExercise };
 
@@ -47,42 +49,23 @@ const MUSCLE_CHIPS: { group: MuscleGroup; emoji: string }[] = [
   { group: "מוביליטי", emoji: "🤸" },
 ];
 
-/** Generic aliases retained for non-Core exercises. Core aliases come from the V2 canon. */
-const GENERIC_ALIASES: { test: RegExp; words: string[] }[] = [
-  { test: /לחיצת חזה|bench/i, words: ["bench press", "לחיצות", "חזה"] },
-  { test: /סקוואט|squat/i, words: ["squat", "רגליים", "כפיפות"] },
-  { test: /דדליפט|deadlift/i, words: ["deadlift", "גב", "הרמת מתים"] },
-  { test: /מתח|pull.?up/i, words: ["pull up", "גב", "מתח"] },
-  { test: /שכיב|push.?up/i, words: ["push up", "שכיבות סמיכה", "חזה"] },
-  { test: /חתירה|row/i, words: ["row", "חתירה", "גב"] },
-  { test: /כתף|press/i, words: ["shoulder press", "כתפיים"] },
-  { test: /בייספס|biceps|כפיפ/i, words: ["biceps", "curl", "יד קדמית"] },
-  { test: /טרייספס|triceps|פשיט/i, words: ["triceps", "יד אחורית"] },
-  { test: /פלאנק|plank|בטן/i, words: ["plank", "core", "בטן"] },
-];
-
-function searchHaystack(ex: PickerExercise): string {
-  const coreExercise = findCore150ExerciseByName(ex.name);
-  const extra = GENERIC_ALIASES.filter((a) => a.test.test(ex.name)).flatMap((a) => a.words);
-  return [
-    ex.name,
-    coreExercise?.canonicalHebrewName ?? "",
-    coreExercise?.englishName ?? "",
-    ...(coreExercise?.aliases ?? []),
-    ex.muscle_group ?? "",
-    normalizeMuscleGroup(ex.muscle_group),
-    ex.equipment ?? "",
-    equipmentLabel(ex.equipment),
-    ex.category ?? "",
-    ...extra,
-  ]
-    .join(" ")
-    .toLowerCase();
-}
-
 const PAGE = 24;
 
+/** Supabase page size for the deterministic, exhaustive library load. */
+const LIBRARY_FETCH_PAGE_SIZE = 500;
+
 type ExerciseRow = PickerExercise & { owner_id: string | null };
+
+async function fetchExercisePage({ from, to }: PageRange): Promise<ExerciseRow[]> {
+  const { data, error } = await supabase
+    .from("exercises")
+    .select("id,name,muscle_group,equipment,category,description,image_path,owner_id")
+    .order("name", { ascending: true })
+    .order("id", { ascending: true })
+    .range(from, to);
+  if (error) throw error;
+  return (data ?? []) as ExerciseRow[];
+}
 
 export function useExerciseLibrary({ enabled = true, coreOnly = false } = {}) {
   const q = useQuery({
@@ -90,12 +73,9 @@ export function useExerciseLibrary({ enabled = true, coreOnly = false } = {}) {
     queryKey: ["exercises", "library", coreOnly ? "core-150" : "all"],
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("exercises")
-        .select("id,name,muscle_group,equipment,category,description,image_path,owner_id")
-        .order("name");
-      if (error) throw error;
-      const rows = (data ?? []) as ExerciseRow[];
+      // Deterministic, page-by-page load: keep requesting ranges until a
+      // page comes back short, rather than relying on one unbounded select.
+      const rows = await fetchAllPages(fetchExercisePage, LIBRARY_FETCH_PAGE_SIZE);
       return coreOnly
         ? rows.filter(
             (exercise) => exercise.owner_id === null && isCore150ExerciseName(exercise.name),
@@ -111,18 +91,17 @@ export function useExerciseLibrary({ enabled = true, coreOnly = false } = {}) {
     () =>
       all.map((ex) => ({
         ex,
-        hay: searchHaystack(ex),
+        hay: buildExerciseSearchHaystack(ex),
         group: normalizeMuscleGroup(ex.muscle_group),
         eq: equipmentKey(ex.equipment),
       })),
     [all],
   );
   const results = useMemo(() => {
-    const needle = term.trim().toLowerCase();
     return indexed
       .filter((r) => (muscle ? r.group === muscle : true))
       .filter((r) => (equip ? r.eq === equip : true))
-      .filter((r) => (needle ? needle.split(/\s+/).every((word) => r.hay.includes(word)) : true))
+      .filter((r) => matchesExerciseQuery(r.hay, term))
       .map((r) => r.ex);
   }, [indexed, term, muscle, equip]);
 
