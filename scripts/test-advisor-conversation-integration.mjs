@@ -169,7 +169,8 @@ assert.match(shell, /overflow-x-hidden/);
 assert.match(shell, /min-w-0/);
 assert.match(shell, /w-\[min\(88vw,24rem\)\]/);
 assert.match(shell, /aria-label={`פתיחת רשימת השיחות/);
-assert.match(composer, /bottom-\[env\(safe-area-inset-bottom\)\]/);
+assert.match(composer, /flex shrink-0 gap-2/);
+assert.doesNotMatch(composer, /sticky bottom-/);
 assert.match(composer, /aria-label="הודעה ליועץ"/);
 
 // Context states are rendered explicitly rather than collapsed into a generic warning.

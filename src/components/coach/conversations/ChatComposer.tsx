@@ -44,7 +44,7 @@ export function ChatComposer({
   return (
     <form
       onSubmit={(event) => void submit(event)}
-      className="sticky bottom-[env(safe-area-inset-bottom)] z-20 flex gap-2 rounded-2xl border border-border/60 bg-background/95 p-2 shadow-sm backdrop-blur-xl"
+      className="z-20 flex shrink-0 gap-2 rounded-2xl border border-border/60 bg-background/95 p-2 shadow-sm backdrop-blur-xl"
       dir="rtl"
     >
       <Input
