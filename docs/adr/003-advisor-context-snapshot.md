@@ -19,6 +19,14 @@ Full medical documents, notes, Storage paths, signed URLs, service-role data and
 - Persisting a second AI-owned truth: becomes stale and obscures sources.
 - Letting the client choose a user ID: insecure direct-object access.
 
+## Privacy and "התובנות שלי" (My Insights) Integration
+
+My Insights stores private, user-generated exercise notes, equipment settings, and sensitivities.
+
+- **Advisor Access:** Advisor access to these insights is allowed **only** when the user has enabled the existing personal-context consent.
+- **AI Processing:** Without explicit user consent, insights must not be sent to any AI provider (e.g., Gemini) for summarization, prompt injection, or any other reason.
+- **Revocation:** Revoking consent prevents future AI use of the insights, but it does **not** delete the saved insights from the database.
+
 ## Compatibility and future boundary
 
 This sprint does not connect the snapshot to AI or change prompts, quota or conversations. A future Advisor Context Bridge may consume a selector result only after entitlement, audit and token-budget policies are applied.
