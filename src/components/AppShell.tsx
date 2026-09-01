@@ -138,7 +138,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           isAdvisorChat
             ? ({
                 "--viora-nav-pad": `${hideBottomNav ? 16 : navHeight + 16}px`,
-              } as React.CSSProperties)
+              } as CSSProperties)
             : { paddingBottom: hideBottomNav ? 16 : navHeight + 16 }
         }
       >
