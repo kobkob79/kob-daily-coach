@@ -43,8 +43,9 @@ This document outlines the risks, mitigations, and roadmap for the two connected
 Implementation of the V2 experience should proceed in the following order:
 
 1. **Phase 1: Database & Backend Foundation**
+   - **Architecture Gate:** Proceed with this phase only after explicit architecture/data-model approval for final table names and migration SQL.
    - Implement Supabase migrations for the My Insights data model (`exercise_equipment_profiles`, `exercise_insights`).
-   - Implement RLS policies.
+   - Implement RLS policies enforcing the required ownership constraints.
    - Extend existing media-registry API/services to support the V2 asset types (Hero Cover, Motion Video) alongside legacy assets.
 
 2. **Phase 2: Asset Pipeline Generation & QA**

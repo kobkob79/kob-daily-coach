@@ -2,7 +2,7 @@
 
 ## Asset Pipeline V2
 
-- **Hero Cover:** The static Hero Cover is the fundamental fallback asset and must remain available offline. Once fetched, it should be aggressively cached (e.g., via Service Worker runtime cache or browser cache headers).
+- **Hero Cover:** The static Hero Cover is the fundamental fallback asset. It must be available offline after it has been successfully fetched and cached, unless a future decision explicitly requires pre-caching the entire exercise library.
 - **Motion Video:**
   - Viewed videos may be cached after first playback to save data and ensure smooth future loops.
   - Reduced Motion and data-saving modes prevent automatic downloading and playback of the video, showing the Hero Cover with a Play action instead.
@@ -16,5 +16,6 @@
 
 ## Open Decisions
 
+- Pre-cache strategy (e.g., whether to pre-fetch popular Hero Covers).
 - Cache limits and eviction policy (e.g., LRU cache size for videos).
 - Details of the offline write queue behavior for My Insights updates.

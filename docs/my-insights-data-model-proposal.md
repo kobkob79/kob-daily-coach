@@ -29,6 +29,17 @@ Stores individual insights, settings, notes, and sensitivities.
 - `created_at` (Timestamp)
 - `updated_at` (Timestamp)
 
+## Required Constraints and Validation
+
+The final implementation must guarantee data integrity and ownership:
+
+- **Cross-Reference Prevention:** An insight must not reference an equipment profile owned by another user or belonging to another exercise. The final schema or application logic must enforce that `profile.user_id = insight.user_id` and `profile.exercise_id = insight.exercise_id`.
+- **Equipment Settings Uniqueness:** Each user may have only one current equipment-setting value per exercise, equipment profile, and category.
+- **Default Profile Uniqueness:** Each user may have only one default equipment profile per exercise.
+- **Null Profile Uniqueness Strategy:** General insights with a null profile require an explicit uniqueness strategy, because normal SQL NULL behavior does not guarantee uniqueness in composite constraints.
+
+*Note: Exact SQL and final table names to enforce these constraints remain Open Decisions and will not be implemented in this documentation sprint.*
+
 ## Row Level Security (RLS) Design
 
 Strict RLS policies must be applied to both tables to guarantee privacy.
