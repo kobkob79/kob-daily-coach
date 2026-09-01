@@ -433,7 +433,10 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
     (activeConversation === null || quotaState === "available" || quotaState === "unlimited");
 
   return (
-    <div dir="rtl" className="flex h-full min-h-0 min-w-0 flex-col gap-3">
+    <div
+      dir="rtl"
+      className="flex h-full min-h-0 min-w-0 flex-col gap-3 [@media(max-height:560px)]:gap-1.5"
+    >
       <header className="flex min-w-0 shrink-0 items-center gap-3">
         <Button asChild variant="ghost" size="icon" aria-label="חזרה ליועצים">
           <Link to="/coach">

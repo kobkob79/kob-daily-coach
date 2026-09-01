@@ -1,6 +1,6 @@
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { Bell, User, LogOut, Settings, Sparkles } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -72,7 +72,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="absolute bottom-0 left-1/4 h-[320px] w-[320px] rounded-full bg-[oklch(0.68_0.18_275/0.18)] blur-[100px]" />
       </div>
 
-      <header className="sticky top-0 z-40 shrink-0 border-b border-white/5 bg-background/50 backdrop-blur-2xl">
+      {/* In advisor chat the viewport height is the whole layout budget. On short
+          viewports (landscape phones) the app header + bottom nav ate the entire
+          message area, so both collapse there and the chat keeps its own back
+          button and composer. */}
+      <header
+        className={cn(
+          "sticky top-0 z-40 shrink-0 border-b border-white/5 bg-background/50 backdrop-blur-2xl",
+          isAdvisorChat && "[@media(max-height:560px)]:hidden",
+        )}
+      >
         <div className="mx-auto flex max-w-2xl items-center justify-between px-5 py-4">
           <div className="flex items-center gap-1.5">
             <Link
@@ -120,16 +129,31 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main
         className={cn(
-          "relative z-10 mx-auto w-full max-w-2xl flex-1 px-4 pt-4",
-          isAdvisorChat && "min-h-0 overflow-hidden",
+          "relative z-10 mx-auto w-full max-w-2xl flex-1 px-4",
+          isAdvisorChat
+            ? "min-h-0 overflow-hidden pt-2 pb-[var(--viora-nav-pad)] [@media(max-height:560px)]:pt-1 [@media(max-height:560px)]:pb-2"
+            : "pt-4",
         )}
-        style={{ paddingBottom: hideBottomNav ? 16 : navHeight + 16 }}
+        style={
+          isAdvisorChat
+            ? ({
+                "--viora-nav-pad": `${hideBottomNav ? 16 : navHeight + 16}px`,
+              } as CSSProperties)
+            : { paddingBottom: hideBottomNav ? 16 : navHeight + 16 }
+        }
       >
         {children}
       </main>
 
       {!hideBottomNav && (
-        <nav ref={navRef} className="fixed inset-x-0 bottom-0 z-40" aria-label="Primary">
+        <nav
+          ref={navRef}
+          className={cn(
+            "fixed inset-x-0 bottom-0 z-40",
+            isAdvisorChat && "[@media(max-height:560px)]:hidden",
+          )}
+          aria-label="Primary"
+        >
           {/* Active workout strip floats above the flat bar */}
           <div className="mx-auto max-w-2xl px-3 pb-2">
             <ActiveWorkoutBar />

@@ -13,7 +13,18 @@ const [appShell, coachChatShell, chatComposer, conversationFlow] = await Promise
 ]);
 
 assert.match(appShell, /isAdvisorChat \? "h-\[100dvh\] overflow-y-hidden"/);
-assert.match(appShell, /isAdvisorChat && "min-h-0 overflow-hidden"/);
+assert.match(appShell, /min-h-0 overflow-hidden/);
+
+// Landscape (short viewport): app chrome collapses so the message area keeps usable height.
+const shortHeight = /\[@media\(max-height:560px\)\]/;
+assert.match(appShell, shortHeight);
+assert.match(appShell, /isAdvisorChat && "\[@media\(max-height:560px\)\]:hidden"/);
+assert.equal(appShell.match(/\[@media\(max-height:560px\)\]:hidden/g)?.length, 2); // header + bottom nav
+assert.match(appShell, /pb-\[var\(--viora-nav-pad\)\]/);
+assert.match(appShell, /"--viora-nav-pad": `\$\{hideBottomNav \? 16 : navHeight \+ 16\}px`/);
+assert.match(coachChatShell, shortHeight);
+assert.doesNotMatch(coachChatShell, /max-h-\[\d/);
+assert.doesNotMatch(chatComposer, /h-\[|max-h-/);
 
 assert.match(coachChatShell, /flex h-full min-h-0 min-w-0 flex-col/);
 assert.match(coachChatShell, /relative min-h-0 min-w-0 flex-1/);
