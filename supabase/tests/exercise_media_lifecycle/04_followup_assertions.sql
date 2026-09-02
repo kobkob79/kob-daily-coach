@@ -127,37 +127,113 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- 4. finalize_exercise_motion_video_asset(): atomic new-Draft finalization
---    (asset row + both events in one call), and atomic replacement
---    (asset row updated in place + exactly one new event).
+-- 4. reserve_exercise_media_draft(): creates once, reuses deterministically,
+--    reports a conflict for a non-Draft working version, and does not
+--    disturb a Published version for the same exercise.
 -- ---------------------------------------------------------------------------
 insert into public.exercises (id) values ('10000000-0000-0000-0000-000000000095');
+
+do $$
+declare
+  v_first record;
+  v_second record;
+begin
+  select * into v_first from public.reserve_exercise_media_draft(
+    '10000000-0000-0000-0000-000000000095', '00000000-0000-0000-0000-000000000099'
+  );
+  if v_first.outcome <> 'reserved' or v_first.is_new_draft <> true or v_first.demonstrator_key <> 'generic' then
+    raise exception 'TEST FAILED: first reservation was not a fresh generic Draft (got %, %, %)',
+      v_first.outcome, v_first.is_new_draft, v_first.demonstrator_key;
+  end if;
+
+  select * into v_second from public.reserve_exercise_media_draft(
+    '10000000-0000-0000-0000-000000000095', '00000000-0000-0000-0000-000000000099'
+  );
+  if v_second.outcome <> 'reserved' or v_second.is_new_draft <> false
+     or v_second.media_version_id <> v_first.media_version_id then
+    raise exception 'TEST FAILED: second call did not deterministically reuse the same Draft (got %, %, id %)',
+      v_second.outcome, v_second.is_new_draft, v_second.media_version_id;
+  end if;
+
+  if (select count(*) from public.exercise_media_versions
+      where exercise_id = '10000000-0000-0000-0000-000000000095') <> 1 then
+    raise exception 'TEST FAILED: two calls for the same exercise created more than one version row';
+  end if;
+
+  raise notice 'PASS: 4a. reserve_exercise_media_draft creates once, then deterministically reuses';
+end $$;
+
+do $$
+declare
+  v_result record;
+begin
+  update public.exercise_media_versions
+  set status = 'qa_passed', qa_reviewed_by = '00000000-0000-0000-0000-000000000099', qa_reviewed_at = now()
+  where exercise_id = '10000000-0000-0000-0000-000000000095';
+
+  select * into v_result from public.reserve_exercise_media_draft(
+    '10000000-0000-0000-0000-000000000095', '00000000-0000-0000-0000-000000000099'
+  );
+  if v_result.outcome <> 'conflict' or v_result.blocked_status <> 'qa_passed' then
+    raise exception 'TEST FAILED: expected a conflict against qa_passed, got % / %',
+      v_result.outcome, v_result.blocked_status;
+  end if;
+  if (select count(*) from public.exercise_media_versions
+      where exercise_id = '10000000-0000-0000-0000-000000000095') <> 1 then
+    raise exception 'TEST FAILED: a conflicting reservation attempt created an extra version row';
+  end if;
+
+  raise notice 'PASS: 4b. reserve_exercise_media_draft reports a conflict for a non-Draft working version, writing nothing';
+end $$;
+
+-- Advisory-lock statement presence + a true concurrency test are two
+-- different claims; see the note at the end of this file for why real
+-- concurrent execution is not exercised by this single-connection harness.
+do $$
+declare
+  v_source text;
+begin
+  select prosrc into v_source from pg_proc where proname = 'reserve_exercise_media_draft';
+  if v_source not like '%pg_advisory_xact_lock%' then
+    raise exception 'TEST FAILED: reserve_exercise_media_draft no longer takes an advisory lock';
+  end if;
+  raise notice 'PASS: 4c. reserve_exercise_media_draft''s definition still takes a pg_advisory_xact_lock';
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 5. finalize_exercise_motion_video_asset(): atomic new-Draft finalization,
+--    atomic re-checked replacement (needs_confirmation vs finalized), the
+--    Draft-status re-check (never touches a non-Draft version), and
+--    outcomes for an unknown version.
+-- ---------------------------------------------------------------------------
+insert into public.exercises (id) values ('10000000-0000-0000-0000-000000000096');
 insert into public.exercise_media_versions
   (id, exercise_id, version_number, demonstrator_key, status, created_by)
 values
   ('50000000-0000-0000-0000-000000000020',
-   '10000000-0000-0000-0000-000000000095', 1, 'generic', 'draft',
+   '10000000-0000-0000-0000-000000000096', 1, 'generic', 'draft',
    '00000000-0000-0000-0000-000000000099');
 
 do $$
 declare
-  v_asset_id uuid;
+  v_result record;
   v_asset_count integer;
   v_event_count integer;
 begin
-  select public.finalize_exercise_motion_video_asset(
+  select * into v_result from public.finalize_exercise_motion_video_asset(
     '50000000-0000-0000-0000-000000000020', -- media_version_id
-    true,                                    -- is_new_draft
-    'exercises/e95/v2/v20/motion.mp4',       -- storage_path
+    false,                                   -- confirm_replace (irrelevant: no prior asset)
+    'exercises/e96/v2/v20/motion.tok1.mp4',  -- storage_path
     'video/mp4', 2000000, 1280, 720, 8000,
     null,                                    -- frame_rate: unverified
     null,                                    -- checksum
-    '00000000-0000-0000-0000-000000000099',  -- actor
-    false                                    -- replaced_previous
-  ) into v_asset_id;
+    '00000000-0000-0000-0000-000000000099'   -- actor
+  );
 
-  if v_asset_id is null then
-    raise exception 'TEST FAILED: finalize function returned no asset id';
+  if v_result.outcome <> 'finalized' or v_result.asset_id is null or v_result.was_replacement <> false
+     or v_result.previous_storage_path is not null then
+    raise exception 'TEST FAILED: first finalize did not report a clean new-asset outcome (got %, replacement=%, prev=%)',
+      v_result.outcome, v_result.was_replacement, v_result.previous_storage_path;
   end if;
 
   select count(*) into v_asset_count from public.exercise_media_assets
@@ -172,29 +248,62 @@ begin
     raise exception 'TEST FAILED: expected exactly 2 events (created + asset_uploaded), got %', v_event_count;
   end if;
 
-  raise notice 'PASS: 4a. atomic new-Draft finalization writes one asset row and both events together';
+  raise notice 'PASS: 5a. atomic new-Draft finalization writes one asset row and both events together';
 end $$;
 
 do $$
 declare
-  v_asset_id uuid;
-  v_path text;
+  v_result record;
+begin
+  select * into v_result from public.finalize_exercise_motion_video_asset(
+    '50000000-0000-0000-0000-000000000020', false, -- NOT confirmed
+    'exercises/e96/v2/v20/motion.tok2.mp4', 'video/mp4', 2100000, 1280, 720, 8500,
+    null, null, '00000000-0000-0000-0000-000000000099'
+  );
+
+  if v_result.outcome <> 'needs_confirmation' or v_result.previous_storage_path <> 'exercises/e96/v2/v20/motion.tok1.mp4' then
+    raise exception 'TEST FAILED: expected needs_confirmation with the real previous path, got % / %',
+      v_result.outcome, v_result.previous_storage_path;
+  end if;
+
+  if (select count(*) from public.exercise_media_assets
+      where media_version_id = '50000000-0000-0000-0000-000000000020') <> 1
+     or (select storage_path from public.exercise_media_assets
+         where media_version_id = '50000000-0000-0000-0000-000000000020') <> 'exercises/e96/v2/v20/motion.tok1.mp4' then
+    raise exception 'TEST FAILED: an unconfirmed replacement attempt changed the stored asset row';
+  end if;
+  if (select count(*) from public.exercise_media_asset_events
+      where media_version_id = '50000000-0000-0000-0000-000000000020') <> 2 then
+    raise exception 'TEST FAILED: an unconfirmed replacement attempt wrote an event';
+  end if;
+
+  raise notice 'PASS: 5b. an unconfirmed replacement attempt is rejected with the real previous path and changes nothing';
+end $$;
+
+do $$
+declare
+  v_result record;
   v_event_count integer;
 begin
-  select public.finalize_exercise_motion_video_asset(
-    '50000000-0000-0000-0000-000000000020',
-    false, -- not a new draft this time
-    'exercises/e95/v2/v20/motion.replacement-token.mp4',
-    'video/mp4', 2100000, 1280, 720, 8500,
-    30, -- now genuinely verified
-    'a'||repeat('b', 63),
-    '00000000-0000-0000-0000-000000000099',
-    true -- replaced_previous
-  ) into v_asset_id;
+  select * into v_result from public.finalize_exercise_motion_video_asset(
+    '50000000-0000-0000-0000-000000000020', true, -- confirmed
+    'exercises/e96/v2/v20/motion.tok2.mp4', 'video/mp4', 2100000, 1280, 720, 8500,
+    30, 'a'||repeat('b', 63), '00000000-0000-0000-0000-000000000099'
+  );
 
-  select storage_path into v_path from public.exercise_media_assets where id = v_asset_id;
-  if v_path <> 'exercises/e95/v2/v20/motion.replacement-token.mp4' then
-    raise exception 'TEST FAILED: replacement did not switch the asset row to the new path (got %)', v_path;
+  if v_result.outcome <> 'finalized' or v_result.was_replacement <> true
+     or v_result.previous_storage_path <> 'exercises/e96/v2/v20/motion.tok1.mp4' then
+    raise exception 'TEST FAILED: confirmed replacement did not report the correct outcome (got %, replacement=%, prev=%)',
+      v_result.outcome, v_result.was_replacement, v_result.previous_storage_path;
+  end if;
+
+  if (select storage_path from public.exercise_media_assets where id = v_result.asset_id)
+      <> 'exercises/e96/v2/v20/motion.tok2.mp4' then
+    raise exception 'TEST FAILED: confirmed replacement did not switch the asset row to the new path';
+  end if;
+  if (select count(*) from public.exercise_media_assets
+      where media_version_id = '50000000-0000-0000-0000-000000000020') <> 1 then
+    raise exception 'TEST FAILED: replacement created a second asset row instead of upserting the existing one';
   end if;
 
   select count(*) into v_event_count from public.exercise_media_asset_events
@@ -203,20 +312,100 @@ begin
     raise exception 'TEST FAILED: expected 3 total events after one replacement (2 + 1), got %', v_event_count;
   end if;
 
-  raise notice 'PASS: 4b. atomic replacement upserts the same asset row (no duplicate) and appends exactly one new event';
+  raise notice 'PASS: 5c. confirmed replacement atomically upserts the same asset row and appends exactly one event';
+end $$;
+
+do $$
+declare
+  v_result record;
+begin
+  select * into v_result from public.finalize_exercise_motion_video_asset(
+    '99999999-9999-9999-9999-999999999999', false,
+    'exercises/nope/v2/v/motion.mp4', 'video/mp4', 1000, 1280, 720, 8000,
+    null, null, '00000000-0000-0000-0000-000000000099'
+  );
+  if v_result.outcome <> 'version_not_found' then
+    raise exception 'TEST FAILED: expected version_not_found for an unknown version id, got %', v_result.outcome;
+  end if;
+
+  raise notice 'PASS: 5d. finalize reports version_not_found for an unknown media_version_id';
 end $$;
 
 -- ---------------------------------------------------------------------------
--- 5. The finalize function is service_role-only.
+-- 6. finalize never modifies an asset belonging to a non-Draft version -
+--    covers Published explicitly, plus the general status re-check.
 -- ---------------------------------------------------------------------------
+insert into public.exercises (id) values ('10000000-0000-0000-0000-000000000097');
+insert into public.exercise_media_versions
+  (id, exercise_id, version_number, demonstrator_key, status, created_by,
+   qa_reviewed_by, qa_reviewed_at, published_by, published_at)
+values
+  ('50000000-0000-0000-0000-000000000030',
+   '10000000-0000-0000-0000-000000000097', 1, 'generic', 'published',
+   '00000000-0000-0000-0000-000000000099',
+   '00000000-0000-0000-0000-000000000099', now(),
+   '00000000-0000-0000-0000-000000000099', now());
+insert into public.exercise_media_assets
+  (id, media_version_id, role, storage_path, mime_type, file_size_bytes,
+   width, height, duration_ms, frame_rate)
+values
+  ('50000000-0000-0000-0000-000000000040',
+   '50000000-0000-0000-0000-000000000030', 'motion_video',
+   'exercises/e97/v2/v30/motion.published.mp4', 'video/mp4', 2000000, 1280, 720, 8000, 30);
+
+do $$
+declare
+  v_result record;
+  v_path_after text;
+begin
+  select * into v_result from public.finalize_exercise_motion_video_asset(
+    '50000000-0000-0000-0000-000000000030', true, -- even with confirmation
+    'exercises/e97/v2/v30/motion.hijack-attempt.mp4', 'video/mp4', 999, 1280, 720, 8000,
+    30, null, '00000000-0000-0000-0000-000000000099'
+  );
+
+  if v_result.outcome <> 'version_not_draft' or v_result.blocked_status <> 'published' then
+    raise exception 'TEST FAILED: expected version_not_draft/published, got % / %',
+      v_result.outcome, v_result.blocked_status;
+  end if;
+
+  select storage_path into v_path_after from public.exercise_media_assets
+    where id = '50000000-0000-0000-0000-000000000040';
+  if v_path_after <> 'exercises/e97/v2/v30/motion.published.mp4' then
+    raise exception 'TEST FAILED: the Published asset row was modified (now %)', v_path_after;
+  end if;
+
+  raise notice 'PASS: 6. finalize never modifies a Published version''s asset, even with confirm_replace = true';
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 7. Both new functions are service_role-only.
+-- ---------------------------------------------------------------------------
+do $$
+begin
+  execute 'set role authenticated';
+  begin
+    perform public.reserve_exercise_media_draft(
+      '10000000-0000-0000-0000-000000000097', '00000000-0000-0000-0000-000000000099'
+    );
+    execute 'reset role';
+    raise exception 'TEST FAILED: authenticated was able to call reserve_exercise_media_draft';
+  exception
+    when insufficient_privilege then
+      execute 'reset role';
+  end;
+
+  raise notice 'PASS: 7a. authenticated cannot execute reserve_exercise_media_draft directly';
+end $$;
+
 do $$
 begin
   execute 'set role authenticated';
   begin
     perform public.finalize_exercise_motion_video_asset(
       '50000000-0000-0000-0000-000000000020', false,
-      'exercises/e95/v2/v20/motion-hack.mp4', 'video/mp4', 1000, 1280, 720, 8000,
-      null, null, '00000000-0000-0000-0000-000000000099', false
+      'exercises/e96/v2/v20/motion-hack.mp4', 'video/mp4', 1000, 1280, 720, 8000,
+      null, null, '00000000-0000-0000-0000-000000000099'
     );
     execute 'reset role';
     raise exception 'TEST FAILED: authenticated was able to call finalize_exercise_motion_video_asset';
@@ -225,10 +414,23 @@ begin
       execute 'reset role';
   end;
 
-  raise notice 'PASS: 5. authenticated cannot execute the finalize function directly';
+  raise notice 'PASS: 7b. authenticated cannot execute finalize_exercise_motion_video_asset directly';
 end $$;
 
 do $$
 begin
   raise notice 'ALL FOLLOW-UP MIGRATION ASSERTIONS PASSED';
 end $$;
+
+-- ---------------------------------------------------------------------------
+-- Note on concurrency: this harness runs every statement sequentially over
+-- one psql connection, so genuinely concurrent RPC calls (two real
+-- transactions blocked on the same pg_advisory_xact_lock at the same
+-- instant) are not exercised here. What IS proven above: (a) the lock
+-- statement is actually present in the deployed function body (4c), and
+-- (b) sequential reuse is fully deterministic - the same Draft comes back
+-- every time, and a conflicting status is reported without ever creating a
+-- second row (4a/4b). A true multi-connection race test would need two
+-- concurrent psql sessions coordinated outside this single-file harness;
+-- documenting that as a limitation rather than simulating a false positive.
+-- ---------------------------------------------------------------------------

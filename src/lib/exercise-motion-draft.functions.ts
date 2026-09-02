@@ -6,8 +6,8 @@
  * exercise-motion-draft-core.ts. All authorization and business logic
  * decisions live there or in the shared `requireAdminAuth` middleware
  * (unchanged, already used by exercise-media-assignment.functions.ts) -
- * this file's only job is translating between HTTP input, Supabase rows,
- * and that pure function's inputs/outputs.
+ * this file's only job is translating between HTTP input, Supabase rows/
+ * RPC outcomes, and that pure function's inputs/outputs.
  *
  * `types.ts` (auto-generated from a deployed Supabase project) does not
  * yet include exercise_media_versions/exercise_media_assets/
@@ -26,48 +26,29 @@ import { createHash } from "node:crypto";
 import { requireAdminAuth } from "@/integrations/supabase/admin-middleware";
 import { ASSETS_BUCKET } from "@/lib/media-paths";
 import { MEDIA_INBOX_BUCKET } from "@/services/media-inbox.service";
-import {
-  MOTION_VIDEO_MIME_TYPE,
-  WORKING_STATUSES,
-  isUuid,
-  type DemonstratorKey,
-} from "@/lib/exercise-media-v2";
+import { WORKING_STATUSES, isUuid, type DemonstratorKey } from "@/lib/exercise-media-v2";
 import {
   performMotionDraftUpload,
-  type MotionAssetRow,
+  type FinalizeAssetResult,
   type MotionDraftDeps,
-  type MotionVersionRow,
+  type ReserveDraftResult,
 } from "@/lib/exercise-motion-draft-core";
 
-function toVersionRow(row: {
-  id: string;
-  exercise_id: string;
-  version_number: number;
-  demonstrator_key: string;
-  status: string;
-}): MotionVersionRow {
-  return {
-    id: row.id,
-    exerciseId: row.exercise_id,
-    versionNumber: row.version_number,
-    demonstratorKey: row.demonstrator_key as DemonstratorKey,
-    status: row.status,
-  };
-}
-
-function toAssetRow(row: {
-  id: string;
-  media_version_id: string;
-  role: string;
-  storage_path: string;
-  file_size_bytes: number;
-}): MotionAssetRow {
-  return {
-    id: row.id,
-    mediaVersionId: row.media_version_id,
-    role: row.role as MotionAssetRow["role"],
-    storagePath: row.storage_path,
-    fileSizeBytes: row.file_size_bytes,
+interface LiveDb {
+  from(table: string): any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  rpc(
+    fn: string,
+    args: Record<string, unknown>,
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+  storage: {
+    from(bucket: string): {
+      upload(
+        path: string,
+        body: Uint8Array,
+        opts: { contentType: string; upsert: boolean },
+      ): Promise<{ error: { message: string } | null }>;
+      remove(paths: string[]): Promise<{ error: { message: string } | null }>;
+    };
   };
 }
 
@@ -84,23 +65,7 @@ function buildLiveDeps(adminSupabase: unknown): MotionDraftDeps {
   // generated Database types because the migration has not been applied to
   // any remote project yet. This cast is the single, contained place that
   // reflects that reality.
-  const db = adminSupabase as unknown as {
-    from(table: string): any; // eslint-disable-line @typescript-eslint/no-explicit-any
-    rpc(
-      fn: string,
-      args: Record<string, unknown>,
-    ): Promise<{ data: unknown; error: { message: string } | null }>;
-    storage: {
-      from(bucket: string): {
-        upload(
-          path: string,
-          body: Uint8Array,
-          opts: { contentType: string; upsert: boolean },
-        ): Promise<{ error: { message: string } | null }>;
-        remove(paths: string[]): Promise<{ error: { message: string } | null }>;
-      };
-    };
-  };
+  const db = adminSupabase as unknown as LiveDb;
 
   return {
     async exerciseExists(exerciseId) {
@@ -113,59 +78,44 @@ function buildLiveDeps(adminSupabase: unknown): MotionDraftDeps {
       return !!data;
     },
 
-    async findActiveWorkingVersion(exerciseId) {
-      const { data, error } = await db
-        .from("exercise_media_versions")
-        .select("id, exercise_id, version_number, demonstrator_key, status")
-        .eq("exercise_id", exerciseId)
-        .in("status", WORKING_STATUSES)
-        .maybeSingle();
+    async reserveDraft(input) {
+      // Atomic Draft creation/reuse, serialized per exercise via an
+      // advisory lock held for the RPC's own transaction - see
+      // reserve_exercise_media_draft in the follow-up migration.
+      // Service-role-only (EXECUTE is revoked from anon/authenticated).
+      const { data, error } = await db.rpc("reserve_exercise_media_draft", {
+        p_exercise_id: input.exerciseId,
+        p_actor_user_id: input.actorUserId,
+      });
       if (error) throw new Error(error.message);
-      return data ? toVersionRow(data) : null;
-    },
-
-    async nextVersionNumber(exerciseId) {
-      const { data, error } = await db
-        .from("exercise_media_versions")
-        .select("version_number")
-        .eq("exercise_id", exerciseId)
-        .order("version_number", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw new Error(error.message);
-      return (data?.version_number ?? 0) + 1;
-    },
-
-    async insertDraftVersion(input) {
-      const { data, error } = await db
-        .from("exercise_media_versions")
-        .insert({
-          exercise_id: input.exerciseId,
-          version_number: input.versionNumber,
-          demonstrator_key: input.demonstratorKey,
-          status: "draft",
-          created_by: input.createdBy,
-        })
-        .select("id, exercise_id, version_number, demonstrator_key, status")
-        .single();
-      if (error) throw new Error(error.message);
-      return toVersionRow(data);
+      const row = (Array.isArray(data) ? data[0] : data) as {
+        outcome: "reserved" | "conflict";
+        media_version_id: string | null;
+        version_number: number | null;
+        demonstrator_key: string | null;
+        is_new_draft: boolean | null;
+        blocked_status: string | null;
+      };
+      if (row.outcome === "conflict") {
+        return {
+          outcome: "conflict",
+          currentStatus: row.blocked_status as string,
+        } satisfies ReserveDraftResult;
+      }
+      return {
+        outcome: "reserved",
+        version: {
+          id: row.media_version_id as string,
+          versionNumber: row.version_number as number,
+          demonstratorKey: row.demonstrator_key as DemonstratorKey,
+        },
+        isNewDraft: !!row.is_new_draft,
+      } satisfies ReserveDraftResult;
     },
 
     async deleteVersion(versionId) {
       const { error } = await db.from("exercise_media_versions").delete().eq("id", versionId);
       if (error) throw new Error(error.message);
-    },
-
-    async findMotionVideoAsset(mediaVersionId) {
-      const { data, error } = await db
-        .from("exercise_media_assets")
-        .select("id, media_version_id, role, storage_path, file_size_bytes")
-        .eq("media_version_id", mediaVersionId)
-        .eq("role", "motion_video")
-        .maybeSingle();
-      if (error) throw new Error(error.message);
-      return data ? toAssetRow(data) : null;
     },
 
     async uploadObject(path, bytes, contentType) {
@@ -181,13 +131,14 @@ function buildLiveDeps(adminSupabase: unknown): MotionDraftDeps {
     },
 
     async finalizeAsset(input) {
-      // One atomic transaction (asset upsert + audit event(s)) via the
-      // follow-up migration's finalize_exercise_motion_video_asset() -
-      // see supabase/migrations/20260902084229_exercise_media_v2_followup.sql.
+      // One atomic, re-checked transaction (parent-version lock + asset
+      // lock + upsert + audit event(s)) via the follow-up migration's
+      // finalize_exercise_motion_video_asset() - see
+      // supabase/migrations/20260902084229_exercise_media_v2_followup.sql.
       // Service-role-only (EXECUTE is revoked from anon/authenticated).
       const { data, error } = await db.rpc("finalize_exercise_motion_video_asset", {
         p_media_version_id: input.mediaVersionId,
-        p_is_new_draft: input.isNewDraft,
+        p_confirm_replace: input.confirmReplace,
         p_storage_path: input.storagePath,
         p_mime_type: input.mimeType,
         p_file_size_bytes: input.fileSizeBytes,
@@ -197,16 +148,38 @@ function buildLiveDeps(adminSupabase: unknown): MotionDraftDeps {
         p_frame_rate: input.frameRate,
         p_checksum_sha256: input.checksumSha256,
         p_actor_user_id: input.actorUserId,
-        p_replaced_previous: input.replacedPrevious,
       });
       if (error) throw new Error(error.message);
-      return {
-        id: data as string,
-        mediaVersionId: input.mediaVersionId,
-        role: "motion_video",
-        storagePath: input.storagePath,
-        fileSizeBytes: input.fileSizeBytes,
+      const row = (Array.isArray(data) ? data[0] : data) as {
+        outcome: "finalized" | "needs_confirmation" | "version_not_found" | "version_not_draft";
+        asset_id: string | null;
+        previous_storage_path: string | null;
+        was_replacement: boolean | null;
+        blocked_status: string | null;
       };
+
+      switch (row.outcome) {
+        case "finalized":
+          return {
+            outcome: "finalized",
+            assetId: row.asset_id as string,
+            previousStoragePath: row.previous_storage_path,
+            wasReplacement: !!row.was_replacement,
+          } satisfies FinalizeAssetResult;
+        case "needs_confirmation":
+          return {
+            outcome: "needs_confirmation",
+            existingAssetId: row.asset_id as string,
+            previousStoragePath: row.previous_storage_path as string,
+          } satisfies FinalizeAssetResult;
+        case "version_not_found":
+          return { outcome: "version_not_found" } satisfies FinalizeAssetResult;
+        case "version_not_draft":
+          return {
+            outcome: "version_not_draft",
+            blockedStatus: row.blocked_status as string,
+          } satisfies FinalizeAssetResult;
+      }
     },
 
     async sha256(bytes) {
@@ -218,6 +191,12 @@ function buildLiveDeps(adminSupabase: unknown): MotionDraftDeps {
 /**
  * Read-only status check so the UI can show "Draft exists" / "conflict"
  * banners before the Admin even attaches a file. Admin-only; never writes.
+ * Deliberately independent of MotionDraftDeps/reserveDraft/finalizeAsset:
+ * this is an advisory, best-effort read for the UI, not part of the
+ * authoritative, locked upload pipeline - a stale read here can only ever
+ * make the UI show an outdated banner, never cause an incorrect write,
+ * since uploadExerciseMotionDraftServer's real checks happen inside the
+ * atomic RPCs regardless of what this endpoint last reported.
  */
 export const getExerciseMotionDraftStatusServer = createServerFn({ method: "POST" })
   .middleware([requireAdminAuth])
@@ -229,25 +208,40 @@ export const getExerciseMotionDraftStatusServer = createServerFn({ method: "POST
   })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const deps = buildLiveDeps(supabaseAdmin);
+    const db = supabaseAdmin as unknown as LiveDb;
 
-    if (!(await deps.exerciseExists(data.exerciseId))) {
-      return { status: "not_found" as const };
-    }
+    const { data: exerciseRow, error: exerciseError } = await db
+      .from("exercises")
+      .select("id")
+      .eq("id", data.exerciseId)
+      .maybeSingle();
+    if (exerciseError) throw new Error(exerciseError.message);
+    if (!exerciseRow) return { status: "not_found" as const };
 
-    const active = await deps.findActiveWorkingVersion(data.exerciseId);
-    if (!active) {
-      return { status: "no_active_version" as const };
-    }
+    const { data: active, error: versionError } = await db
+      .from("exercise_media_versions")
+      .select("id, version_number, demonstrator_key, status")
+      .eq("exercise_id", data.exerciseId)
+      .in("status", WORKING_STATUSES)
+      .maybeSingle();
+    if (versionError) throw new Error(versionError.message);
+    if (!active) return { status: "no_active_version" as const };
     if (active.status !== "draft") {
-      return { status: "conflict" as const, currentStatus: active.status };
+      return { status: "conflict" as const, currentStatus: active.status as string };
     }
 
-    const asset = await deps.findMotionVideoAsset(active.id);
+    const { data: asset, error: assetError } = await db
+      .from("exercise_media_assets")
+      .select("id")
+      .eq("media_version_id", active.id)
+      .eq("role", "motion_video")
+      .maybeSingle();
+    if (assetError) throw new Error(assetError.message);
+
     return {
       status: "draft_exists" as const,
-      versionNumber: active.versionNumber,
-      demonstratorKey: active.demonstratorKey,
+      versionNumber: active.version_number as number,
+      demonstratorKey: active.demonstrator_key as DemonstratorKey,
       hasMotionVideoAsset: !!asset,
     };
   });
@@ -303,7 +297,16 @@ export const uploadExerciseMotionDraftServer = createServerFn({ method: "POST" }
     }
 
     const fileBytes = new Uint8Array(await sourceBlob.arrayBuffer());
-    const declaredMimeType = sourceBlob.type || MOTION_VIDEO_MIME_TYPE;
+
+    // The MIME type actually returned by the trusted Storage download -
+    // never relabeled. An empty or non-"video/mp4" value is rejected by
+    // performMotionDraftUpload's metadata validation (which runs before
+    // any exerciseExists/uploadObject call), exactly like any other wrong
+    // MIME type; nothing is ever uploaded to the V2 target path on that
+    // path. There is deliberately no `|| MOTION_VIDEO_MIME_TYPE` fallback
+    // here - that would fabricate a MIME type Storage did not actually
+    // report.
+    const declaredMimeType = sourceBlob.type;
 
     const deps = buildLiveDeps(supabaseAdmin);
 
@@ -319,13 +322,32 @@ export const uploadExerciseMotionDraftServer = createServerFn({ method: "POST" }
       // Always null on this real path today: neither this server nor the
       // browser can decode video to genuinely measure frame rate in this
       // environment. See exercise-motion-draft-core.ts's module doc - this
-      // is no longer a blocker (the follow-up migration allows a NULL,
+      // is not a blocker (the follow-up migration allows a NULL,
       // honestly-unverified frame_rate on a motion_video row), so the
       // Draft upload still completes successfully. Do not change this to
       // `30`; that would fabricate a measurement the sprint explicitly
       // forbids.
       verifiedFrameRate: null,
     });
+
+    if (result.status !== "success") {
+      return result;
+    }
+
+    // Staging cleanup: best-effort only, and only after a real, durable
+    // success. A failure here must never undo the Draft that was just
+    // finalized, and must never touch any Inbox object other than the
+    // exact one this call itself downloaded from - reported back as a
+    // non-blocking diagnostic, never thrown.
+    let stagingCleanup: "removed" | "failed" = "removed";
+    try {
+      const { error: cleanupError } = await supabaseAdmin.storage
+        .from(MEDIA_INBOX_BUCKET)
+        .remove([data.inboxSourcePath]);
+      if (cleanupError) stagingCleanup = "failed";
+    } catch {
+      stagingCleanup = "failed";
+    }
 
     // Draft preview URLs are handed back only through this Admin-only
     // response - never persisted, and never exposed through the normal
@@ -336,16 +358,14 @@ export const uploadExerciseMotionDraftServer = createServerFn({ method: "POST" }
     // exposure; it is short-lived (5 minutes, well under the 1-hour
     // SIGNED_URL_TTL used for general media browsing) specifically because
     // it exists only for this one immediate post-upload preview.
-    if (result.status === "success") {
-      const PREVIEW_TTL_SECONDS = 300;
-      const { data: signed, error: signError } = await supabaseAdmin.storage
-        .from(ASSETS_BUCKET)
-        .createSignedUrl(result.storagePath, PREVIEW_TTL_SECONDS);
-      return {
-        ...result,
-        previewUrl: signError ? null : (signed?.signedUrl ?? null),
-      };
-    }
+    const PREVIEW_TTL_SECONDS = 300;
+    const { data: signed, error: signError } = await supabaseAdmin.storage
+      .from(ASSETS_BUCKET)
+      .createSignedUrl(result.storagePath, PREVIEW_TTL_SECONDS);
 
-    return result;
+    return {
+      ...result,
+      previewUrl: signError ? null : (signed?.signedUrl ?? null),
+      stagingCleanup,
+    };
   });

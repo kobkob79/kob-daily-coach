@@ -28,12 +28,26 @@
  *
  * DEMONSTRATOR: VIORA-EXERCISE-GENERIC-DEMONSTRATOR-DECISION-001 - every
  * newly created Draft uses the single official V1 demonstrator
- * (DEFAULT_DEMONSTRATOR_KEY, "generic"). There is no per-exercise
- * resolution step here on purpose.
+ * ("generic"), assigned server-side by reserve_exercise_media_draft().
+ * There is no per-exercise resolution step here on purpose.
+ *
+ * CONCURRENCY (VIORA-EXERCISE-MOTION-DRAFT-UPLOAD-FINAL-REVIEW-001):
+ * Draft creation/reuse and asset finalization are each a single atomic,
+ * row-locked (or advisory-locked) database call - `reserveDraft` and
+ * `finalizeAsset` - rather than separate read-then-write steps in this
+ * module. This module never re-derives "does an asset already exist" or
+ * "is the parent version still a Draft" from an earlier read of its own;
+ * it always uses whatever the two RPCs return from inside their own
+ * transactions, specifically so a concurrent request or a status change
+ * that happens between two calls can never be missed. `storagePath` is
+ * therefore always freshly token-suffixed (never a bare `motion.mp4`),
+ * because whether this upload turns out to be a first-time write or a
+ * replacement is only known *after* `finalizeAsset` runs - see its
+ * `previousStoragePath` result, which is the only source this module ever
+ * uses for "what to remove afterward".
  */
 import {
   buildMotionVideoStoragePath,
-  DEFAULT_DEMONSTRATOR_KEY,
   isUuid,
   MOTION_VIDEO_HEIGHT,
   MOTION_VIDEO_MAX_BYTES,
@@ -48,49 +62,53 @@ import {
 
 export interface MotionVersionRow {
   id: string;
-  exerciseId: string;
   versionNumber: number;
   demonstratorKey: DemonstratorKey;
-  status: string;
 }
 
-export interface MotionAssetRow {
-  id: string;
-  mediaVersionId: string;
-  role: "motion_video" | "hero_cover";
-  storagePath: string;
-  fileSizeBytes: number;
-}
+export type ReserveDraftResult =
+  | { outcome: "reserved"; version: MotionVersionRow; isNewDraft: boolean }
+  | { outcome: "conflict"; currentStatus: string };
+
+export type FinalizeAssetResult =
+  | {
+      outcome: "finalized";
+      assetId: string;
+      previousStoragePath: string | null;
+      wasReplacement: boolean;
+    }
+  | { outcome: "needs_confirmation"; existingAssetId: string; previousStoragePath: string }
+  | { outcome: "version_not_found" }
+  | { outcome: "version_not_draft"; blockedStatus: string };
 
 export interface MotionDraftDeps {
   /** The exercise must exist; returns false otherwise. Never trusts a client-supplied boolean. */
   exerciseExists(exerciseId: string): Promise<boolean>;
-  /** The single active working-state version for this exercise, if any (never Published/Trash/Archived). */
-  findActiveWorkingVersion(exerciseId: string): Promise<MotionVersionRow | null>;
-  /** Next positive version_number for a brand new version of this exercise. */
-  nextVersionNumber(exerciseId: string): Promise<number>;
-  insertDraftVersion(input: {
-    exerciseId: string;
-    versionNumber: number;
-    demonstratorKey: DemonstratorKey;
-    createdBy: string;
-  }): Promise<MotionVersionRow>;
+  /**
+   * Atomically reuses the exercise's active Draft, reports a conflict for
+   * any other working status, or creates a brand-new Draft with the
+   * single official demonstrator - all inside one locked transaction (see
+   * reserve_exercise_media_draft in the follow-up migration), so two
+   * concurrent callers for the same exercise can never create two Draft
+   * rows or collide unpredictably.
+   */
+  reserveDraft(input: { exerciseId: string; actorUserId: string }): Promise<ReserveDraftResult>;
   /** Compensation only: removes a version this same call just created and that has no audit history yet. */
   deleteVersion(versionId: string): Promise<void>;
-  findMotionVideoAsset(mediaVersionId: string): Promise<MotionAssetRow | null>;
   uploadObject(path: string, bytes: Uint8Array, contentType: string): Promise<void>;
   /** Compensation / replacement cleanup only. Must never be called with the current Published object's path. */
   removeObject(path: string): Promise<void>;
   /**
-   * Atomically upserts the motion_video asset row and appends its audit
-   * event(s) in one transaction (see finalize_exercise_motion_video_asset
-   * in the follow-up migration) - there is no separate insert/update-asset
-   * step and no separate insert-event step, so there is no window in which
-   * one exists without the other.
+   * Atomically locks and re-checks the parent version's status and any
+   * existing motion_video asset row, then upserts the asset and appends
+   * its audit event(s) - all inside one transaction (see
+   * finalize_exercise_motion_video_asset in the follow-up migration).
+   * Returns an outcome rather than throwing for expected control flow, so
+   * this module never has to parse error text to distinguish them.
    */
   finalizeAsset(input: {
     mediaVersionId: string;
-    isNewDraft: boolean;
+    confirmReplace: boolean;
     storagePath: string;
     mimeType: string;
     fileSizeBytes: number;
@@ -100,8 +118,7 @@ export interface MotionDraftDeps {
     frameRate: number | null;
     checksumSha256: string | null;
     actorUserId: string;
-    replacedPrevious: boolean;
-  }): Promise<MotionAssetRow>;
+  }): Promise<FinalizeAssetResult>;
   sha256(bytes: Uint8Array): Promise<string>;
 }
 
@@ -130,7 +147,7 @@ export type MotionDraftUploadResult =
   | { status: "conflict"; currentStatus: string }
   | {
       status: "needs_confirmation";
-      existing: { assetId: string; storagePath: string; fileSizeBytes: number };
+      existing: { assetId: string; storagePath: string };
     }
   | {
       status: "success";
@@ -183,8 +200,8 @@ function validateMetadata(input: MotionDraftUploadInput): MotionDraftValidationE
 
 /**
  * The full Draft-creation-or-reuse, upload, and compensation pipeline for
- * one Motion Video. See the module doc for how an unverified frame rate is
- * handled.
+ * one Motion Video. See the module doc for how concurrency and an
+ * unverified frame rate are handled.
  */
 export async function performMotionDraftUpload(
   deps: MotionDraftDeps,
@@ -203,46 +220,27 @@ export async function performMotionDraftUpload(
     return { status: "not_found" };
   }
 
-  const existingVersion = await deps.findActiveWorkingVersion(input.exerciseId);
+  const reservation = await deps.reserveDraft({
+    exerciseId: input.exerciseId,
+    actorUserId: input.actorUserId,
+  });
 
-  let version: MotionVersionRow;
-  let wasNewDraft = false;
-
-  if (!existingVersion) {
-    const versionNumber = await deps.nextVersionNumber(input.exerciseId);
-    version = await deps.insertDraftVersion({
-      exerciseId: input.exerciseId,
-      versionNumber,
-      demonstratorKey: DEFAULT_DEMONSTRATOR_KEY,
-      createdBy: input.actorUserId,
-    });
-    wasNewDraft = true;
-  } else if (existingVersion.status !== "draft") {
-    // media_ready / qa_passed / rejected / replacement_required: never
-    // silently overwritten. Nothing was written; report the conflict.
-    return { status: "conflict", currentStatus: existingVersion.status };
-  } else {
-    version = existingVersion;
+  if (reservation.outcome === "conflict") {
+    // media_ready / qa_passed / rejected / replacement_required (etc.):
+    // never silently overwritten. Nothing was written; report the conflict.
+    return { status: "conflict", currentStatus: reservation.currentStatus };
   }
 
-  const existingAsset = await deps.findMotionVideoAsset(version.id);
+  const { version, isNewDraft: wasNewDraft } = reservation;
 
-  if (existingAsset && !input.confirmReplace) {
-    // A brand-new Draft never already has an asset, so this branch can only
-    // be reached when reusing an existing Draft - nothing was written.
-    return {
-      status: "needs_confirmation",
-      existing: {
-        assetId: existingAsset.id,
-        storagePath: existingAsset.storagePath,
-        fileSizeBytes: existingAsset.fileSizeBytes,
-      },
-    };
-  }
-
-  const isReplacement = !!existingAsset;
-  const replacementToken = isReplacement ? cryptoRandomToken() : undefined;
-  const storagePath = buildMotionVideoStoragePath(input.exerciseId, version.id, replacementToken);
+  // Always a fresh, unique path - whether this upload turns out to be a
+  // first-time write or a replacement is only known once finalizeAsset
+  // runs (see the module doc), so there is no "plain" path to compute here.
+  const storagePath = buildMotionVideoStoragePath(
+    input.exerciseId,
+    version.id,
+    cryptoRandomToken(),
+  );
 
   try {
     await deps.uploadObject(storagePath, input.fileBytes, input.declaredMimeType);
@@ -264,11 +262,11 @@ export async function performMotionDraftUpload(
     checksumSha256 = null; // optional per spec ("if safely calculated"); never blocks the upload.
   }
 
-  let asset: MotionAssetRow;
+  let finalize: FinalizeAssetResult;
   try {
-    asset = await deps.finalizeAsset({
+    finalize = await deps.finalizeAsset({
       mediaVersionId: version.id,
-      isNewDraft: wasNewDraft,
+      confirmReplace: input.confirmReplace,
       storagePath,
       mimeType: input.declaredMimeType,
       fileSizeBytes: input.fileBytes.byteLength,
@@ -278,13 +276,12 @@ export async function performMotionDraftUpload(
       frameRate: input.verifiedFrameRate,
       checksumSha256,
       actorUserId: input.actorUserId,
-      replacedPrevious: isReplacement,
     });
   } catch (err) {
-    // The asset row and its audit event(s) are written atomically (one
-    // transaction - see finalize_exercise_motion_video_asset), so a
-    // failure here means NEITHER was written. Compensate the Storage
-    // upload and, for a brand-new Draft, the empty version row.
+    // An actual transport/unexpected error (not one of finalizeAsset's
+    // modeled outcomes) - the object we just uploaded is definitely not
+    // referenced by any asset row, so remove it, plus a brand-new empty
+    // Draft if this call created one.
     await safeRemoveObject(deps, storagePath);
     if (wasNewDraft) {
       await safeDeleteVersion(deps, version.id);
@@ -296,10 +293,47 @@ export async function performMotionDraftUpload(
     };
   }
 
-  // Only now, with the Draft and its asset+events all durably established,
-  // is it safe to remove the superseded object during a replacement.
-  if (isReplacement && existingAsset && existingAsset.storagePath !== storagePath) {
-    await safeRemoveObject(deps, existingAsset.storagePath);
+  if (finalize.outcome === "version_not_found") {
+    // Should not happen in practice (versions are never deleted except as
+    // this module's own compensation for a version *this same call* just
+    // created, which cannot race with itself) - handled defensively.
+    await safeRemoveObject(deps, storagePath);
+    return { status: "not_found" };
+  }
+
+  if (finalize.outcome === "version_not_draft") {
+    // The version moved out of Draft between reservation and finalize
+    // (e.g. a concurrent QA action) - discovered authoritatively inside
+    // the locked transaction, not from a stale pre-upload read. The
+    // object we just uploaded is orphaned; remove it.
+    await safeRemoveObject(deps, storagePath);
+    return { status: "conflict", currentStatus: finalize.blockedStatus };
+  }
+
+  if (finalize.outcome === "needs_confirmation") {
+    // Also discovered authoritatively inside the same locked transaction.
+    // The object we just uploaded is not referenced by any asset row;
+    // remove it. The Admin must explicitly retry with confirmReplace.
+    await safeRemoveObject(deps, storagePath);
+    return {
+      status: "needs_confirmation",
+      existing: {
+        assetId: finalize.existingAssetId,
+        storagePath: finalize.previousStoragePath,
+      },
+    };
+  }
+
+  // outcome === "finalized"
+  if (
+    finalize.wasReplacement &&
+    finalize.previousStoragePath &&
+    finalize.previousStoragePath !== storagePath
+  ) {
+    // Remove only the exact previous path the transaction itself returned
+    // - never a path assumed from an earlier read - and only now that the
+    // Draft and its asset+events are all durably established.
+    await safeRemoveObject(deps, finalize.previousStoragePath);
   }
 
   return {
@@ -308,8 +342,8 @@ export async function performMotionDraftUpload(
     versionNumber: version.versionNumber,
     demonstratorKey: version.demonstratorKey,
     wasNewDraft,
-    wasReplacement: isReplacement,
-    assetId: asset.id,
+    wasReplacement: finalize.wasReplacement,
+    assetId: finalize.assetId,
     storagePath,
     frameRateVerified: input.verifiedFrameRate !== null,
   };

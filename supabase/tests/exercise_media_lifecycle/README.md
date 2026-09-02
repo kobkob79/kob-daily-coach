@@ -129,19 +129,46 @@ dropdb exercise_media_followup_test
 **before** the follow-up migration runs, specifically so
 `04_followup_assertions.sql` can prove the migration's normalization
 `UPDATE` genuinely rewrites existing data to `generic` - not merely gates
-future inserts. `04_followup_assertions.sql` (10 assertion groups) covers:
+future inserts. `04_followup_assertions.sql` (16 assertion groups) covers:
 
 1. Pre-existing `daniel`/`maya` rows are normalized to `generic`.
 2. `demonstrator_key`: `generic` succeeds; `daniel`/`maya`/`ortal`/an
    arbitrary value all fail; the column defaults to `generic` when omitted.
 3. `frame_rate`: `NULL` (honestly unverified) and exactly `30` both succeed
    for a `motion_video` row; any other non-null value still fails.
-4. `finalize_exercise_motion_video_asset()`: a new-Draft call atomically
-   writes one asset row and both audit events together; a replacement call
-   atomically upserts the same asset row (no duplicate) and appends exactly
-   one further event.
-5. The finalize function is `service_role`-only - `authenticated` cannot
-   execute it directly.
+4. `reserve_exercise_media_draft()`: creates a Draft once, then
+   deterministically reuses the same row on every subsequent call for the
+   same exercise; reports a conflict (writing nothing) once the version
+   moves to a non-Draft working status; its definition still contains the
+   `pg_advisory_xact_lock` call.
+5. `finalize_exercise_motion_video_asset()`: a new-Draft call atomically
+   writes one asset row and both audit events together; an unconfirmed
+   replacement attempt is rejected with the *actual* previous storage path
+   (captured inside the same locked transaction) and changes nothing; a
+   confirmed replacement atomically upserts the same asset row (no
+   duplicate) and appends exactly one further event; an unknown version id
+   reports `version_not_found`.
+6. `finalize_exercise_motion_video_asset()` never modifies an asset
+   belonging to a `published` version, even when called with
+   `p_confirm_replace = true`.
+7. Both new functions are `service_role`-only - `authenticated` cannot
+   execute either directly.
+
+### Concurrency: a real two-connection verification (not part of the committed suite)
+
+Beyond the sequential-reuse proof in assertion 4, `reserve_exercise_media_draft`'s
+locking was also verified with genuinely concurrent execution: two
+background `psql` processes each opened a transaction, slept briefly to
+line up, then called the function for the *same* exercise id inside that
+transaction before committing. Both calls returned the same
+`media_version_id`; exactly one reported `is_new_draft = true` and the
+other `false`, and afterward exactly one version row existed for that
+exercise - proving the advisory lock genuinely serializes concurrent
+callers, not just sequential ones. This two-process interaction isn't
+expressible in the single-connection, single-file `DO`-block harness this
+suite otherwise uses, so it isn't a committed, repeatable test file; it was
+run once by hand to validate the design and is recorded here for anyone
+who wants to reproduce it.
 
 ## What this does not cover
 
