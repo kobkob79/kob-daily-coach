@@ -5,33 +5,33 @@
   "summary": {
     "totalExercises": 150,
     "completedExercises": 12,
-    "partialExercises": 0,
-    "notStartedExercises": 138,
+    "partialExercises": 1,
+    "notStartedExercises": 137,
     "coversComplete": 12,
     "infographicsComplete": 12,
     "thumbnailsComplete": 12,
-    "demosComplete": 0,
+    "demosComplete": 1,
     "overallProgressPercent": 8
   },
   "nextRecommendedExercise": {
-    "exerciseId": "677e458d-0206-48f1-a340-d1a75fe972e6",
-    "exerciseNumber": 2,
-    "canonicalHebrewName": "לחיצת חזה עם משקולות יד",
-    "englishName": "Dumbbell Bench Press",
-    "muscleGroup": "chest",
-    "status": "NOT_STARTED",
+    "exerciseId": "34440569-9867-4735-953f-867763ed8491",
+    "exerciseNumber": 48,
+    "canonicalHebrewName": "משיכת חבל לפנים",
+    "englishName": "Face Pull",
+    "muscleGroup": "shoulders",
+    "status": "PARTIAL",
     "media": {
       "hasCover": false,
       "hasInfographic": false,
       "hasThumbnail": false,
-      "hasDemo": false
+      "hasDemo": true
     },
     "missingAssets": [
       "cover",
       "infographic",
-      "thumbnail",
-      "demo"
-    ]
+      "thumbnail"
+    ],
+    "lastUpdated": "2026-09-02T18:03:10.109Z"
   },
   "exercises": [
     {
@@ -966,19 +966,19 @@
       "canonicalHebrewName": "משיכת חבל לפנים",
       "englishName": "Face Pull",
       "muscleGroup": "shoulders",
-      "status": "NOT_STARTED",
+      "status": "PARTIAL",
       "media": {
         "hasCover": false,
         "hasInfographic": false,
         "hasThumbnail": false,
-        "hasDemo": false
+        "hasDemo": true
       },
       "missingAssets": [
         "cover",
         "infographic",
-        "thumbnail",
-        "demo"
-      ]
+        "thumbnail"
+      ],
+      "lastUpdated": "2026-09-02T18:03:10.109Z"
     },
     {
       "exerciseId": "150e00e2-346c-4db2-ae35-5f4da7a33c3d",
