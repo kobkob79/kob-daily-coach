@@ -15,7 +15,10 @@ import {
   mapValidationErrorsToAutomaticChecks,
   MOTION_VIDEO_MANUAL_REVIEW_ITEMS,
   MOTION_VIDEO_UNVERIFIED_PROPERTIES,
+  REQUIRED_AUTOMATIC_CHECK_IDS,
   validateDetectedMotionVideoMetadata,
+  type AutomaticCheckStatus,
+  type ManualReviewItemId,
 } from "./exercise-media-v2.ts";
 
 const EXERCISE_ID = "10000000-0000-0000-0000-000000000001";
@@ -284,6 +287,54 @@ test("isMotionDraftReadyToUpload: true only when automatic checks all pass and m
   assert.equal(isMotionDraftReadyToUpload(checks, confirmations), true);
 });
 
+// ----------------------------------------------------------------------
+// VIORA-EXERCISE-MOTION-VIDEO-QUALITY-GATE-REVIEW-001: fail-closed gate.
+// isMotionDraftReadyToUpload() must never pass vacuously on an empty or
+// incomplete automatic-check array.
+// ----------------------------------------------------------------------
+
+function allConfirmed() {
+  const confirmations = createEmptyManualReviewConfirmations();
+  for (const item of MOTION_VIDEO_MANUAL_REVIEW_ITEMS) confirmations[item.id] = true;
+  return confirmations;
+}
+
+function passingCheck(id: (typeof REQUIRED_AUTOMATIC_CHECK_IDS)[number]): AutomaticCheckStatus {
+  return { id, label: id, passed: true, detail: "" };
+}
+
+test("isMotionDraftReadyToUpload: fails closed - empty automatic-check array returns false", () => {
+  assert.equal(isMotionDraftReadyToUpload([], allConfirmed()), false);
+});
+
+test("isMotionDraftReadyToUpload: fails closed - missing one required check returns false", () => {
+  const checks = REQUIRED_AUTOMATIC_CHECK_IDS.filter((id) => id !== "file_size").map(passingCheck);
+  assert.equal(checks.length, 3);
+  assert.equal(isMotionDraftReadyToUpload(checks, allConfirmed()), false);
+});
+
+test("isMotionDraftReadyToUpload: fails closed - a duplicate id cannot substitute for a missing required check", () => {
+  const checks = [
+    passingCheck("mime_type"),
+    passingCheck("mime_type"), // duplicate, standing in for the missing "file_size"
+    passingCheck("resolution"),
+    passingCheck("duration"),
+  ];
+  assert.equal(checks.length, 4);
+  assert.equal(isMotionDraftReadyToUpload(checks, allConfirmed()), false);
+});
+
+test("isMotionDraftReadyToUpload: exactly four unique required passing checks plus all confirmations returns true", () => {
+  const checks = REQUIRED_AUTOMATIC_CHECK_IDS.map(passingCheck);
+  assert.equal(isMotionDraftReadyToUpload(checks, allConfirmed()), true);
+});
+
+test("REQUIRED_AUTOMATIC_CHECK_IDS matches exactly the ids mapValidationErrorsToAutomaticChecks produces", () => {
+  const errors = validateDetectedMotionVideoMetadata(CONFORMING_METADATA);
+  const checks = mapValidationErrorsToAutomaticChecks(CONFORMING_METADATA, errors);
+  assert.deepEqual(checks.map((c) => c.id).sort(), [...REQUIRED_AUTOMATIC_CHECK_IDS].sort());
+});
+
 test("MOTION_VIDEO_UNVERIFIED_PROPERTIES: covers codec/frame_rate/no_audio_track and structurally cannot represent PASS", () => {
   assert.deepEqual(MOTION_VIDEO_UNVERIFIED_PROPERTIES.map((p) => p.id).sort(), [
     "codec",
@@ -296,3 +347,19 @@ test("MOTION_VIDEO_UNVERIFIED_PROPERTIES: covers codec/frame_rate/no_audio_track
     assert.ok(prop.label.length > 0);
   }
 });
+
+// ----------------------------------------------------------------------
+// Compile-time only, per VIORA-EXERCISE-MOTION-VIDEO-QUALITY-GATE-REVIEW-001:
+// confirms ManualReviewItemId stayed the exact six-key literal union
+// rather than widening to `string`. Node's type-stripping erases these
+// annotations at runtime (both calls just execute harmlessly), but
+// `npx tsc --noEmit` fails if the `@ts-expect-error` line below does NOT
+// produce a type error - i.e. if the union ever widens back to `string`.
+// ----------------------------------------------------------------------
+function assertManualReviewIdIsExactLiteralUnion(id: ManualReviewItemId) {
+  return id;
+}
+assertManualReviewIdIsExactLiteralUnion("in_frame");
+// @ts-expect-error "not_a_real_manual_review_id" is not one of the six approved ids -
+// if this line stops erroring, ManualReviewItemId has widened back to `string`.
+assertManualReviewIdIsExactLiteralUnion("not_a_real_manual_review_id");

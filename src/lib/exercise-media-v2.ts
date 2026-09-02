@@ -236,8 +236,15 @@ export interface ManualReviewItem {
 /**
  * The mandatory Admin visual-review checklist. Order matches the sprint
  * spec. Every item is required - see isManualReviewComplete().
+ *
+ * Declared with `as const satisfies` rather than an explicit
+ * `readonly ManualReviewItem[]` annotation: an explicit annotation would
+ * widen every `id` to the generic `string` from ManualReviewItem, which
+ * in turn would widen ManualReviewItemId (below) to `string` and lose the
+ * exact six-key guarantee on ManualReviewConfirmations. `satisfies` checks
+ * the array against the ManualReviewItem shape without widening it.
  */
-export const MOTION_VIDEO_MANUAL_REVIEW_ITEMS: readonly ManualReviewItem[] = [
+export const MOTION_VIDEO_MANUAL_REVIEW_ITEMS = [
   { id: "in_frame", label: "הראש וכל הגוף נשארים בתוך המסגרת לאורך כל הסרטון." },
   {
     id: "matches_hero",
@@ -253,7 +260,7 @@ export const MOTION_VIDEO_MANUAL_REVIEW_ITEMS: readonly ManualReviewItem[] = [
   },
   { id: "biomechanics_sound", label: "התנועה נראית ביומכנית תקינה ומתאימה לתרגיל." },
   { id: "loops_smoothly", label: "תחילת הסרטון וסופו מאפשרים לולאה חלקה." },
-] as const;
+] as const satisfies readonly ManualReviewItem[];
 
 export type ManualReviewItemId = (typeof MOTION_VIDEO_MANUAL_REVIEW_ITEMS)[number]["id"];
 
@@ -294,15 +301,50 @@ export const MOTION_VIDEO_UNVERIFIED_PROPERTIES: readonly UnverifiedProperty[] =
   { id: "no_audio_track", label: "ללא ערוץ אודיו" },
 ] as const;
 
+/** The four automatic checks every Draft upload must report - see AutomaticCheckId. */
+export const REQUIRED_AUTOMATIC_CHECK_IDS: readonly AutomaticCheckId[] = [
+  "mime_type",
+  "file_size",
+  "resolution",
+  "duration",
+] as const;
+
 /**
- * The Draft upload button's gate: every automatic check must pass AND
- * every manual-review item must be confirmed. Unverified technical
- * properties (codec/fps/audio) are never part of this gate - they may
- * still allow saving as Draft, per the sprint.
+ * True only when `automaticChecks` contains exactly the four required
+ * check ids - each exactly once - and every one of them passed. Fails
+ * closed rather than passing vacuously: an empty array, an array missing
+ * a required id, or a duplicate id standing in for a missing one, all
+ * resolve to false.
+ */
+function hasAllRequiredAutomaticChecksPassing(
+  automaticChecks: readonly AutomaticCheckStatus[],
+): boolean {
+  if (automaticChecks.length !== REQUIRED_AUTOMATIC_CHECK_IDS.length) return false;
+
+  const seenIds = new Set<AutomaticCheckId>();
+  for (const check of automaticChecks) {
+    if (seenIds.has(check.id)) return false; // a duplicate id can never substitute for a missing one
+    seenIds.add(check.id);
+  }
+
+  return (
+    REQUIRED_AUTOMATIC_CHECK_IDS.every((id) => seenIds.has(id)) &&
+    automaticChecks.every((check) => check.passed)
+  );
+}
+
+/**
+ * The Draft upload button's gate: exactly the four required automatic
+ * checks must be present and all must pass, AND every manual-review item
+ * must be confirmed. Unverified technical properties (codec/fps/audio)
+ * are never part of this gate - they may still allow saving as Draft,
+ * per the sprint.
  */
 export function isMotionDraftReadyToUpload(
   automaticChecks: readonly AutomaticCheckStatus[],
   confirmations: ManualReviewConfirmations,
 ): boolean {
-  return automaticChecks.every((check) => check.passed) && isManualReviewComplete(confirmations);
+  return (
+    hasAllRequiredAutomaticChecksPassing(automaticChecks) && isManualReviewComplete(confirmations)
+  );
 }
