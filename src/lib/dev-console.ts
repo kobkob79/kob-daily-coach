@@ -13,6 +13,7 @@ import {
   Dumbbell,
   FolderTree,
   Images,
+  Lightbulb,
   Megaphone,
   ShieldCheck,
   Video,
@@ -33,6 +34,14 @@ export interface DevModule {
 }
 
 export const DEV_MODULES: readonly DevModule[] = [
+  {
+    id: "exercise-insights",
+    title: "התובנות שלי",
+    description: "תצוגת פיתוח לתובנות פרטיות לכל תרגיל",
+    icon: Lightbulb,
+    to: "/dev/exercise-insights",
+    status: "ready",
+  },
   {
     id: "character-assets",
     title: "נכסי דמויות",
@@ -112,10 +121,7 @@ export const DEV_MODULES: readonly DevModule[] = [
  * imported. `VITE_ENABLE_DEV_CONSOLE=true` re-opens it for preview testing.
  */
 export function isDevConsoleEnabled(): boolean {
-  return (
-    import.meta.env.DEV ||
-    import.meta.env['VITE_ENABLE_DEV_CONSOLE'] === "true"
-  );
+  return import.meta.env.DEV || import.meta.env["VITE_ENABLE_DEV_CONSOLE"] === "true";
 }
 
 export const DEV_CONSOLE_TITLE = "קונסולת מפתחים";
