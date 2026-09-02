@@ -12,11 +12,14 @@ Infographic, Guide, and step images are removed from the default future producti
 
 Existing media assets and existing structured metadata required for accessibility, search, and filtering must be preserved. Existing assets must not be deleted. A fallback mechanism is mandated: an unavailable or uncached video safely falls back to the offline-available Hero Cover.
 
+## Demonstrator identity (resolved)
+
+VIORA-EXERCISE-GENERIC-DEMONSTRATOR-DECISION-001: V1 uses exactly one official generic exercise demonstrator, superseding the earlier daniel/maya two-demonstrator decision. The Hero Cover and Motion Video for a given exercise must preserve the same generic character identity, equipment, clothing, camera, and illustration style. Multiple official demonstrators and any user-selectable variant are postponed.
+
 ## Open Decisions
 
 The following implementation and technical decisions remain unresolved and require future architectural definition:
 
-- Exact male/female exercise-assignment rule.
 - Video encoding and maximum file size.
 - Cache limits and eviction policy.
 - QA/Published persistence.
