@@ -15,6 +15,8 @@ import {
 } from "@/lib/exercise-media";
 import { cn } from "@/lib/utils";
 
+import { MotionVideo } from "./MotionVideo";
+
 export interface ExerciseMediaViewProps {
   exerciseId: string;
   name?: string | null;
@@ -81,23 +83,22 @@ export function ExerciseMediaView({
   // Belt-and-suspenders: the thumbnail slot can never render a <video>,
   // even if resolveExerciseThumbnailStill()'s guarantee were ever weakened.
   const isVideo = slot !== "thumbnail" && usableHero?.role === "video";
-  const objectFit =
-    fit ?? (CONTAIN_SLOTS.includes(slot) && !isVideo ? "contain" : "cover");
+  const objectFit = fit ?? (CONTAIN_SLOTS.includes(slot) && !isVideo ? "contain" : "cover");
   const fitClass = objectFit === "contain" ? "object-contain" : "object-cover";
 
   if (isPending) return <div className={cn("animate-pulse bg-muted/50", className)} />;
 
   if (usableHero) {
     return isVideo ? (
-      <video
+      // Motion Video: single looping element + accessible Play/Pause, Reduced
+      // Motion aware. `handleError` still drives the signed-URL retry/fallback.
+      <MotionVideo
         key={usableHero.item.path}
         src={usableHero.item.url}
-        className={cn(fitClass, className)}
-        autoPlay
-        loop
-        muted
-        playsInline
-        preload="metadata"
+        mediaKey={usableHero.item.path}
+        name={name}
+        className={className}
+        fitClass={fitClass}
         onError={handleError}
       />
     ) : (
@@ -114,12 +115,7 @@ export function ExerciseMediaView({
 
   if (still) {
     return (
-      <img
-        src={still}
-        alt={name ?? "תרגיל"}
-        className={cn(fitClass, className)}
-        loading="lazy"
-      />
+      <img src={still} alt={name ?? "תרגיל"} className={cn(fitClass, className)} loading="lazy" />
     );
   }
 
