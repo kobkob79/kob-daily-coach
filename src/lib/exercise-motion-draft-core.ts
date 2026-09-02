@@ -10,28 +10,30 @@
  * here imports Supabase, TanStack, or any admin-auth code, so it cannot
  * accidentally widen who can call it.
  *
- * ARCHITECTURAL BLOCKER (read before changing verifiedFrameRate):
- * The merged database (supabase/migrations/20260902065412_exercise_media_lifecycle_data.sql)
- * requires `exercise_media_assets.frame_rate = 30` (NOT NULL, exact match)
- * for every `motion_video` row, at every status including `draft`. Neither
- * the browser nor this trusted Node server can decode video to genuinely
- * measure frame rate in this environment (no ffprobe/mediainfo/WASM
- * decoder is installed, and none should be added silently just to make
- * this insert succeed). `verifiedFrameRate` is therefore always `null` on
- * the real HTTP path today (see exercise-motion-draft.functions.ts), and
- * `performMotionDraftUpload` deliberately refuses to call
- * `deps.insertMotionVideoAsset` without a genuine positive number for it -
- * it fails fast with `{ stage: "asset_metadata", reason: "architectural_blocker" }`
- * and fully compensates (removes the just-uploaded object, and the
- * just-created Draft row if it has no other history) rather than writing
- * `30` as a guess. Tests exercise the success path by injecting an
- * explicit `verifiedFrameRate`, exactly the way a future privileged
- * probing service would - see the PR body for the recommended smallest
- * safe fix (an isolated server-side probe, not implemented in this
- * sprint).
+ * FRAME RATE (read before changing verifiedFrameRate):
+ * supabase/migrations/20260902084229_exercise_media_v2_followup.sql
+ * relaxed `exercise_media_assets.frame_rate` to accept either NULL
+ * ("not yet verified") or exactly 30 ("verified and correct") - it never
+ * accepts any other value. Neither the browser nor this trusted Node
+ * server can decode video to genuinely measure frame rate in this
+ * environment, so `verifiedFrameRate` is always `null` on the real HTTP
+ * path today (see exercise-motion-draft.functions.ts) - and that is now a
+ * legitimate, successful outcome, not a blocker: the Draft is created with
+ * an honestly-unverified frame rate rather than a fabricated one. A
+ * non-null value that is not exactly 30 is still rejected up front as a
+ * validation error, before any write - this module can hold "unverified"
+ * or "verified and correct", never "verified and wrong". Tests inject an
+ * explicit `30` to exercise that path, exactly the way a future privileged
+ * probing service would.
+ *
+ * DEMONSTRATOR: VIORA-EXERCISE-GENERIC-DEMONSTRATOR-DECISION-001 - every
+ * newly created Draft uses the single official V1 demonstrator
+ * (DEFAULT_DEMONSTRATOR_KEY, "generic"). There is no per-exercise
+ * resolution step here on purpose.
  */
 import {
   buildMotionVideoStoragePath,
+  DEFAULT_DEMONSTRATOR_KEY,
   isUuid,
   MOTION_VIDEO_HEIGHT,
   MOTION_VIDEO_MAX_BYTES,
@@ -40,7 +42,6 @@ import {
   MOTION_VIDEO_MIN_DURATION_MS,
   MOTION_VIDEO_REQUIRED_FRAME_RATE,
   MOTION_VIDEO_WIDTH,
-  resolveDemonstratorDefault,
   type DemonstratorKey,
   type MotionDraftValidationError,
 } from "./exercise-media-v2.ts";
@@ -64,8 +65,6 @@ export interface MotionAssetRow {
 export interface MotionDraftDeps {
   /** The exercise must exist; returns false otherwise. Never trusts a client-supplied boolean. */
   exerciseExists(exerciseId: string): Promise<boolean>;
-  /** Position in the Core 150 catalogue, or null when unresolvable (always null today - see module doc). */
-  resolveCore150Number(exerciseId: string): Promise<number | null>;
   /** The single active working-state version for this exercise, if any (never Published/Trash/Archived). */
   findActiveWorkingVersion(exerciseId: string): Promise<MotionVersionRow | null>;
   /** Next positive version_number for a brand new version of this exercise. */
@@ -82,36 +81,27 @@ export interface MotionDraftDeps {
   uploadObject(path: string, bytes: Uint8Array, contentType: string): Promise<void>;
   /** Compensation / replacement cleanup only. Must never be called with the current Published object's path. */
   removeObject(path: string): Promise<void>;
-  insertMotionVideoAsset(input: {
+  /**
+   * Atomically upserts the motion_video asset row and appends its audit
+   * event(s) in one transaction (see finalize_exercise_motion_video_asset
+   * in the follow-up migration) - there is no separate insert/update-asset
+   * step and no separate insert-event step, so there is no window in which
+   * one exists without the other.
+   */
+  finalizeAsset(input: {
     mediaVersionId: string;
+    isNewDraft: boolean;
     storagePath: string;
     mimeType: string;
     fileSizeBytes: number;
     width: number;
     height: number;
     durationMs: number;
-    frameRate: number;
+    frameRate: number | null;
     checksumSha256: string | null;
-  }): Promise<MotionAssetRow>;
-  /** Replacement only: repoints the existing asset row at the newly uploaded object. */
-  updateMotionVideoAssetPath(input: {
-    assetId: string;
-    storagePath: string;
-    mimeType: string;
-    fileSizeBytes: number;
-    width: number;
-    height: number;
-    durationMs: number;
-    frameRate: number;
-    checksumSha256: string | null;
-  }): Promise<MotionAssetRow>;
-  insertEvent(input: {
-    mediaVersionId: string;
-    eventType: "created" | "asset_uploaded";
-    toStatus: string | null;
     actorUserId: string;
-    metadata: Record<string, unknown>;
-  }): Promise<void>;
+    replacedPrevious: boolean;
+  }): Promise<MotionAssetRow>;
   sha256(bytes: Uint8Array): Promise<string>;
 }
 
@@ -126,9 +116,10 @@ export interface MotionDraftUploadInput {
   /** Admin has already seen a `needs_confirmation` result and explicitly confirmed replacement. */
   confirmReplace: boolean;
   /**
-   * A genuinely verified frame rate from a trusted source. Always `null` on
-   * the real HTTP path today - see the module-level ARCHITECTURAL BLOCKER
-   * comment. Tests inject a real number to exercise the success path.
+   * A genuinely verified frame rate from a trusted source, or `null` when
+   * honestly unverified (always `null` on the real HTTP path today - see
+   * the module doc). A non-null value must be exactly
+   * MOTION_VIDEO_REQUIRED_FRAME_RATE or the upload is rejected outright.
    */
   verifiedFrameRate: number | null;
 }
@@ -150,10 +141,11 @@ export type MotionDraftUploadResult =
       wasReplacement: boolean;
       assetId: string;
       storagePath: string;
+      frameRateVerified: boolean;
     }
   | {
       status: "failure";
-      stage: "storage_upload" | "asset_metadata" | "event_write";
+      stage: "storage_upload" | "finalize";
       reason: string;
     };
 
@@ -176,13 +168,23 @@ function validateMetadata(input: MotionDraftUploadInput): MotionDraftValidationE
   ) {
     errors.push({ code: "duration_out_of_range", message: "duration_out_of_range" });
   }
+  // A frame rate can be honestly unverified (null); it can never be
+  // honestly wrong. Reject a non-null, non-30 value up front rather than
+  // letting the database CHECK reject it after a Storage upload already
+  // happened.
+  if (
+    input.verifiedFrameRate !== null &&
+    input.verifiedFrameRate !== MOTION_VIDEO_REQUIRED_FRAME_RATE
+  ) {
+    errors.push({ code: "invalid_frame_rate", message: "invalid_frame_rate" });
+  }
   return errors;
 }
 
 /**
  * The full Draft-creation-or-reuse, upload, and compensation pipeline for
- * one Motion Video. See the module doc for the frame-rate blocker this
- * always hits on the real HTTP path today.
+ * one Motion Video. See the module doc for how an unverified frame rate is
+ * handled.
  */
 export async function performMotionDraftUpload(
   deps: MotionDraftDeps,
@@ -207,13 +209,11 @@ export async function performMotionDraftUpload(
   let wasNewDraft = false;
 
   if (!existingVersion) {
-    const core150Number = await deps.resolveCore150Number(input.exerciseId);
-    const demonstratorKey = resolveDemonstratorDefault(core150Number);
     const versionNumber = await deps.nextVersionNumber(input.exerciseId);
     version = await deps.insertDraftVersion({
       exerciseId: input.exerciseId,
       versionNumber,
-      demonstratorKey,
+      demonstratorKey: DEFAULT_DEMONSTRATOR_KEY,
       createdBy: input.actorUserId,
     });
     wasNewDraft = true;
@@ -257,27 +257,6 @@ export async function performMotionDraftUpload(
     };
   }
 
-  if (
-    input.verifiedFrameRate === null ||
-    input.verifiedFrameRate !== MOTION_VIDEO_REQUIRED_FRAME_RATE
-  ) {
-    // The architectural blocker: refuse to fabricate frame_rate. Compensate
-    // fully - the object we just uploaded above is removed, and a
-    // brand-new, still-history-free Draft row is removed too. An existing
-    // Draft being *replaced* is left exactly as it was (its prior asset, if
-    // any, is untouched) because that row has real history beyond this
-    // call.
-    await safeRemoveObject(deps, storagePath);
-    if (wasNewDraft) {
-      await safeDeleteVersion(deps, version.id);
-    }
-    return {
-      status: "failure",
-      stage: "asset_metadata",
-      reason: "architectural_blocker",
-    };
-  }
-
   let checksumSha256: string | null = null;
   try {
     checksumSha256 = await deps.sha256(input.fileBytes);
@@ -285,82 +264,42 @@ export async function performMotionDraftUpload(
     checksumSha256 = null; // optional per spec ("if safely calculated"); never blocks the upload.
   }
 
-  const assetFields = {
-    mimeType: input.declaredMimeType,
-    fileSizeBytes: input.fileBytes.byteLength,
-    width: input.declaredWidth,
-    height: input.declaredHeight,
-    durationMs: input.declaredDurationMs,
-    frameRate: input.verifiedFrameRate,
-    checksumSha256,
-  };
-
   let asset: MotionAssetRow;
   try {
-    asset =
-      isReplacement && existingAsset
-        ? await deps.updateMotionVideoAssetPath({
-            assetId: existingAsset.id,
-            storagePath,
-            ...assetFields,
-          })
-        : await deps.insertMotionVideoAsset({
-            mediaVersionId: version.id,
-            storagePath,
-            ...assetFields,
-          });
+    asset = await deps.finalizeAsset({
+      mediaVersionId: version.id,
+      isNewDraft: wasNewDraft,
+      storagePath,
+      mimeType: input.declaredMimeType,
+      fileSizeBytes: input.fileBytes.byteLength,
+      width: input.declaredWidth,
+      height: input.declaredHeight,
+      durationMs: input.declaredDurationMs,
+      frameRate: input.verifiedFrameRate,
+      checksumSha256,
+      actorUserId: input.actorUserId,
+      replacedPrevious: isReplacement,
+    });
   } catch (err) {
+    // The asset row and its audit event(s) are written atomically (one
+    // transaction - see finalize_exercise_motion_video_asset), so a
+    // failure here means NEITHER was written. Compensate the Storage
+    // upload and, for a brand-new Draft, the empty version row.
     await safeRemoveObject(deps, storagePath);
     if (wasNewDraft) {
       await safeDeleteVersion(deps, version.id);
     }
     return {
       status: "failure",
-      stage: "asset_metadata",
+      stage: "finalize",
       reason: err instanceof Error ? err.message : String(err),
     };
   }
 
-  // Only now, with the Draft and its asset both durably established, is it
-  // safe to remove the superseded object during a replacement.
+  // Only now, with the Draft and its asset+events all durably established,
+  // is it safe to remove the superseded object during a replacement.
   if (isReplacement && existingAsset && existingAsset.storagePath !== storagePath) {
     await safeRemoveObject(deps, existingAsset.storagePath);
-  }
-
-  try {
-    if (wasNewDraft) {
-      await deps.insertEvent({
-        mediaVersionId: version.id,
-        eventType: "created",
-        toStatus: "draft",
-        actorUserId: input.actorUserId,
-        metadata: { role: "motion_video" },
-      });
-    }
-    await deps.insertEvent({
-      mediaVersionId: version.id,
-      eventType: "asset_uploaded",
-      toStatus: null,
-      actorUserId: input.actorUserId,
-      metadata: {
-        role: "motion_video",
-        fileSizeBytes: assetFields.fileSizeBytes,
-        width: assetFields.width,
-        height: assetFields.height,
-        durationMs: assetFields.durationMs,
-        replacedPreviousAsset: isReplacement,
-      },
-    });
-  } catch (err) {
-    // The Draft/asset are already durably correct at this point; a failed
-    // audit write is reported but is not compensated by undoing the asset -
-    // undoing a successful, valid asset write to "fix" an audit-log failure
-    // would itself corrupt state. This is a known limitation - see PR body.
-    return {
-      status: "failure",
-      stage: "event_write",
-      reason: err instanceof Error ? err.message : String(err),
-    };
   }
 
   return {
@@ -372,6 +311,7 @@ export async function performMotionDraftUpload(
     wasReplacement: isReplacement,
     assetId: asset.id,
     storagePath,
+    frameRateVerified: input.verifiedFrameRate !== null,
   };
 }
 

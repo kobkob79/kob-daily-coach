@@ -6,8 +6,9 @@ import assert from "node:assert/strict";
 
 import {
   buildMotionVideoStoragePath,
+  DEFAULT_DEMONSTRATOR_KEY,
+  DEMONSTRATOR_KEYS,
   isUuid,
-  resolveDemonstratorDefault,
   validateDetectedMotionVideoMetadata,
 } from "./exercise-media-v2.ts";
 
@@ -147,13 +148,13 @@ test("validateDetectedMotionVideoMetadata reports every violated rule at once", 
   ]);
 });
 
-test("resolveDemonstratorDefault falls back to daniel when no Core 150 number resolves (the only case today)", () => {
-  assert.equal(resolveDemonstratorDefault(null), "daniel");
-});
-
-test("resolveDemonstratorDefault alternates odd->daniel, even->maya when a number is available", () => {
-  assert.equal(resolveDemonstratorDefault(1), "daniel");
-  assert.equal(resolveDemonstratorDefault(2), "maya");
-  assert.equal(resolveDemonstratorDefault(3), "daniel");
-  assert.equal(resolveDemonstratorDefault(150), "maya");
+test("VIORA-EXERCISE-GENERIC-DEMONSTRATOR-DECISION-001: the only official V1 demonstrator is generic", () => {
+  assert.deepEqual(DEMONSTRATOR_KEYS, ["generic"]);
+  assert.equal(DEFAULT_DEMONSTRATOR_KEY, "generic");
+  for (const superseded of ["daniel", "maya", "ortal"]) {
+    assert.ok(
+      !(DEMONSTRATOR_KEYS as readonly string[]).includes(superseded),
+      `${superseded} must not be an accepted demonstrator key`,
+    );
+  }
 });

@@ -42,7 +42,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Step = "pick-exercise" | "pick-file" | "conflict" | "confirm-replace" | "blocked" | "done";
+type Step = "pick-exercise" | "pick-file" | "conflict" | "confirm-replace" | "done";
 
 interface DetectedFile {
   file: File;
@@ -86,10 +86,15 @@ export function MotionVideoDraftSheet({ open, onClose }: Props) {
   const [detected, setDetected] = useState<DetectedFile | null>(null);
   const [busy, setBusy] = useState(false);
   const [resultMessage, setResultMessage] = useState<string | null>(null);
-  const [blockedReason, setBlockedReason] = useState<string | null>(null);
+  const [frameRatePending, setFrameRatePending] = useState(false);
   const [conflictStatus, setConflictStatus] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const objectUrlRef = useRef<string | null>(null);
+  /** Staged Media Inbox path for the currently `detected` file, so a
+   * needs_confirmation -> confirm-replace retry reuses the same staged
+   * copy instead of uploading the identical bytes to Storage twice. Reset
+   * whenever a new file is selected. */
+  const stagedRef = useRef<{ file: File; inboxPath: string } | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -110,12 +115,13 @@ export function MotionVideoDraftSheet({ open, onClose }: Props) {
 
   function reset() {
     revokeCurrentPreview();
+    stagedRef.current = null;
     setExercise(null);
     setStep("pick-exercise");
     setDetected(null);
     setBusy(false);
     setResultMessage(null);
-    setBlockedReason(null);
+    setFrameRatePending(false);
     setConflictStatus(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
@@ -156,9 +162,9 @@ export function MotionVideoDraftSheet({ open, onClose }: Props) {
     if (!file || busy) return;
 
     revokeCurrentPreview();
+    stagedRef.current = null; // a new file invalidates any previously staged copy
     setDetected(null);
     setResultMessage(null);
-    setBlockedReason(null);
 
     if (file.type !== MOTION_VIDEO_MIME_TYPE) {
       toast.error(MOTION_DRAFT_MESSAGES_HE.invalid_mime_type);
@@ -175,13 +181,24 @@ export function MotionVideoDraftSheet({ open, onClose }: Props) {
     }
   }
 
+  /** Uploads to the Media Inbox staging bucket at most once per selected
+   * file - a confirm-replace retry after `needs_confirmation` reuses the
+   * same staged copy instead of re-uploading identical bytes. */
+  async function ensureStaged(file: File): Promise<string> {
+    if (stagedRef.current && stagedRef.current.file === file) {
+      return stagedRef.current.inboxPath;
+    }
+    const inboxPath = await uploadMediaInboxFile(file);
+    stagedRef.current = { file, inboxPath };
+    return inboxPath;
+  }
+
   async function confirmUpload(confirmReplace: boolean) {
     if (!exercise || !detected || detected.errors.length > 0 || busy) return;
 
     setBusy(true);
-    let inboxPath: string | null = null;
     try {
-      inboxPath = await uploadMediaInboxFile(detected.file);
+      const inboxPath = await ensureStaged(detected.file);
 
       const result = await uploadExerciseMotionDraftServer({
         data: {
@@ -220,29 +237,24 @@ export function MotionVideoDraftSheet({ open, onClose }: Props) {
       }
 
       if (result.status === "failure") {
-        if (result.reason === "architectural_blocker") {
-          setBlockedReason(MOTION_DRAFT_MESSAGES_HE.architectural_blocker);
-          setStep("blocked");
-        } else {
-          toast.error(MOTION_DRAFT_MESSAGES_HE.upload_failed);
-        }
+        toast.error(MOTION_DRAFT_MESSAGES_HE.upload_failed);
         setBusy(false);
         return;
       }
 
       // status === "success"
       setResultMessage(MOTION_DRAFT_MESSAGES_HE.draft_saved);
+      setFrameRatePending(!result.frameRateVerified);
       setStep("done");
       setBusy(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : MOTION_DRAFT_MESSAGES_HE.upload_failed);
       setBusy(false);
     }
-    // The Inbox staging copy (inboxPath) is intentionally left in place on
-    // every path - same convention as the legacy assignment flow's
-    // "post-assign" step - so the Admin can retry without re-selecting the
-    // file from the OS picker; nothing here re-uses or deletes it
-    // automatically.
+    // The Inbox staging copy is intentionally left in place on every path -
+    // same convention as the legacy assignment flow's "post-assign" step -
+    // so the Admin can retry (via ensureStaged's cache) without re-selecting
+    // the file from the OS picker or re-uploading it a second time.
   }
 
   const sheetOpen = !pickerOpen && step !== "pick-exercise" && !!exercise;
@@ -290,21 +302,14 @@ export function MotionVideoDraftSheet({ open, onClose }: Props) {
             </div>
           )}
 
-          {step === "blocked" && (
-            <div className="mt-4 space-y-4 pb-4">
-              <p className="text-sm text-destructive">{blockedReason}</p>
-              <p className="text-xs text-muted-foreground">
-                לא בוצע שינוי חלקי - הקובץ שהועלה הוסר וכל מצב זמני נוקה במלואו.
-              </p>
-              <Button className="h-12 w-full" variant="outline" onClick={closeAll}>
-                סגור
-              </Button>
-            </div>
-          )}
-
           {step === "done" && (
             <div className="mt-4 space-y-4 pb-4">
               <p className="text-sm text-primary">{resultMessage}</p>
+              {frameRatePending && (
+                <p className="text-xs text-muted-foreground">
+                  קצב הפריימים טרם אומת ויאומת בשלב בקרת האיכות.
+                </p>
+              )}
               <Button className="h-12 w-full" onClick={closeAll}>
                 סיום
               </Button>

@@ -86,6 +86,10 @@ function buildLiveDeps(adminSupabase: unknown): MotionDraftDeps {
   // reflects that reality.
   const db = adminSupabase as unknown as {
     from(table: string): any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    rpc(
+      fn: string,
+      args: Record<string, unknown>,
+    ): Promise<{ data: unknown; error: { message: string } | null }>;
     storage: {
       from(bucket: string): {
         upload(
@@ -107,17 +111,6 @@ function buildLiveDeps(adminSupabase: unknown): MotionDraftDeps {
         .maybeSingle();
       if (error) throw new Error(error.message);
       return !!data;
-    },
-
-    async resolveCore150Number() {
-      // No ordinal/number column exists anywhere in `public.exercises` or
-      // any companion table - the Core 150 catalogue migration
-      // (20260818225613_core_150_exercises.sql) inserts rows with no
-      // preserved position. This always resolves to null today, which is
-      // exactly the case the sprint's own fallback rule (default: daniel)
-      // covers. Revisit only if a stable catalogue-position column is
-      // ever added.
-      return null;
     },
 
     async findActiveWorkingVersion(exerciseId) {
@@ -187,56 +180,33 @@ function buildLiveDeps(adminSupabase: unknown): MotionDraftDeps {
       if (error) throw new Error(error.message);
     },
 
-    async insertMotionVideoAsset(input) {
-      const { data, error } = await db
-        .from("exercise_media_assets")
-        .insert({
-          media_version_id: input.mediaVersionId,
-          role: "motion_video",
-          storage_path: input.storagePath,
-          mime_type: input.mimeType,
-          file_size_bytes: input.fileSizeBytes,
-          width: input.width,
-          height: input.height,
-          duration_ms: input.durationMs,
-          frame_rate: input.frameRate,
-          checksum_sha256: input.checksumSha256,
-        })
-        .select("id, media_version_id, role, storage_path, file_size_bytes")
-        .single();
-      if (error) throw new Error(error.message);
-      return toAssetRow(data);
-    },
-
-    async updateMotionVideoAssetPath(input) {
-      const { data, error } = await db
-        .from("exercise_media_assets")
-        .update({
-          storage_path: input.storagePath,
-          mime_type: input.mimeType,
-          file_size_bytes: input.fileSizeBytes,
-          width: input.width,
-          height: input.height,
-          duration_ms: input.durationMs,
-          frame_rate: input.frameRate,
-          checksum_sha256: input.checksumSha256,
-        })
-        .eq("id", input.assetId)
-        .select("id, media_version_id, role, storage_path, file_size_bytes")
-        .single();
-      if (error) throw new Error(error.message);
-      return toAssetRow(data);
-    },
-
-    async insertEvent(input) {
-      const { error } = await db.from("exercise_media_asset_events").insert({
-        media_version_id: input.mediaVersionId,
-        event_type: input.eventType,
-        to_status: input.toStatus,
-        actor_user_id: input.actorUserId,
-        metadata: input.metadata,
+    async finalizeAsset(input) {
+      // One atomic transaction (asset upsert + audit event(s)) via the
+      // follow-up migration's finalize_exercise_motion_video_asset() -
+      // see supabase/migrations/20260902084229_exercise_media_v2_followup.sql.
+      // Service-role-only (EXECUTE is revoked from anon/authenticated).
+      const { data, error } = await db.rpc("finalize_exercise_motion_video_asset", {
+        p_media_version_id: input.mediaVersionId,
+        p_is_new_draft: input.isNewDraft,
+        p_storage_path: input.storagePath,
+        p_mime_type: input.mimeType,
+        p_file_size_bytes: input.fileSizeBytes,
+        p_width: input.width,
+        p_height: input.height,
+        p_duration_ms: input.durationMs,
+        p_frame_rate: input.frameRate,
+        p_checksum_sha256: input.checksumSha256,
+        p_actor_user_id: input.actorUserId,
+        p_replaced_previous: input.replacedPrevious,
       });
       if (error) throw new Error(error.message);
+      return {
+        id: data as string,
+        mediaVersionId: input.mediaVersionId,
+        role: "motion_video",
+        storagePath: input.storagePath,
+        fileSizeBytes: input.fileSizeBytes,
+      };
     },
 
     async sha256(bytes) {
@@ -346,12 +316,14 @@ export const uploadExerciseMotionDraftServer = createServerFn({ method: "POST" }
       declaredHeight: data.declaredHeight,
       declaredDurationMs: data.declaredDurationMs,
       confirmReplace: data.confirmReplace,
-      // ARCHITECTURAL BLOCKER: always null on this real path today. See
-      // exercise-motion-draft-core.ts's module doc and the PR body - the
-      // merged database requires a genuinely verified frame_rate = 30 for
-      // every motion_video row, and neither this server nor the browser
-      // can currently produce one honestly. Do not change this to `30`;
-      // that would fabricate metadata the sprint explicitly forbids.
+      // Always null on this real path today: neither this server nor the
+      // browser can decode video to genuinely measure frame rate in this
+      // environment. See exercise-motion-draft-core.ts's module doc - this
+      // is no longer a blocker (the follow-up migration allows a NULL,
+      // honestly-unverified frame_rate on a motion_video row), so the
+      // Draft upload still completes successfully. Do not change this to
+      // `30`; that would fabricate a measurement the sprint explicitly
+      // forbids.
       verifiedFrameRate: null,
     });
 

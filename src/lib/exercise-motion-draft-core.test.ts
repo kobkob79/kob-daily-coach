@@ -17,7 +17,7 @@ import {
   type MotionVersionRow,
   type MotionAssetRow,
 } from "./exercise-motion-draft-core.ts";
-import { MOTION_VIDEO_REQUIRED_FRAME_RATE } from "./exercise-media-v2.ts";
+import { DEFAULT_DEMONSTRATOR_KEY, MOTION_VIDEO_REQUIRED_FRAME_RATE } from "./exercise-media-v2.ts";
 
 const EXERCISE_A = "10000000-0000-0000-0000-000000000001";
 const EXERCISE_B = "10000000-0000-0000-0000-000000000002";
@@ -33,35 +33,43 @@ function fakeUuid(n: number): string {
   return `30000000-0000-0000-0000-${hex}`;
 }
 
+interface FinalizeEvent {
+  eventType: "created" | "asset_uploaded";
+  metadata: Record<string, unknown>;
+}
+
 interface FakeState {
   nextId: number;
   versions: Map<string, MotionVersionRow>; // by exercise id -> active working version
   assets: Map<string, MotionAssetRow>; // by version id
   storage: Set<string>; // uploaded object paths
-  events: Array<{
-    mediaVersionId: string;
-    eventType: string;
-    toStatus: string | null;
-    actorUserId: string;
-    metadata: Record<string, unknown>;
-  }>;
+  events: FinalizeEvent[];
   deletedVersions: string[];
   removedObjects: string[];
   calls: string[];
 }
 
+function freshState(): FakeState {
+  return {
+    nextId: 1,
+    versions: new Map(),
+    assets: new Map(),
+    storage: new Set(),
+    events: [],
+    deletedVersions: [],
+    removedObjects: [],
+    calls: [],
+  };
+}
+
 function makeFakeDeps(
   state: FakeState,
-  opts?: { failUpload?: boolean; failAssetWrite?: boolean },
+  opts?: { failUpload?: boolean; failFinalize?: boolean },
 ): MotionDraftDeps {
   return {
     async exerciseExists(exerciseId) {
       state.calls.push("exerciseExists");
       return exerciseId === EXERCISE_A || exerciseId === EXERCISE_B;
-    },
-    async resolveCore150Number() {
-      state.calls.push("resolveCore150Number");
-      return null; // always null today - see module doc.
     },
     async findActiveWorkingVersion(exerciseId) {
       state.calls.push("findActiveWorkingVersion");
@@ -104,9 +112,13 @@ function makeFakeDeps(
       state.removedObjects.push(path);
       state.storage.delete(path);
     },
-    async insertMotionVideoAsset(input) {
-      state.calls.push("insertMotionVideoAsset");
-      if (opts?.failAssetWrite) throw new Error("simulated db failure");
+    async finalizeAsset(input) {
+      // Mirrors finalize_exercise_motion_video_asset()'s atomicity: asset
+      // upsert + event(s) happen together here, or (via failFinalize)
+      // neither happens at all - there is no intermediate state to fake.
+      state.calls.push("finalizeAsset");
+      if (opts?.failFinalize) throw new Error("simulated finalize failure");
+
       const row: MotionAssetRow = {
         id: fakeUuid(state.nextId++),
         mediaVersionId: input.mediaVersionId,
@@ -115,24 +127,23 @@ function makeFakeDeps(
         fileSizeBytes: input.fileSizeBytes,
       };
       state.assets.set(input.mediaVersionId, row);
+
+      if (input.isNewDraft) {
+        state.events.push({ eventType: "created", metadata: { role: "motion_video" } });
+      }
+      state.events.push({
+        eventType: "asset_uploaded",
+        metadata: {
+          role: "motion_video",
+          fileSizeBytes: input.fileSizeBytes,
+          width: input.width,
+          height: input.height,
+          durationMs: input.durationMs,
+          replacedPreviousAsset: input.replacedPrevious,
+        },
+      });
+
       return row;
-    },
-    async updateMotionVideoAssetPath(input) {
-      state.calls.push("updateMotionVideoAssetPath");
-      if (opts?.failAssetWrite) throw new Error("simulated db failure");
-      const existing = [...state.assets.values()].find((a) => a.id === input.assetId);
-      if (!existing) throw new Error("asset not found");
-      const updated: MotionAssetRow = {
-        ...existing,
-        storagePath: input.storagePath,
-        fileSizeBytes: input.fileSizeBytes,
-      };
-      state.assets.set(existing.mediaVersionId, updated);
-      return updated;
-    },
-    async insertEvent(input) {
-      state.calls.push("insertEvent");
-      state.events.push(input);
     },
     async sha256() {
       return "deadbeef".repeat(8);
@@ -156,16 +167,7 @@ function baseInput(overrides: Partial<Parameters<typeof performMotionDraftUpload
 }
 
 test("rejects wrong mime type before any write", async () => {
-  const state: FakeState = {
-    nextId: 1,
-    versions: new Map(),
-    assets: new Map(),
-    storage: new Set(),
-    events: [],
-    deletedVersions: [],
-    removedObjects: [],
-    calls: [],
-  };
+  const state = freshState();
   const result = await performMotionDraftUpload(
     makeFakeDeps(state),
     baseInput({ declaredMimeType: "video/webm" }),
@@ -178,16 +180,7 @@ test("rejects wrong mime type before any write", async () => {
 });
 
 test("rejects oversized file before any write", async () => {
-  const state: FakeState = {
-    nextId: 1,
-    versions: new Map(),
-    assets: new Map(),
-    storage: new Set(),
-    events: [],
-    deletedVersions: [],
-    removedObjects: [],
-    calls: [],
-  };
+  const state = freshState();
   const result = await performMotionDraftUpload(
     makeFakeDeps(state),
     baseInput({ fileBytes: validBytes(3_145_729) }),
@@ -199,16 +192,7 @@ test("rejects oversized file before any write", async () => {
 });
 
 test("rejects wrong resolution", async () => {
-  const state: FakeState = {
-    nextId: 1,
-    versions: new Map(),
-    assets: new Map(),
-    storage: new Set(),
-    events: [],
-    deletedVersions: [],
-    removedObjects: [],
-    calls: [],
-  };
+  const state = freshState();
   const result = await performMotionDraftUpload(
     makeFakeDeps(state),
     baseInput({ declaredWidth: 1920, declaredHeight: 1080 }),
@@ -220,16 +204,7 @@ test("rejects wrong resolution", async () => {
 });
 
 test("rejects duration outside 6000-10000ms", async () => {
-  const state: FakeState = {
-    nextId: 1,
-    versions: new Map(),
-    assets: new Map(),
-    storage: new Set(),
-    events: [],
-    deletedVersions: [],
-    removedObjects: [],
-    calls: [],
-  };
+  const state = freshState();
   const result = await performMotionDraftUpload(
     makeFakeDeps(state),
     baseInput({ declaredDurationMs: 11000 }),
@@ -240,66 +215,35 @@ test("rejects duration outside 6000-10000ms", async () => {
   }
 });
 
-test("architectural blocker: null verifiedFrameRate stops before insert and fully compensates a new Draft", async () => {
-  const state: FakeState = {
-    nextId: 1,
-    versions: new Map(),
-    assets: new Map(),
-    storage: new Set(),
-    events: [],
-    deletedVersions: [],
-    removedObjects: [],
-    calls: [],
-  };
+test("an honestly-unverified (null) frame rate is no longer a blocker: the real HTTP path's exact value succeeds end-to-end", async () => {
+  const state = freshState();
   const result = await performMotionDraftUpload(
     makeFakeDeps(state),
     baseInput({ verifiedFrameRate: null }),
   );
-  assert.equal(result.status, "failure");
-  if (result.status === "failure") {
-    assert.equal(result.stage, "asset_metadata");
-    assert.equal(result.reason, "architectural_blocker");
+  assert.equal(result.status, "success");
+  if (result.status === "success") {
+    assert.equal(result.frameRateVerified, false);
   }
-  assert.ok(
-    !state.calls.includes("insertMotionVideoAsset"),
-    "must never attempt the insert with a fabricated frame rate",
-  );
-  assert.equal(state.storage.size, 0, "the uploaded object must be removed");
-  assert.equal(state.deletedVersions.length, 1, "the newly created empty Draft must be removed");
-  assert.equal(state.events.length, 0, "no audit event for a failed upload");
+  assert.equal(state.storage.size, 1);
+  assert.equal(state.events.length, 2);
 });
 
-test("architectural blocker also fires for a wrong (non-30) verified frame rate - never weakens the constraint", async () => {
-  const state: FakeState = {
-    nextId: 1,
-    versions: new Map(),
-    assets: new Map(),
-    storage: new Set(),
-    events: [],
-    deletedVersions: [],
-    removedObjects: [],
-    calls: [],
-  };
+test("a wrong non-null verified frame rate is rejected as a validation error before any write - never fabricated, never written", async () => {
+  const state = freshState();
   const result = await performMotionDraftUpload(
     makeFakeDeps(state),
     baseInput({ verifiedFrameRate: 29.97 }),
   );
-  assert.equal(result.status, "failure");
-  if (result.status === "failure") assert.equal(result.reason, "architectural_blocker");
-  assert.ok(!state.calls.includes("insertMotionVideoAsset"));
+  assert.equal(result.status, "validation_error");
+  if (result.status === "validation_error") {
+    assert.ok(result.errors.some((e) => e.code === "invalid_frame_rate"));
+  }
+  assert.deepEqual(state.calls, []); // rejected before exerciseExists/uploadObject/finalizeAsset
 });
 
 test("new Draft creation succeeds end-to-end when frame rate is genuinely verified", async () => {
-  const state: FakeState = {
-    nextId: 1,
-    versions: new Map(),
-    assets: new Map(),
-    storage: new Set(),
-    events: [],
-    deletedVersions: [],
-    removedObjects: [],
-    calls: [],
-  };
+  const state = freshState();
   const result = await performMotionDraftUpload(
     makeFakeDeps(state),
     baseInput({ verifiedFrameRate: MOTION_VIDEO_REQUIRED_FRAME_RATE }),
@@ -308,7 +252,8 @@ test("new Draft creation succeeds end-to-end when frame rate is genuinely verifi
   if (result.status === "success") {
     assert.equal(result.wasNewDraft, true);
     assert.equal(result.wasReplacement, false);
-    assert.equal(result.demonstratorKey, "daniel"); // fallback default: no Core 150 number resolves today
+    assert.equal(result.demonstratorKey, DEFAULT_DEMONSTRATOR_KEY); // VIORA-EXERCISE-GENERIC-DEMONSTRATOR-DECISION-001
+    assert.equal(result.frameRateVerified, true);
     assert.match(
       result.storagePath,
       /^exercises\/10000000-0000-0000-0000-000000000001\/v2\/30000000-0000-0000-0000-000000000001\/motion\.mp4$/,
@@ -322,17 +267,22 @@ test("new Draft creation succeeds end-to-end when frame rate is genuinely verifi
   );
 });
 
+test("every newly created Draft uses the single official generic demonstrator, regardless of exercise", async () => {
+  for (const exerciseId of [EXERCISE_A, EXERCISE_B]) {
+    const state = freshState();
+    const result = await performMotionDraftUpload(
+      makeFakeDeps(state),
+      baseInput({ exerciseId, verifiedFrameRate: MOTION_VIDEO_REQUIRED_FRAME_RATE }),
+    );
+    assert.equal(result.status, "success");
+    if (result.status === "success") {
+      assert.equal(result.demonstratorKey, "generic");
+    }
+  }
+});
+
 test("event metadata never carries signed URLs, credentials, or raw bytes", async () => {
-  const state: FakeState = {
-    nextId: 1,
-    versions: new Map(),
-    assets: new Map(),
-    storage: new Set(),
-    events: [],
-    deletedVersions: [],
-    removedObjects: [],
-    calls: [],
-  };
+  const state = freshState();
   await performMotionDraftUpload(
     makeFakeDeps(state),
     baseInput({ verifiedFrameRate: MOTION_VIDEO_REQUIRED_FRAME_RATE }),
@@ -346,16 +296,7 @@ test("event metadata never carries signed URLs, credentials, or raw bytes", asyn
 });
 
 test("existing active Draft with an asset requires explicit confirmation before replacement", async () => {
-  const state: FakeState = {
-    nextId: 1,
-    versions: new Map(),
-    assets: new Map(),
-    storage: new Set(),
-    events: [],
-    deletedVersions: [],
-    removedObjects: [],
-    calls: [],
-  };
+  const state = freshState();
   const deps = makeFakeDeps(state);
   const first = await performMotionDraftUpload(
     deps,
@@ -373,16 +314,7 @@ test("existing active Draft with an asset requires explicit confirmation before 
 });
 
 test("confirmed replacement uploads to a new path, switches the asset, then removes the old object only after success", async () => {
-  const state: FakeState = {
-    nextId: 1,
-    versions: new Map(),
-    assets: new Map(),
-    storage: new Set(),
-    events: [],
-    deletedVersions: [],
-    removedObjects: [],
-    calls: [],
-  };
+  const state = freshState();
   const deps = makeFakeDeps(state);
   const first = await performMotionDraftUpload(
     deps,
@@ -411,24 +343,18 @@ test("confirmed replacement uploads to a new path, switches the asset, then remo
     0,
     "the existing Draft row itself is never deleted on replacement",
   );
+  // The atomic finalize is called once per attempt (the confirmed
+  // replacement), never a separate insert-then-update pair.
+  assert.equal(state.calls.filter((c) => c === "finalizeAsset").length, 2);
 });
 
 test("a non-Draft working version (e.g. qa_passed) is reported as a conflict and never written to", async () => {
-  const state: FakeState = {
-    nextId: 1,
-    versions: new Map(),
-    assets: new Map(),
-    storage: new Set(),
-    events: [],
-    deletedVersions: [],
-    removedObjects: [],
-    calls: [],
-  };
+  const state = freshState();
   state.versions.set(EXERCISE_A, {
     id: "v-existing",
     exerciseId: EXERCISE_A,
     versionNumber: 1,
-    demonstratorKey: "daniel",
+    demonstratorKey: "generic",
     status: "qa_passed",
   });
   const result = await performMotionDraftUpload(
@@ -447,16 +373,7 @@ test("a Published version for the same exercise is never looked up, touched, or 
   // fake whose Published row lives outside `state.versions` proves the
   // upload path structurally cannot reach it: no removeObject/deleteVersion
   // call ever names a path or id associated with it.
-  const state: FakeState = {
-    nextId: 1,
-    versions: new Map(),
-    assets: new Map(),
-    storage: new Set(),
-    events: [],
-    deletedVersions: [],
-    removedObjects: [],
-    calls: [],
-  };
+  const state = freshState();
   const publishedAssetPath =
     "exercises/10000000-0000-0000-0000-000000000001/v2/PUBLISHED-VERSION/motion.mp4";
   const result = await performMotionDraftUpload(
@@ -469,16 +386,7 @@ test("a Published version for the same exercise is never looked up, touched, or 
 });
 
 test("cleanup after Storage failure: new Draft is removed, nothing else was ever written", async () => {
-  const state: FakeState = {
-    nextId: 1,
-    versions: new Map(),
-    assets: new Map(),
-    storage: new Set(),
-    events: [],
-    deletedVersions: [],
-    removedObjects: [],
-    calls: [],
-  };
+  const state = freshState();
   const result = await performMotionDraftUpload(
     makeFakeDeps(state, { failUpload: true }),
     baseInput({ verifiedFrameRate: MOTION_VIDEO_REQUIRED_FRAME_RATE }),
@@ -491,43 +399,29 @@ test("cleanup after Storage failure: new Draft is removed, nothing else was ever
     0,
     "nothing was uploaded, so there is nothing to remove",
   );
-  assert.ok(!state.calls.includes("insertMotionVideoAsset"));
+  assert.ok(!state.calls.includes("finalizeAsset"));
   assert.equal(state.events.length, 0);
 });
 
-test("cleanup after database failure: uploaded object is removed and the new Draft is removed", async () => {
-  const state: FakeState = {
-    nextId: 1,
-    versions: new Map(),
-    assets: new Map(),
-    storage: new Set(),
-    events: [],
-    deletedVersions: [],
-    removedObjects: [],
-    calls: [],
-  };
+test("cleanup after atomic finalize failure: uploaded object is removed and the new Draft is removed", async () => {
+  const state = freshState();
   const result = await performMotionDraftUpload(
-    makeFakeDeps(state, { failAssetWrite: true }),
+    makeFakeDeps(state, { failFinalize: true }),
     baseInput({ verifiedFrameRate: MOTION_VIDEO_REQUIRED_FRAME_RATE }),
   );
   assert.equal(result.status, "failure");
-  if (result.status === "failure") assert.equal(result.stage, "asset_metadata");
+  if (result.status === "failure") assert.equal(result.stage, "finalize");
   assert.equal(state.removedObjects.length, 1);
   assert.equal(state.deletedVersions.length, 1);
-  assert.equal(state.events.length, 0, "no event emitted for a failed upload");
+  assert.equal(
+    state.events.length,
+    0,
+    "no event emitted for a failed upload - finalizeAsset failing atomically means neither the asset row nor any event exists",
+  );
 });
 
 test("unknown exercise id is reported as not_found without any write", async () => {
-  const state: FakeState = {
-    nextId: 1,
-    versions: new Map(),
-    assets: new Map(),
-    storage: new Set(),
-    events: [],
-    deletedVersions: [],
-    removedObjects: [],
-    calls: [],
-  };
+  const state = freshState();
   const result = await performMotionDraftUpload(
     makeFakeDeps(state),
     baseInput({
@@ -540,16 +434,7 @@ test("unknown exercise id is reported as not_found without any write", async () 
 });
 
 test("malformed exerciseId is rejected before any dependency call", async () => {
-  const state: FakeState = {
-    nextId: 1,
-    versions: new Map(),
-    assets: new Map(),
-    storage: new Set(),
-    events: [],
-    deletedVersions: [],
-    removedObjects: [],
-    calls: [],
-  };
+  const state = freshState();
   const result = await performMotionDraftUpload(
     makeFakeDeps(state),
     baseInput({ exerciseId: "not-a-uuid" }),
@@ -563,5 +448,22 @@ test("the core module never references a service-role credential or the admin Su
   const source = readFileSync(path, "utf8");
   for (const forbidden of ["SUPABASE_SERVICE_ROLE_KEY", "supabaseAdmin", "createClient"]) {
     assert.ok(!source.includes(forbidden), `core module unexpectedly references "${forbidden}"`);
+  }
+});
+
+test("the core module has no daniel/maya/ortal demonstrator-resolution logic left (VIORA-EXERCISE-GENERIC-DEMONSTRATOR-DECISION-001)", () => {
+  const path = fileURLToPath(new URL("./exercise-motion-draft-core.ts", import.meta.url));
+  const source = readFileSync(path, "utf8");
+  for (const forbidden of [
+    "resolveCore150Number",
+    "'daniel'",
+    "'maya'",
+    "'ortal'",
+    "resolveDemonstratorDefault",
+  ]) {
+    assert.ok(
+      !source.includes(forbidden),
+      `core module unexpectedly still references "${forbidden}"`,
+    );
   }
 });

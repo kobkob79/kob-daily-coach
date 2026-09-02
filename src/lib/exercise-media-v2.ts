@@ -18,11 +18,28 @@ export const MOTION_VIDEO_HEIGHT = 720;
 export const MOTION_VIDEO_MIN_DURATION_MS = 6000;
 export const MOTION_VIDEO_MAX_DURATION_MS = 10000;
 export const MOTION_VIDEO_TARGET_DURATION_MS = 8000;
-/** Required frame rate per the approved V1 standard and the DB CHECK. Not a value this module can ever produce - see exercise-motion-draft-core.ts. */
+/**
+ * The only frame rate value the approved V1 standard and the follow-up
+ * migration's relaxed DB CHECK ever accept as *verified*
+ * (`frame_rate is null or frame_rate = 30`). NULL means "not yet
+ * verified" and is a legitimate, honest state for a Draft uploaded
+ * through the current Admin flow - see exercise-motion-draft-core.ts.
+ */
 export const MOTION_VIDEO_REQUIRED_FRAME_RATE = 30;
 
-export const DEMONSTRATOR_KEYS = ["daniel", "maya"] as const;
+/**
+ * VIORA-EXERCISE-GENERIC-DEMONSTRATOR-DECISION-001: V1 uses exactly one
+ * official generic exercise demonstrator. This supersedes every prior
+ * daniel/maya alternation, odd/even Core 150 assignment, muscle-group
+ * assignment, manual per-exercise assignment, user-selectable variant, and
+ * `ortal` as a possible demonstrator. Kept as a single-element array/union
+ * (not a bare string literal) so a future decision to add official
+ * demonstrators back is a one-line widening here plus a migration, not a
+ * data-model change - without exposing an unused choice today.
+ */
+export const DEMONSTRATOR_KEYS = ["generic"] as const;
 export type DemonstratorKey = (typeof DEMONSTRATOR_KEYS)[number];
+export const DEFAULT_DEMONSTRATOR_KEY: DemonstratorKey = "generic";
 
 /** The eight `exercise_media_versions.status` values, as merged in PR #3. */
 export const WORKING_STATUSES = [
@@ -82,7 +99,11 @@ export interface DetectedMotionVideoMetadata {
 }
 
 export type MotionDraftValidationErrorCode =
-  "invalid_mime_type" | "file_too_large" | "wrong_resolution" | "duration_out_of_range";
+  | "invalid_mime_type"
+  | "file_too_large"
+  | "wrong_resolution"
+  | "duration_out_of_range"
+  | "invalid_frame_rate";
 
 export interface MotionDraftValidationError {
   code: MotionDraftValidationErrorCode;
@@ -131,28 +152,13 @@ export const MOTION_DRAFT_MESSAGES_HE = {
   file_too_large: "הקובץ גדול מדי. הגודל המרבי המותר הוא 3MB.",
   wrong_resolution: "רזולוציית הווידאו חייבת להיות 1280×720 (16:9).",
   duration_out_of_range: "משך הווידאו חייב להיות בין 6 ל-10 שניות.",
+  invalid_frame_rate: "קצב הפריימים שסופק אינו תקין. יש להשאיר לא מאומת או לספק בדיוק 30fps.",
   needs_confirmation: "כבר קיימת טיוטה לתרגיל זה. יש לאשר את ההחלפה כדי להמשיך.",
   conflict_non_draft:
     "לתרגיל זה כבר יש גרסה בתהליך שאינה טיוטה. לא ניתן להעלות כעת - נדרש טיפול ידני.",
   uploading: "מעלה...",
   upload_failed: "ההעלאה נכשלה. נסו שוב.",
   draft_saved: "הטיוטה נשמרה בהצלחה.",
-  architectural_blocker:
-    "לא ניתן לאמת את קצב הפריימים (frame rate) בסביבה הנוכחית, ובסיס הנתונים דורש ערך מאומת. הפעולה נעצרה ובוטלה במלואה - שום דבר לא נשמר.",
-  forbidden: "אין הרשאת מנהל לפעולה זו.",
 } as const;
 
 export type MotionDraftMessageKey = keyof typeof MOTION_DRAFT_MESSAGES_HE;
-
-/**
- * Deterministic editorial demonstrator default. `core150Number` is the
- * exercise's stable position in the Core 150 catalogue - a concept the
- * running schema does not currently persist anywhere (no ordinal/number
- * column exists on `public.exercises`; see exercise-motion-draft-core.ts's
- * resolveCore150Number, which therefore always resolves to null today).
- * When it cannot be resolved, the sprint's own fallback rule applies.
- */
-export function resolveDemonstratorDefault(core150Number: number | null): DemonstratorKey {
-  if (core150Number === null) return "daniel";
-  return core150Number % 2 === 0 ? "maya" : "daniel";
-}

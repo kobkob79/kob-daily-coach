@@ -99,6 +99,50 @@ Supabase project's default behavior, not an artifact of this test file. Only
 after that was confirmed does 10e's "authenticated has none of these" result
 mean anything.
 
+## Follow-up migration (20260902084229_exercise_media_v2_followup.sql)
+
+`01_assertions.sql` above validates the schema exactly as it existed right
+after the original migration - including assertion 2's `daniel`/`maya`
+demonstrator checks, which were correct *at that point in the migration
+sequence* and are left as-is rather than rewritten, matching this
+repository's "do not edit an already-merged migration" convention extended
+to its accompanying tests. VIORA-EXERCISE-GENERIC-DEMONSTRATOR-DECISION-001
+superseded that decision in a separate, additive follow-up migration, with
+its own test files that validate the schema state *after* it runs:
+
+```bash
+createdb exercise_media_followup_test
+psql -d exercise_media_followup_test -v ON_ERROR_STOP=1 \
+  -f supabase/tests/exercise_media_lifecycle/00_fixture.sql
+psql -d exercise_media_followup_test -v ON_ERROR_STOP=1 \
+  -f supabase/migrations/20260902065412_exercise_media_lifecycle_data.sql
+psql -d exercise_media_followup_test -v ON_ERROR_STOP=1 \
+  -f supabase/tests/exercise_media_lifecycle/03_followup_seed_legacy_rows.sql
+psql -d exercise_media_followup_test -v ON_ERROR_STOP=1 \
+  -f supabase/migrations/20260902084229_exercise_media_v2_followup.sql
+psql -d exercise_media_followup_test -v ON_ERROR_STOP=1 \
+  -f supabase/tests/exercise_media_lifecycle/04_followup_assertions.sql
+dropdb exercise_media_followup_test
+```
+
+`03_followup_seed_legacy_rows.sql` inserts pre-existing `daniel`/`maya` rows
+**before** the follow-up migration runs, specifically so
+`04_followup_assertions.sql` can prove the migration's normalization
+`UPDATE` genuinely rewrites existing data to `generic` - not merely gates
+future inserts. `04_followup_assertions.sql` (10 assertion groups) covers:
+
+1. Pre-existing `daniel`/`maya` rows are normalized to `generic`.
+2. `demonstrator_key`: `generic` succeeds; `daniel`/`maya`/`ortal`/an
+   arbitrary value all fail; the column defaults to `generic` when omitted.
+3. `frame_rate`: `NULL` (honestly unverified) and exactly `30` both succeed
+   for a `motion_video` row; any other non-null value still fails.
+4. `finalize_exercise_motion_video_asset()`: a new-Draft call atomically
+   writes one asset row and both audit events together; a replacement call
+   atomically upserts the same asset row (no duplicate) and appends exactly
+   one further event.
+5. The finalize function is `service_role`-only - `authenticated` cannot
+   execute it directly.
+
 ## What this does not cover
 
 - Storage bucket behavior, signed URLs, or any upload path — out of scope

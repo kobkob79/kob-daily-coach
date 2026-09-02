@@ -12,8 +12,8 @@ Each exercise requires a primary static asset acting as the Hero Cover.
 - **Highlighting:**
   - Primary muscle highlighted orange.
   - Secondary muscles highlighted lighter orange.
-- **Demonstrator Identity:** Two fixed official demonstrators are used: one male and one female. The exact assignment rule remains an **Open Decision**.
-- **Consistency:** The same demonstrator must remain consistent between the Hero Cover and the Motion Video.
+- **Demonstrator Identity:** V1 uses exactly one official generic exercise demonstrator (VIORA-EXERCISE-GENERIC-DEMONSTRATOR-DECISION-001). This supersedes the earlier two-demonstrator (male/female) decision. Multiple official demonstrators and any user-selectable variant are postponed.
+- **Consistency:** The Hero Cover and Motion Video for a given exercise must preserve the same generic character identity, equipment, clothing, camera, and illustration style.
 
 ## Motion Video Standard
 
@@ -46,6 +46,5 @@ The video cannot be the only accessible representation of the exercise. To maint
 
 ## Open Decisions
 
-- Exact male/female exercise-assignment rule.
 - Video encoding and maximum file size.
 - Exact UI styling.
