@@ -23,6 +23,10 @@ import type { MediaItem } from "@/services/media.service";
 
 const SOURCE_PATH = fileURLToPath(new URL("./ExerciseMediaView.tsx", import.meta.url));
 const source = readFileSync(SOURCE_PATH, "utf8");
+const MOTION_VIDEO_SOURCE = readFileSync(
+  fileURLToPath(new URL("./MotionVideo.tsx", import.meta.url)),
+  "utf8",
+);
 
 function mediaItem(overrides: Partial<MediaItem> & Pick<MediaItem, "name">): MediaItem {
   return {
@@ -37,11 +41,29 @@ function mediaItem(overrides: Partial<MediaItem> & Pick<MediaItem, "name">): Med
   };
 }
 
-test("ExerciseMediaView only emits a single <video> element, guarded to never fire for the thumbnail slot", () => {
-  const videoTagCount = (source.match(/^\s*<video\b/gm) ?? []).length;
-  assert.equal(videoTagCount, 1, "expected exactly one <video> element in ExerciseMediaView");
+test("the Motion Video element lives only in MotionVideo, reached from a single guarded branch in ExerciseMediaView", () => {
+  // ExerciseMediaView no longer renders <video> itself - it delegates to
+  // <MotionVideo>. The thumbnail slot must never reach that branch.
+  assert.equal(
+    (source.match(/^\s*<video\b/gm) ?? []).length,
+    0,
+    "ExerciseMediaView must not render <video> directly - it delegates to MotionVideo",
+  );
+  assert.equal(
+    (source.match(/<MotionVideo\b/g) ?? []).length,
+    1,
+    "expected exactly one <MotionVideo> branch in ExerciseMediaView",
+  );
 
-  // The boolean gating that <video> branch must itself be unreachable for
+  // Exactly one real <video> element exists across the Motion Video surface,
+  // so there is never a duplicate playback loop.
+  assert.equal(
+    (MOTION_VIDEO_SOURCE.match(/^\s*<video\b/gm) ?? []).length,
+    1,
+    "expected exactly one <video> element in MotionVideo",
+  );
+
+  // The boolean gating the MotionVideo branch must itself be unreachable for
   // the thumbnail slot - if this guard is ever removed, this assertion (not
   // just runtime behavior) fails loudly.
   assert.match(
@@ -49,6 +71,7 @@ test("ExerciseMediaView only emits a single <video> element, guarded to never fi
     /const isVideo = slot !== "thumbnail" && usableHero\?\.role === "video";/,
     'ExerciseMediaView must keep an explicit slot !== "thumbnail" guard on isVideo',
   );
+  assert.match(source, /return isVideo \? \(/, "the MotionVideo branch must be gated by isVideo");
 
   // The thumbnail slot must resolve through the static-only resolver, not
   // the generic (video-first) resolveExerciseMedia() fallback.
