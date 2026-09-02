@@ -18,6 +18,17 @@
 -- neither option gives RLS-scoped privacy, transactional consistency with
 -- the actual asset write, or a queryable/auditable history — all of which
 -- this table set provides directly.
+--
+-- What this migration deliberately does NOT enforce: that a version's
+-- required assets (hero_cover + motion_video) actually exist as rows in
+-- exercise_media_assets before it can reach qa_passed/published. Checking
+-- sibling/child-row presence from a CHECK constraint on the parent row is
+-- unsafe in Postgres (CHECK constraints cannot see other rows consistently
+-- under concurrent writes) and would race with the asset upload itself.
+-- That guarantee belongs to the future privileged publish service, which
+-- can perform the "assets present and QA-approved" verification and the
+-- status transition inside one transaction, with the service-role
+-- privileges this migration already reserves for all such mutations.
 
 -- ============================================================================
 -- 1. exercise_media_versions
@@ -56,13 +67,29 @@ create table public.exercise_media_versions (
   constraint exercise_media_versions_exercise_version_unique
     unique (exercise_id, version_number),
 
-  -- QA fields are set together or not at all.
+  -- QA fields are set together or not at all, on every status (Draft and
+  -- Media Ready included - they simply won't have them yet).
   constraint exercise_media_versions_qa_state_check check (
     (qa_reviewed_by is null and qa_reviewed_at is null)
     or (qa_reviewed_by is not null and qa_reviewed_at is not null)
   ),
 
-  -- Published fields exist if and only if status = 'published'.
+  -- Publication requires QA approval: reaching qa_passed or published
+  -- requires qa_reviewed_by/qa_reviewed_at to already be set (combined with
+  -- the pair-consistency check above, both must be non-null together).
+  -- Draft/Media Ready are not required to have QA fields either way. Later
+  -- states (rejected, replacement_required, trash, archived) may retain
+  -- whatever QA fields a prior qa_passed/published transition left behind -
+  -- this check only ever requires them, never forbids them, so that
+  -- history is preserved rather than wiped on a later transition.
+  constraint exercise_media_versions_qa_required_before_publish_check check (
+    status not in ('qa_passed', 'published')
+    or (qa_reviewed_by is not null and qa_reviewed_at is not null)
+  ),
+
+  -- Published fields exist if and only if status = 'published'. Combined
+  -- with the QA-required check above, a row cannot be published without
+  -- also carrying a completed QA review.
   constraint exercise_media_versions_published_state_check check (
     (status = 'published' and published_by is not null and published_at is not null)
     or (status <> 'published' and published_by is null and published_at is null)
@@ -87,6 +114,11 @@ create table public.exercise_media_versions (
   constraint exercise_media_versions_trash_state_check check (
     (status = 'trash' and trashed_at is not null and purge_after is not null)
     or (status <> 'trash' and trashed_at is null and purge_after is null)
+  ),
+
+  -- purge_after can never be scheduled earlier than trashed_at itself.
+  constraint exercise_media_versions_trash_order_check check (
+    trashed_at is null or purge_after is null or purge_after >= trashed_at
   )
 );
 
@@ -128,6 +160,7 @@ create index exercise_media_versions_status_idx
 create or replace function public.exercise_media_versions_default_trash_retention()
 returns trigger
 language plpgsql
+set search_path = public
 as $$
 begin
   if new.status = 'trash' then
@@ -142,6 +175,13 @@ begin
 end;
 $$;
 
+-- Not SECURITY DEFINER (runs with the invoking/trigger session's rights,
+-- same as touch_updated_at()), and not directly callable by client roles:
+-- revoking EXECUTE from PUBLIC does not affect trigger firing, since the
+-- trigger manager invokes a trigger function internally rather than through
+-- a role's EXECUTE privilege check.
+revoke execute on function public.exercise_media_versions_default_trash_retention() from public;
+
 create trigger exercise_media_versions_trash_retention
   before insert or update on public.exercise_media_versions
   for each row execute function public.exercise_media_versions_default_trash_retention();
@@ -152,7 +192,12 @@ create trigger exercise_media_versions_updated_at
 
 alter table public.exercise_media_versions enable row level security;
 
-revoke all on public.exercise_media_versions from public, anon;
+-- Explicit and unconditional: strip whatever a Supabase project's default
+-- privileges (ALTER DEFAULT PRIVILEGES ... GRANT ALL ON TABLES TO anon,
+-- authenticated, service_role, applied automatically to every new table in
+-- the public schema) would otherwise hand out, rather than relying on them
+-- never having been granted in the first place.
+revoke all on public.exercise_media_versions from public, anon, authenticated;
 
 -- Normal authenticated users may only ever see Published metadata. No
 -- INSERT/UPDATE/DELETE grant exists for `authenticated` at all, so no
@@ -243,7 +288,9 @@ create trigger exercise_media_assets_updated_at
 
 alter table public.exercise_media_assets enable row level security;
 
-revoke all on public.exercise_media_assets from public, anon;
+-- See the identical note on exercise_media_versions above: explicit,
+-- unconditional revoke before the explicit re-grant.
+revoke all on public.exercise_media_assets from public, anon, authenticated;
 
 grant select on public.exercise_media_assets to authenticated;
 grant all on public.exercise_media_assets to service_role;
@@ -317,11 +364,17 @@ create index exercise_media_asset_events_media_version_id_idx
 create or replace function public.exercise_media_asset_events_block_mutation()
 returns trigger
 language plpgsql
+set search_path = public
 as $$
 begin
   raise exception 'exercise_media_asset_events is append-only; % is not permitted', tg_op;
 end;
 $$;
+
+-- Not SECURITY DEFINER; not directly callable by client roles (revoking
+-- EXECUTE from PUBLIC does not affect trigger firing - see the identical
+-- note on exercise_media_versions_default_trash_retention() above).
+revoke execute on function public.exercise_media_asset_events_block_mutation() from public;
 
 create trigger exercise_media_asset_events_no_update
   before update on public.exercise_media_asset_events

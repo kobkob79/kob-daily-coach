@@ -16,8 +16,9 @@ insert into auth.users (id) values
 
 insert into public.exercises (id) values
   ('10000000-0000-0000-0000-000000000001'), -- exercise A
-  ('10000000-0000-0000-0000-000000000002'), -- exercise B (mutation-denial tests)
-  ('10000000-0000-0000-0000-000000000003'); -- exercise C (restrictive-deletion tests)
+  ('10000000-0000-0000-0000-000000000002'), -- exercise B (mutation-denial / trash tests)
+  ('10000000-0000-0000-0000-000000000003'), -- exercise C (QA-gating tests)
+  ('10000000-0000-0000-0000-000000000004'); -- exercise D (restrictive-deletion cascade test)
 
 -- ---------------------------------------------------------------------------
 -- 1. Allowed and rejected lifecycle statuses.
@@ -84,14 +85,21 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- 4. Publish the first version, then verify only one Published version per
---    exercise is allowed, and that publishing frees up the "active working"
---    slot for a new Draft (a new Draft never displaces Published; they are
---    simply different, coexisting rows once the old one leaves the working
---    -state set).
+-- 4. Take the first version through QA (required before Published), publish
+--    it, then verify only one Published version per exercise is allowed,
+--    and that publishing frees up the "active working" slot for a new
+--    Draft (a new Draft never displaces Published; they are simply
+--    different, coexisting rows once the old one leaves the working-state
+--    set).
 -- ---------------------------------------------------------------------------
 do $$
 begin
+  update public.exercise_media_versions
+  set status = 'qa_passed',
+      qa_reviewed_by = '00000000-0000-0000-0000-000000000001',
+      qa_reviewed_at = now()
+  where id = '20000000-0000-0000-0000-000000000001';
+
   update public.exercise_media_versions
   set status = 'published',
       published_by = '00000000-0000-0000-0000-000000000002',
@@ -108,18 +116,19 @@ begin
 
   begin
     insert into public.exercise_media_versions
-      (exercise_id, version_number, demonstrator_key, status,
-       created_by, published_by, published_at)
+      (exercise_id, version_number, demonstrator_key, status, created_by,
+       qa_reviewed_by, qa_reviewed_at, published_by, published_at)
     values
       ('10000000-0000-0000-0000-000000000001', 3, 'daniel', 'published',
        '00000000-0000-0000-0000-000000000001',
+       '00000000-0000-0000-0000-000000000001', now(),
        '00000000-0000-0000-0000-000000000002', now());
     raise exception 'TEST FAILED: a second Published version was accepted';
   exception
     when unique_violation then null; -- expected
   end;
 
-  raise notice 'PASS: 4. one Published version per exercise; new Draft does not displace it';
+  raise notice 'PASS: 4. one Published version per exercise (via a required QA pass); new Draft does not displace it';
 end $$;
 
 -- ---------------------------------------------------------------------------
@@ -168,6 +177,51 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 5b. Publishing requires QA approval: qa_reviewed_by/qa_reviewed_at must
+--     already be set before a row can reach qa_passed, and therefore before
+--     it can reach published.
+-- ---------------------------------------------------------------------------
+do $$
+begin
+  -- Published, with published_by/at set, but no QA review at all: must fail.
+  begin
+    insert into public.exercise_media_versions
+      (exercise_id, version_number, demonstrator_key, status, created_by,
+       published_by, published_at)
+    values
+      ('10000000-0000-0000-0000-000000000003', 1, 'daniel', 'published',
+       '00000000-0000-0000-0000-000000000001',
+       '00000000-0000-0000-0000-000000000002', now());
+    raise exception 'TEST FAILED: Published without a QA review was accepted';
+  exception
+    when check_violation then null; -- expected
+  end;
+
+  -- QA Passed without qa_reviewed_by/qa_reviewed_at: must fail.
+  begin
+    insert into public.exercise_media_versions
+      (exercise_id, version_number, demonstrator_key, status, created_by)
+    values
+      ('10000000-0000-0000-0000-000000000003', 1, 'daniel', 'qa_passed',
+       '00000000-0000-0000-0000-000000000001');
+    raise exception 'TEST FAILED: QA Passed without QA review metadata was accepted';
+  exception
+    when check_violation then null; -- expected
+  end;
+
+  -- Positive control: QA Passed WITH a completed review succeeds.
+  insert into public.exercise_media_versions
+    (exercise_id, version_number, demonstrator_key, status, created_by,
+     qa_reviewed_by, qa_reviewed_at)
+  values
+    ('10000000-0000-0000-0000-000000000003', 1, 'daniel', 'qa_passed',
+     '00000000-0000-0000-0000-000000000001',
+     '00000000-0000-0000-0000-000000000001', now());
+
+  raise notice 'PASS: 5b. Published/QA Passed require a completed QA review beforehand';
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- 6. Trash retention default (30 days) is applied by the trigger, and the
 --    trash_state CHECK cannot be bypassed with a half-populated row.
 -- ---------------------------------------------------------------------------
@@ -194,6 +248,27 @@ begin
   end if;
 
   raise notice 'PASS: 6. trash retention defaults to 30 days';
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 6b. purge_after can never be scheduled earlier than trashed_at.
+-- ---------------------------------------------------------------------------
+do $$
+begin
+  begin
+    insert into public.exercise_media_versions
+      (exercise_id, version_number, demonstrator_key, status, created_by,
+       trashed_at, purge_after)
+    values
+      ('10000000-0000-0000-0000-000000000002', 3, 'maya', 'trash',
+       '00000000-0000-0000-0000-000000000001',
+       now(), now() - interval '1 day');
+    raise exception 'TEST FAILED: purge_after earlier than trashed_at was accepted';
+  exception
+    when check_violation then null; -- expected
+  end;
+
+  raise notice 'PASS: 6b. purge_after cannot precede trashed_at';
 end $$;
 
 -- ---------------------------------------------------------------------------
@@ -430,6 +505,45 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 10e. Explicit privilege matrix for `authenticated`: SELECT-only on
+--      exercise_media_versions/exercise_media_assets, nothing at all on
+--      exercise_media_asset_events. Checked via has_table_privilege()
+--      rather than by attempting each operation (TRUNCATE/REFERENCES/
+--      TRIGGER are not exercised the same way INSERT/UPDATE/DELETE are in
+--      10b-10d, so the privilege catalog is the direct source of truth).
+--      The fixture reproduces Supabase's own default-privilege bootstrap
+--      before the migration runs (see 00_fixture.sql), so this proves the
+--      migration's REVOKE actually removed real grants.
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  t text;
+  priv text;
+  select_ok boolean;
+  expected boolean;
+  actual boolean;
+begin
+  foreach t in array array[
+    'exercise_media_versions', 'exercise_media_assets', 'exercise_media_asset_events'
+  ] loop
+    select_ok := (t <> 'exercise_media_asset_events');
+    foreach priv in array array[
+      'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'
+    ] loop
+      expected := (priv = 'SELECT' and select_ok);
+      actual := has_table_privilege('authenticated', 'public.' || t, priv);
+      if actual <> expected then
+        raise exception
+          'TEST FAILED: authenticated has_table_privilege(%, %) = %, expected %',
+          t, priv, actual, expected;
+      end if;
+    end loop;
+  end loop;
+
+  raise notice 'PASS: 10e. authenticated privilege matrix is SELECT-only (versions/assets) / none (events)';
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- 11. Audit-event immutability: append-only, no UPDATE, no DELETE, even for
 --     the privileged role.
 -- ---------------------------------------------------------------------------
@@ -502,19 +616,20 @@ declare
 begin
   -- A version with no audit events and one asset, to prove the CASCADE from
   -- version -> assets is real (not merely declared) when deletion is
-  -- actually allowed to proceed.
+  -- actually allowed to proceed. Uses exercise D, which no other test
+  -- touches, so it starts with a free working-version slot.
   insert into public.exercise_media_versions
     (id, exercise_id, version_number, demonstrator_key, status, created_by)
   values
     ('20000000-0000-0000-0000-000000000099',
-     '10000000-0000-0000-0000-000000000003', 1, 'daniel', 'draft',
+     '10000000-0000-0000-0000-000000000004', 1, 'daniel', 'draft',
      '00000000-0000-0000-0000-000000000001');
 
   insert into public.exercise_media_assets
     (media_version_id, role, storage_path, mime_type, file_size_bytes)
   values
     ('20000000-0000-0000-0000-000000000099', 'hero_cover',
-     'exercises/e3/versions/v1/hero.jpg', 'image/jpeg', 300000);
+     'exercises/e4/versions/v1/hero.jpg', 'image/jpeg', 300000);
 
   delete from public.exercise_media_versions
   where id = '20000000-0000-0000-0000-000000000099';

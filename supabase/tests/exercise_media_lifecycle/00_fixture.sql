@@ -12,6 +12,15 @@
 --   - `public.touch_updated_at()`, copied verbatim from
 --     supabase/migrations/20260703001150_ffc71b45-26a3-412b-84c9-7337b0372771.sql,
 --     which the new migration assumes already exists.
+--   - Supabase's own project bootstrap grants
+--     `ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO
+--     anon, authenticated, service_role;` so that, without any REVOKE, a
+--     freshly `CREATE TABLE`d table in the public schema is immediately
+--     readable/writable by anon and authenticated. This fixture reproduces
+--     that default *before* the migration under test is applied, so the
+--     migration's own REVOKE statements are proven to actually remove real
+--     privileges rather than merely being tested against a database where
+--     those privileges never existed.
 --
 -- Run only against a throwaway database created for this purpose - see
 -- README.md in this directory for the exact commands used.
@@ -50,3 +59,10 @@ create table if not exists public.exercises (
 create or replace function public.touch_updated_at()
 returns trigger language plpgsql set search_path = public as $$
 begin new.updated_at = now(); return new; end; $$;
+
+-- Reproduce Supabase's own project bootstrap default privileges (see note
+-- above) so tables created by the migration under test start out with the
+-- same broad grants a real Supabase project would hand them, before that
+-- migration's explicit REVOKE statements run.
+alter default privileges in schema public
+  grant all on tables to anon, authenticated, service_role;
