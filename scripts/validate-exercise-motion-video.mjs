@@ -34,7 +34,7 @@ export function runValidation(filePath, isJsonMode, dependencies = {}) {
     let checks = [];
 
     // Helper for structured exiting
-    function finish(exitCode, errorReason = null) {
+    function finish(exitCode, errorObj = null) {
         const passed = exitCode === 0;
         if (isJsonMode) {
             const out = {
@@ -44,13 +44,13 @@ export function runValidation(filePath, isJsonMode, dependencies = {}) {
                 detected: detectedMeta,
                 failureReasons: checks.filter(c => !c.passed).map(c => `${c.name}: detected ${c.detected} (expected ${c.expected})`)
             };
-            if (errorReason) {
-                out.error = errorReason;
+            if (errorObj) {
+                out.error = { code: errorObj.code, message: errorObj.message };
             }
             logFn(JSON.stringify(out, null, 2));
         } else {
-            if (errorReason) {
-                logFn(`Error: ${errorReason}`);
+            if (errorObj) {
+                logFn(`Error: ${errorObj.message}`);
                 if (!filePath) logFn('Usage: node validate-exercise-motion-video.mjs <file.mp4> [--json]');
             } else {
                 checks.forEach(c => {
@@ -70,7 +70,7 @@ export function runValidation(filePath, isJsonMode, dependencies = {}) {
     }
 
     if (!filePath) {
-        finish(2, 'Missing input file path.');
+        finish(2, { code: 'MISSING_INPUT_FILE', message: 'Missing input file path.' });
         return;
     }
 
@@ -78,7 +78,7 @@ export function runValidation(filePath, isJsonMode, dependencies = {}) {
     try {
         stats = statSync(filePath);
     } catch (e) {
-        finish(2, `Input file does not exist or cannot be read: ${filePath}`);
+        finish(2, { code: 'INPUT_FILE_UNREADABLE', message: `Input file does not exist or cannot be read: ${filePath}` });
         return;
     }
 
@@ -96,20 +96,28 @@ export function runValidation(filePath, isJsonMode, dependencies = {}) {
     checks.push(sizeCheck);
     if (!sizeCheck.passed) passed = false;
 
-    // Run ffprobe using execFileSync to avoid shell injection
-    let probeData;
+    // A. execFileSync failure
+    let stdout;
     try {
         const args = ['-v', 'error', '-print_format', 'json', '-show_format', '-show_streams', filePath];
-        const stdout = execFileSyncFn('ffprobe', args, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
-        probeData = JSON.parse(stdout);
+        stdout = execFileSyncFn('ffprobe', args, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
     } catch (e) {
-        finish(2, 'Container is not readable by ffprobe, or ffprobe is not installed.');
+        finish(2, { code: 'FFPROBE_UNAVAILABLE_OR_UNREADABLE', message: 'Container is not readable by ffprobe, or ffprobe is not installed.' });
         return;
     }
 
-    // Basic ffprobe output validation
-    if (!probeData || !probeData.format || !Array.isArray(probeData.streams)) {
-        finish(2, 'Unreadable or malformed probe output.');
+    // B. JSON.parse failure
+    let probeData;
+    try {
+        probeData = JSON.parse(stdout);
+    } catch (e) {
+        finish(2, { code: 'MALFORMED_FFPROBE_JSON', message: 'ffprobe emitted unparseable JSON.' });
+        return;
+    }
+
+    // C. Parsed JSON with missing required shape
+    if (!probeData || typeof probeData !== 'object' || !probeData.format || !Array.isArray(probeData.streams)) {
+        finish(2, { code: 'INVALID_FFPROBE_SHAPE', message: 'Unreadable or missing format/streams in probe output.' });
         return;
     }
 
@@ -181,18 +189,19 @@ export function runValidation(filePath, isJsonMode, dependencies = {}) {
         checks.push(resCheck);
         if (!resCheck.passed) passed = false;
 
-        // Frame rate exact 30fps rational parser
+        // Frame rate exact 30fps rational parser (strict Regex)
         let fpsPassed = false;
-        if (vs.r_frame_rate) {
+        if (vs.r_frame_rate && typeof vs.r_frame_rate === 'string' && /^\d+(?:\/\d+)?$/.test(vs.r_frame_rate)) {
             const parts = vs.r_frame_rate.split('/');
             if (parts.length === 2) {
                 const num = parseInt(parts[0], 10);
                 const den = parseInt(parts[1], 10);
-                if (den !== 0 && (num / den) === 30) {
+                if (den > 0 && num === 30 * den) {
                     fpsPassed = true;
                 }
             } else if (parts.length === 1) {
-                if (parseInt(parts[0], 10) === 30) {
+                const val = parseInt(parts[0], 10);
+                if (val === 30) {
                     fpsPassed = true;
                 }
             }

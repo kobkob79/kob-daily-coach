@@ -27,6 +27,9 @@ const mockExecFileSync = (outputJson) => (cmd, args) => {
     if (outputJson === 'throw') {
         throw new Error('mock error');
     }
+    if (outputJson === 'bad_json_string') {
+        return '{ bad json string';
+    }
     return JSON.stringify(outputJson);
 };
 
@@ -65,7 +68,7 @@ let execArgs = getExecArgs();
 assert.equal(execArgs.cmd, 'ffprobe');
 assert.deepEqual(execArgs.args, ['-v', 'error', '-print_format', 'json', '-show_format', '-show_streams', hostileName]);
 
-// 3. Rational framerate tests
+// 3. Rational framerate tests (Strict Parsing)
 const testFps = (fpsString, shouldPass) => {
     let fpsOutput = structuredClone(baseFfprobeOutput);
     if (fpsString === null) {
@@ -78,14 +81,23 @@ const testFps = (fpsString, shouldPass) => {
     assert.equal(localDeps.getExitCode(), shouldPass ? 0 : 1, `Failed testing fps string: ${fpsString}`);
 };
 
+// Accept cases
 testFps('30/1', true);
 testFps('60/2', true);
 testFps('30000/1000', true);
 testFps('30', true);
+// Reject exact edge cases
 testFps('30000/1001', false);
 testFps('29.97', false);
 testFps('30/0', false); // Zero denominator
-testFps('bad/string', false);
+// Reject strict parsing / malformed cases
+testFps('30xyz', false);
+testFps('30000abc/1000', false);
+testFps('30/1xyz', false);
+testFps('30.0abc', false);
+testFps('-30', false); // negative
+testFps('-60/-2', false); // negative
+testFps('', false); // empty string
 testFps(null, false); // Missing frame rate
 
 // 4. JSON Mode: Fully conforming (Checks detected metadata)
@@ -107,7 +119,7 @@ assert.equal(jsonOutput.detected.durationSeconds, 8.1);
 assert.equal(jsonOutput.detected.aspectRatio, '16:9');
 assert.equal(jsonOutput.detected.audioStreamCount, 0);
 
-// 5. JSON Mode: Missing input path
+// 5. JSON Mode Error Cases: Missing input path
 ({ deps, getExitCode, getLogs } = createMockDeps(VALID_SIZE, baseFfprobeOutput));
 runValidation(undefined, true, deps);
 assert.equal(getExitCode(), 2);
@@ -115,19 +127,9 @@ assert.equal(getLogs().length, 1);
 jsonOutput = JSON.parse(getLogs()[0]);
 assert.equal(jsonOutput.passed, false);
 assert.equal(jsonOutput.exitCode, 2);
-assert.equal(jsonOutput.error, 'Missing input file path.');
+assert.equal(jsonOutput.error.code, 'MISSING_INPUT_FILE');
 
-// 6. JSON Mode: Missing/unavailable ffprobe
-({ deps, getExitCode, getLogs } = createMockDeps(VALID_SIZE, 'throw'));
-runValidation('test.mp4', true, deps);
-assert.equal(getExitCode(), 2);
-assert.equal(getLogs().length, 1);
-jsonOutput = JSON.parse(getLogs()[0]);
-assert.equal(jsonOutput.passed, false);
-assert.equal(jsonOutput.exitCode, 2);
-assert.equal(jsonOutput.error, 'Container is not readable by ffprobe, or ffprobe is not installed.');
-
-// 7. JSON Mode: Unreadable input file
+// 6. JSON Mode Error Cases: Unreadable input file
 let failingStatDeps = createMockDeps(VALID_SIZE, baseFfprobeOutput);
 failingStatDeps.deps.statSync = () => { throw new Error('not found'); };
 runValidation('test.mp4', true, failingStatDeps.deps);
@@ -136,20 +138,40 @@ assert.equal(failingStatDeps.getLogs().length, 1);
 jsonOutput = JSON.parse(failingStatDeps.getLogs()[0]);
 assert.equal(jsonOutput.passed, false);
 assert.equal(jsonOutput.exitCode, 2);
-assert.equal(jsonOutput.error.includes('Input file does not exist'), true);
+assert.equal(jsonOutput.error.code, 'INPUT_FILE_UNREADABLE');
 
-// 8. JSON Mode: Malformed ffprobe JSON
-let malformedOutput = { foo: 'bar' };
-({ deps, getExitCode, getLogs } = createMockDeps(VALID_SIZE, malformedOutput));
+// 7. JSON Mode Error Cases: Missing/unavailable ffprobe (A: execFileSync failure)
+({ deps, getExitCode, getLogs } = createMockDeps(VALID_SIZE, 'throw'));
 runValidation('test.mp4', true, deps);
 assert.equal(getExitCode(), 2);
 assert.equal(getLogs().length, 1);
 jsonOutput = JSON.parse(getLogs()[0]);
 assert.equal(jsonOutput.passed, false);
 assert.equal(jsonOutput.exitCode, 2);
-assert.equal(jsonOutput.error, 'Unreadable or malformed probe output.');
+assert.equal(jsonOutput.error.code, 'FFPROBE_UNAVAILABLE_OR_UNREADABLE');
 
-// 9. JSON Mode: Validation failure
+// 8. JSON Mode Error Cases: Malformed ffprobe JSON (B: JSON.parse failure)
+({ deps, getExitCode, getLogs } = createMockDeps(VALID_SIZE, 'bad_json_string'));
+runValidation('test.mp4', true, deps);
+assert.equal(getExitCode(), 2);
+assert.equal(getLogs().length, 1);
+jsonOutput = JSON.parse(getLogs()[0]);
+assert.equal(jsonOutput.passed, false);
+assert.equal(jsonOutput.exitCode, 2);
+assert.equal(jsonOutput.error.code, 'MALFORMED_FFPROBE_JSON');
+
+// 9. JSON Mode Error Cases: Invalid ffprobe shape (C: shape failure)
+let shapeOutput = { foo: 'bar' };
+({ deps, getExitCode, getLogs } = createMockDeps(VALID_SIZE, shapeOutput));
+runValidation('test.mp4', true, deps);
+assert.equal(getExitCode(), 2);
+assert.equal(getLogs().length, 1);
+jsonOutput = JSON.parse(getLogs()[0]);
+assert.equal(jsonOutput.passed, false);
+assert.equal(jsonOutput.exitCode, 2);
+assert.equal(jsonOutput.error.code, 'INVALID_FFPROBE_SHAPE');
+
+// 10. JSON Mode Error Cases: Validation failure
 let wrongCodecOutput = structuredClone(baseFfprobeOutput);
 wrongCodecOutput.streams[0].codec_name = 'hevc';
 ({ deps, getExitCode, getLogs } = createMockDeps(VALID_SIZE, wrongCodecOutput));
