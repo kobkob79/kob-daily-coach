@@ -29,6 +29,7 @@ select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001
 do $$
 declare
   v_updated integer;
+  v_deleted integer;
 begin
   if (select count(*) from public.exercise_equipment_profiles) <> 2 then
     raise exception 'TEST FAILED: user A profile SELECT scope is incorrect';
@@ -43,6 +44,29 @@ begin
     raise exception 'TEST FAILED: user A inserted a user B profile';
   exception when insufficient_privilege then null; end;
 
+  begin
+    insert into public.exercise_insights
+      (user_id, exercise_id, category, text_value)
+    values
+      ('00000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001',
+       'working_weight', 'זיוף בעלות');
+    raise exception 'TEST FAILED: user A inserted a user B insight';
+  exception when insufficient_privilege then null; end;
+
+  begin
+    update public.exercise_equipment_profiles
+    set user_id = '00000000-0000-0000-0000-000000000002'
+    where id = '20000000-0000-0000-0000-000000000003';
+    raise exception 'TEST FAILED: user A reassigned an owned profile to user B';
+  exception when insufficient_privilege then null; end;
+
+  begin
+    update public.exercise_insights
+    set user_id = '00000000-0000-0000-0000-000000000002'
+    where id = '30000000-0000-0000-0000-000000000001';
+    raise exception 'TEST FAILED: user A reassigned an owned insight to user B';
+  exception when insufficient_privilege then null; end;
+
   update public.exercise_insights
   set text_value = 'זיוף'
   where id = '30000000-0000-0000-0000-000000000002';
@@ -50,10 +74,58 @@ begin
   if v_updated <> 0 then
     raise exception 'TEST FAILED: user A updated a user B insight';
   end if;
+
+  delete from public.exercise_equipment_profiles
+  where id = '20000000-0000-0000-0000-000000000002';
+  get diagnostics v_deleted = row_count;
+  if v_deleted <> 0 then
+    raise exception 'TEST FAILED: user A deleted a user B profile';
+  end if;
+
+  delete from public.exercise_insights
+  where id = '30000000-0000-0000-0000-000000000002';
+  get diagnostics v_deleted = row_count;
+  if v_deleted <> 0 then
+    raise exception 'TEST FAILED: user A deleted a user B insight';
+  end if;
 end $$;
 
 reset role;
 select set_config('request.jwt.claim.sub', '', false);
+
+do $$
+begin
+  if not exists (
+    select 1 from public.exercise_equipment_profiles
+    where id = '20000000-0000-0000-0000-000000000002'
+      and user_id = '00000000-0000-0000-0000-000000000002'
+  ) then
+    raise exception 'TEST FAILED: user B profile changed after denied mutation';
+  end if;
+  if not exists (
+    select 1 from public.exercise_equipment_profiles
+    where id = '20000000-0000-0000-0000-000000000003'
+      and user_id = '00000000-0000-0000-0000-000000000001'
+  ) then
+    raise exception 'TEST FAILED: owned profile changed after denied user reassignment';
+  end if;
+  if not exists (
+    select 1 from public.exercise_insights
+    where id = '30000000-0000-0000-0000-000000000002'
+      and user_id = '00000000-0000-0000-0000-000000000002'
+      and text_value = 'מידע פרטי של משתמש ב'
+  ) then
+    raise exception 'TEST FAILED: user B insight changed after denied mutation';
+  end if;
+  if not exists (
+    select 1 from public.exercise_insights
+    where id = '30000000-0000-0000-0000-000000000001'
+      and user_id = '00000000-0000-0000-0000-000000000001'
+      and text_value = 'צוואר ישר'
+  ) then
+    raise exception 'TEST FAILED: owned insight changed after denied user reassignment';
+  end if;
+end $$;
 
 -- 4-5. Composite FK enforces profile owner and exercise scope.
 do $$
@@ -93,6 +165,34 @@ insert into public.exercise_insights
 values
   ('00000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001',
    '20000000-0000-0000-0000-000000000001', 'machine_setup', 'גובה כיסא: 4');
+
+-- A referenced profile cannot move to another exercise because the composite
+-- identity is protected by the dependent insight foreign key.
+do $$
+begin
+  begin
+    update public.exercise_equipment_profiles
+    set exercise_id = '10000000-0000-0000-0000-000000000002',
+        is_default = false
+    where id = '20000000-0000-0000-0000-000000000001';
+    raise exception 'TEST FAILED: referenced profile exercise reassignment succeeded';
+  exception when restrict_violation or foreign_key_violation then null; end;
+
+  if not exists (
+    select 1 from public.exercise_equipment_profiles
+    where id = '20000000-0000-0000-0000-000000000001'
+      and exercise_id = '10000000-0000-0000-0000-000000000001'
+  ) then
+    raise exception 'TEST FAILED: profile changed after denied exercise reassignment';
+  end if;
+  if not exists (
+    select 1 from public.exercise_insights
+    where equipment_profile_id = '20000000-0000-0000-0000-000000000001'
+      and exercise_id = '10000000-0000-0000-0000-000000000001'
+  ) then
+    raise exception 'TEST FAILED: insight changed after denied profile exercise reassignment';
+  end if;
+end $$;
 
 do $$
 begin
@@ -225,6 +325,23 @@ begin
       and confdeltype = 'r'
   ) <> 2 then
     raise exception 'TEST FAILED: exercise foreign keys are not both ON DELETE RESTRICT';
+  end if;
+end $$;
+
+-- Supporting indexes exist for every non-leading foreign-key lookup path.
+do $$
+begin
+  if (
+    select count(*)
+    from pg_indexes
+    where schemaname = 'public'
+      and indexname in (
+        'exercise_equipment_profiles_exercise_id_idx',
+        'exercise_insights_exercise_id_idx',
+        'exercise_insights_equipment_profile_id_idx'
+      )
+  ) <> 3 then
+    raise exception 'TEST FAILED: supporting foreign-key indexes are incomplete';
   end if;
 end $$;
 

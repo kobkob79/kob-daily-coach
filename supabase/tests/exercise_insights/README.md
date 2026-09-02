@@ -24,4 +24,6 @@ dropdb viora_exercise_insights_test
 The assertions cover owner-scoped reads and writes, composite profile scope,
 default-profile uniqueness, both profiled and NULL-profile insight uniqueness,
 all category/text constraints, timestamps, anonymous denial, privileges and
-restrictive exercise deletion.
+restrictive exercise deletion. They also execute hostile ownership inserts,
+updates and deletes, verify the protected rows remain unchanged, block moving a
+referenced profile to another exercise, and verify supporting foreign-key indexes.

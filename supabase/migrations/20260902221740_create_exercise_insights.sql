@@ -27,6 +27,9 @@ create unique index exercise_equipment_profiles_one_default_idx
 create index exercise_equipment_profiles_user_exercise_idx
   on public.exercise_equipment_profiles (user_id, exercise_id, created_at);
 
+create index exercise_equipment_profiles_exercise_id_idx
+  on public.exercise_equipment_profiles (exercise_id);
+
 create table public.exercise_insights (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -72,6 +75,13 @@ create unique index exercise_insights_general_category_unique_idx
 
 create index exercise_insights_user_exercise_idx
   on public.exercise_insights (user_id, exercise_id, created_at);
+
+create index exercise_insights_exercise_id_idx
+  on public.exercise_insights (exercise_id);
+
+create index exercise_insights_equipment_profile_id_idx
+  on public.exercise_insights (equipment_profile_id)
+  where equipment_profile_id is not null;
 
 create trigger exercise_equipment_profiles_updated_at
   before update on public.exercise_equipment_profiles

@@ -26,6 +26,18 @@ assert.match(migration, /where equipment_profile_id is not null/);
 assert.match(migration, /where is_default/);
 assert.match(migration, /char_length\(text_value\) between 1 and 160/);
 
+for (const index of [
+  "exercise_equipment_profiles_exercise_id_idx",
+  "exercise_insights_exercise_id_idx",
+  "exercise_insights_equipment_profile_id_idx",
+]) {
+  assert.match(migration, new RegExp(`create index ${index}`));
+}
+assert.match(
+  migration,
+  /create index exercise_insights_equipment_profile_id_idx[\s\S]*where equipment_profile_id is not null/,
+);
+
 for (const category of [
   "machine_setup",
   "working_weight",
@@ -51,6 +63,19 @@ assert.equal((migration.match(/with check \(\(select auth\.uid\(\)\) = user_id\)
 for (const expected of [
   "cross-user profile reference",
   "cross-exercise profile reference",
+  "user A inserted a user B insight",
+  "user A reassigned an owned profile to user B",
+  "user A reassigned an owned insight to user B",
+  "user A deleted a user B profile",
+  "user A deleted a user B insight",
+  "owned profile changed after denied user reassignment",
+  "owned insight changed after denied user reassignment",
+  "user B profile changed after denied mutation",
+  "user B insight changed after denied mutation",
+  "referenced profile exercise reassignment",
+  "profile changed after denied exercise reassignment",
+  "insight changed after denied profile exercise reassignment",
+  "supporting foreign-key indexes",
   "second default profile",
   "duplicate profile-specific category",
   "duplicate NULL-profile category",
