@@ -1,6 +1,5 @@
 import fs from 'node:fs';
-import { execSync } from 'node:child_process';
-import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -11,35 +10,80 @@ export function runValidation(filePath, isJsonMode, dependencies = {}) {
     // Dependency injection for testing
     const {
         statSync = fs.statSync,
-        execSyncFn = execSync,
+        execFileSyncFn = execFileSync,
         exitFn = process.exit,
         logFn = console.log
     } = dependencies;
 
-    if (!filePath) {
-        if (!isJsonMode) {
-            logFn('Error: Missing input file path.');
-            logFn('Usage: node validate-exercise-motion-video.mjs <file.mp4> [--json]');
+    const MAX_FILE_SIZE_BYTES = 3 * 1024 * 1024; // 3 MiB
+
+    // Initialize the default structure for JSON output
+    let detectedMeta = {
+        fileSizeBytes: null,
+        container: null,
+        videoStreamCount: null,
+        codec: null,
+        width: null,
+        height: null,
+        frameRate: null,
+        durationSeconds: null,
+        aspectRatio: null,
+        audioStreamCount: null
+    };
+
+    let checks = [];
+
+    // Helper for structured exiting
+    function finish(exitCode, errorReason = null) {
+        const passed = exitCode === 0;
+        if (isJsonMode) {
+            const out = {
+                passed,
+                exitCode,
+                checks,
+                detected: detectedMeta,
+                failureReasons: checks.filter(c => !c.passed).map(c => `${c.name}: detected ${c.detected} (expected ${c.expected})`)
+            };
+            if (errorReason) {
+                out.error = errorReason;
+            }
+            logFn(JSON.stringify(out, null, 2));
+        } else {
+            if (errorReason) {
+                logFn(`Error: ${errorReason}`);
+                if (!filePath) logFn('Usage: node validate-exercise-motion-video.mjs <file.mp4> [--json]');
+            } else {
+                checks.forEach(c => {
+                    const status = c.passed ? 'PASS' : 'FAIL';
+                    const namePadded = c.name.padEnd(12, ' ');
+                    if (c.passed) {
+                        logFn(`${status}  ${namePadded}  ${c.detected}`);
+                    } else {
+                        logFn(`${status}  ${namePadded}  ${c.detected} — expected ${c.expected}`);
+                    }
+                });
+                logFn('');
+                logFn(`VIORA MOTION VIDEO: ${passed ? 'PASS' : 'FAIL'}`);
+            }
         }
-        exitFn(2);
-        return; // Return added to stop execution in tests
+        exitFn(exitCode);
     }
 
-    const MAX_FILE_SIZE_BYTES = 3 * 1024 * 1024; // 3 MiB
+    if (!filePath) {
+        finish(2, 'Missing input file path.');
+        return;
+    }
 
     let stats;
     try {
         stats = statSync(filePath);
     } catch (e) {
-        if (!isJsonMode) {
-            logFn(`Error: Input file does not exist or cannot be read: ${filePath}`);
-        }
-        exitFn(2);
+        finish(2, `Input file does not exist or cannot be read: ${filePath}`);
         return;
     }
 
     const fileSize = stats.size;
-    const checks = [];
+    detectedMeta.fileSizeBytes = fileSize;
     let passed = true;
 
     // 1. File/container checks
@@ -52,43 +96,40 @@ export function runValidation(filePath, isJsonMode, dependencies = {}) {
     checks.push(sizeCheck);
     if (!sizeCheck.passed) passed = false;
 
-    // Run ffprobe
+    // Run ffprobe using execFileSync to avoid shell injection
     let probeData;
     try {
-        const cmd = `ffprobe -v error -print_format json -show_format -show_streams "${filePath}"`;
-        const stdout = execSyncFn(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
+        const args = ['-v', 'error', '-print_format', 'json', '-show_format', '-show_streams', filePath];
+        const stdout = execFileSyncFn('ffprobe', args, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
         probeData = JSON.parse(stdout);
     } catch (e) {
-        if (!isJsonMode) {
-            logFn('Error: Container is not readable by ffprobe, or ffprobe is not installed.');
-        }
-        exitFn(2);
+        finish(2, 'Container is not readable by ffprobe, or ffprobe is not installed.');
         return;
     }
 
     // Basic ffprobe output validation
     if (!probeData || !probeData.format || !Array.isArray(probeData.streams)) {
-        if (!isJsonMode) {
-            logFn('Error: Unreadable or malformed probe output.');
-        }
-        exitFn(2);
+        finish(2, 'Unreadable or malformed probe output.');
         return;
     }
 
     // MP4 Container check
     const formatName = probeData.format.format_name || '';
+    detectedMeta.container = formatName;
     const containerCheck = {
         name: 'Container',
         detected: formatName,
         expected: 'MP4-compatible (mp4/mov/m4a/3gp/3g2/mj2)',
-        passed: formatName.split(',').includes('mp4') || formatName.split(',').includes('mov') // 'mov,mp4,m4a,3gp,3g2,mj2' is common for mp4
+        passed: formatName.split(',').includes('mp4') || formatName.split(',').includes('mov')
     };
     checks.push(containerCheck);
     if (!containerCheck.passed) passed = false;
 
-
     const videoStreams = probeData.streams.filter(s => s.codec_type === 'video');
     const audioStreams = probeData.streams.filter(s => s.codec_type === 'audio');
+
+    detectedMeta.videoStreamCount = videoStreams.length;
+    detectedMeta.audioStreamCount = audioStreams.length;
 
     // Exactly one video stream
     const videoStreamCountCheck = {
@@ -103,10 +144,26 @@ export function runValidation(filePath, isJsonMode, dependencies = {}) {
     if (videoStreams.length > 0) {
         const vs = videoStreams[0];
 
+        detectedMeta.codec = vs.codec_name || null;
+        detectedMeta.width = vs.width || null;
+        detectedMeta.height = vs.height || null;
+        detectedMeta.frameRate = vs.r_frame_rate || null;
+
+        let duration = parseFloat(probeData.format.duration || vs.duration || 0);
+        detectedMeta.durationSeconds = duration;
+
+        let ar = vs.display_aspect_ratio || null;
+        if (!ar && vs.width && vs.height) {
+            const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
+            const d = gcd(vs.width, vs.height);
+            ar = `${vs.width/d}:${vs.height/d}`;
+        }
+        detectedMeta.aspectRatio = ar;
+
         // Codec H.264
         const codecCheck = {
             name: 'Codec',
-            detected: vs.codec_name,
+            detected: vs.codec_name || 'unknown',
             expected: 'h264',
             passed: vs.codec_name === 'h264'
         };
@@ -124,27 +181,33 @@ export function runValidation(filePath, isJsonMode, dependencies = {}) {
         checks.push(resCheck);
         if (!resCheck.passed) passed = false;
 
-        // Frame rate 30fps
-        // Note: r_frame_rate is usually '30/1' or '30000/1000'
-        let fps = 0;
+        // Frame rate exact 30fps rational parser
+        let fpsPassed = false;
         if (vs.r_frame_rate) {
             const parts = vs.r_frame_rate.split('/');
             if (parts.length === 2) {
-                fps = parseInt(parts[0], 10) / parseInt(parts[1], 10);
+                const num = parseInt(parts[0], 10);
+                const den = parseInt(parts[1], 10);
+                if (den !== 0 && (num / den) === 30) {
+                    fpsPassed = true;
+                }
+            } else if (parts.length === 1) {
+                if (parseInt(parts[0], 10) === 30) {
+                    fpsPassed = true;
+                }
             }
         }
-        // Strict equality for exactly 30fps
+
         const fpsCheck = {
             name: 'Frame rate',
-            detected: vs.r_frame_rate === '30/1' ? '30fps' : `${fps}fps`,
+            detected: vs.r_frame_rate || 'missing',
             expected: '30fps',
-            passed: fps === 30 && (vs.r_frame_rate === '30/1' || vs.r_frame_rate === '30')
+            passed: fpsPassed
         };
         checks.push(fpsCheck);
         if (!fpsCheck.passed) passed = false;
 
         // Duration between 6 and 10 seconds
-        let duration = parseFloat(probeData.format.duration || vs.duration || 0);
         const durationCheck = {
             name: 'Duration',
             detected: `${duration.toFixed(1)}s`,
@@ -155,14 +218,6 @@ export function runValidation(filePath, isJsonMode, dependencies = {}) {
         if (!durationCheck.passed) passed = false;
 
         // Aspect ratio 16:9
-        let ar = vs.display_aspect_ratio;
-        if (!ar && vs.width && vs.height) {
-            // calculate if missing
-            const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
-            const d = gcd(vs.width, vs.height);
-            ar = `${vs.width/d}:${vs.height/d}`;
-        }
-
         const arCheck = {
             name: 'Aspect ratio',
             detected: ar || 'unknown',
@@ -183,27 +238,7 @@ export function runValidation(filePath, isJsonMode, dependencies = {}) {
     checks.push(audioCheck);
     if (!audioCheck.passed) passed = false;
 
-    if (isJsonMode) {
-        logFn(JSON.stringify({
-            passed,
-            checks,
-            failureReasons: checks.filter(c => !c.passed).map(c => `${c.name}: detected ${c.detected} (expected ${c.expected})`)
-        }, null, 2));
-    } else {
-        checks.forEach(c => {
-            const status = c.passed ? 'PASS' : 'FAIL';
-            const namePadded = c.name.padEnd(12, ' ');
-            if (c.passed) {
-                logFn(`${status}  ${namePadded}  ${c.detected}`);
-            } else {
-                logFn(`${status}  ${namePadded}  ${c.detected} — expected ${c.expected}`);
-            }
-        });
-        logFn('');
-        logFn(`VIORA MOTION VIDEO: ${passed ? 'PASS' : 'FAIL'}`);
-    }
-
-    exitFn(passed ? 0 : 1);
+    finish(passed ? 0 : 1);
 }
 
 // Only execute when run directly, not when imported for tests
