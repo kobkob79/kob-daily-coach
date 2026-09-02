@@ -8,7 +8,11 @@
 import { useRef, useState } from "react";
 
 import { useExerciseMedia } from "@/hooks/useExerciseMedia";
-import { resolveExerciseMedia, type ExerciseMediaSlot } from "@/lib/exercise-media";
+import {
+  resolveExerciseMedia,
+  resolveExerciseThumbnailStill,
+  type ExerciseMediaSlot,
+} from "@/lib/exercise-media";
 import { cn } from "@/lib/utils";
 
 export interface ExerciseMediaViewProps {
@@ -63,11 +67,20 @@ export function ExerciseMediaView({
   }
 
   const slot: ExerciseMediaSlot = mediaRole ?? preferRole ?? "hero";
-  const resolved = resolveExerciseMedia(items, slot);
+  /**
+   * The thumbnail slot (Exercise Library cards) must always be a static
+   * image: it goes through resolveExerciseThumbnailStill(), which rejects
+   * video/animation outright, rather than resolveExerciseMedia()'s generic
+   * (video-first) fallback used by every other slot.
+   */
+  const resolved =
+    slot === "thumbnail" ? resolveExerciseThumbnailStill(items) : resolveExerciseMedia(items, slot);
   const usableHero = resolved && !failed ? resolved : null;
   const still = !usableHero && fallbackImage ? fallbackImage : null;
 
-  const isVideo = usableHero?.role === "video";
+  // Belt-and-suspenders: the thumbnail slot can never render a <video>,
+  // even if resolveExerciseThumbnailStill()'s guarantee were ever weakened.
+  const isVideo = slot !== "thumbnail" && usableHero?.role === "video";
   const objectFit =
     fit ?? (CONTAIN_SLOTS.includes(slot) && !isVideo ? "contain" : "cover");
   const fitClass = objectFit === "contain" ? "object-contain" : "object-cover";

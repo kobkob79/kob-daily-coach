@@ -127,17 +127,46 @@ export function pickRoleMedia(
 /** Fallback chains per slot; anything unresolved ends at the hero priority. */
 export const EXERCISE_SLOT_FALLBACKS: Record<ExerciseMediaSlot, ExerciseAssignedRole[]> = {
   hero: [],
+  /**
+   * Documents intended precedence only. Never walked by resolveExerciseMedia()
+   * for the `thumbnail` slot - that goes through resolveExerciseThumbnailStill()
+   * instead, which rejects video/animation outright rather than falling through
+   * to the generic (video-first) hero priority. See VIORA-EXERCISE-THUMBNAIL-
+   * STATIC-MEDIA-HOTFIX-001.
+   */
   thumbnail: ["thumbnail", "main"],
   main: ["main"],
   guide: ["guide", "main"],
   demo: ["demo"],
 };
 
+/**
+ * Static-only resolver for the Exercise Library card thumbnail.
+ *
+ * Unlike resolveExerciseMedia(), this never falls through to the generic
+ * video-first pickHeroMedia(): a thumbnail must always be a still image (or
+ * nothing), so an uploaded Motion Video never autoplays inside a library
+ * card. Only explicit `thumbnail.*` / `main.*` candidates are considered,
+ * and only when they classify as a plain image - video and animation/GIF
+ * candidates are rejected for this surface even when explicitly assigned.
+ */
+export function resolveExerciseThumbnailStill(items: MediaItem[]): ExerciseHeroMedia | null {
+  const thumbnail = pickRoleMedia(items, "thumbnail");
+  if (thumbnail && thumbnail.role === "image") return thumbnail;
+
+  const main = pickRoleMedia(items, "main");
+  if (main && main.role === "image") return main;
+
+  return null;
+}
+
 /** Resolves a slot with its fallback chain, then the generic hero priority. */
 export function resolveExerciseMedia(
   items: MediaItem[],
   slot: ExerciseMediaSlot = "hero",
 ): ExerciseHeroMedia | null {
+  if (slot === "thumbnail") return resolveExerciseThumbnailStill(items);
+
   for (const role of EXERCISE_SLOT_FALLBACKS[slot]) {
     const hit = pickRoleMedia(items, role);
     if (hit) return hit;
