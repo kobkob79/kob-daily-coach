@@ -9,7 +9,7 @@
     "notStartedExercises": 137,
     "coversComplete": 12,
     "infographicsComplete": 12,
-    "thumbnailsComplete": 12,
+    "thumbnailsComplete": 13,
     "demosComplete": 1,
     "overallProgressPercent": 8
   },
@@ -23,15 +23,14 @@
     "media": {
       "hasCover": false,
       "hasInfographic": false,
-      "hasThumbnail": false,
+      "hasThumbnail": true,
       "hasDemo": true
     },
     "missingAssets": [
       "cover",
-      "infographic",
-      "thumbnail"
+      "infographic"
     ],
-    "lastUpdated": "2026-09-02T18:03:10.109Z"
+    "lastUpdated": "2026-09-02T20:30:26.534Z"
   },
   "exercises": [
     {
@@ -970,15 +969,14 @@
       "media": {
         "hasCover": false,
         "hasInfographic": false,
-        "hasThumbnail": false,
+        "hasThumbnail": true,
         "hasDemo": true
       },
       "missingAssets": [
         "cover",
-        "infographic",
-        "thumbnail"
+        "infographic"
       ],
-      "lastUpdated": "2026-09-02T18:03:10.109Z"
+      "lastUpdated": "2026-09-02T20:30:26.534Z"
     },
     {
       "exerciseId": "150e00e2-346c-4db2-ae35-5f4da7a33c3d",
