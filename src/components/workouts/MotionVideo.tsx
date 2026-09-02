@@ -5,13 +5,16 @@
  * same frame layout as before) and adds one visible, keyboard- and
  * touch-operable Play/Pause control.
  *
- * Reduced Motion: when `prefers-reduced-motion: reduce` is set the video does
- * NOT autoplay — it renders paused on its first frame and the user starts it
- * with the control.
+ * Reduced Motion / hydration: the video stays paused with no `autoPlay`
+ * attribute on the server and through hydration (fail-safe — no autoplay flash,
+ * no SSR/client mismatch). Once the browser preference resolves post-hydration,
+ * a normal user's video starts once; a Reduced Motion user's stays paused.
+ * Turning Reduced Motion on later pauses playback; turning it off does NOT
+ * auto-resume.
  *
- * Lifecycle: the element is paused on unmount (leaving the exercise view) and
- * whenever Reduced Motion becomes active. Exactly one `<video>` is rendered, so
- * there is never a duplicate playback loop.
+ * Lifecycle: the element is paused on unmount (leaving the exercise view).
+ * Exactly one `<video>` is rendered, so there is never a duplicate playback
+ * loop.
  *
  * The signed-URL retry/error fallback is unchanged: `onError` is forwarded
  * straight to the `<video>` so `ExerciseMediaView` can refetch once and then
@@ -20,7 +23,7 @@
 import { Pause, Play } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { useIsHydrated, usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { cn } from "@/lib/utils";
 
 import {
@@ -56,9 +59,14 @@ export function MotionVideo({
   onError,
 }: MotionVideoProps) {
   const prefersReducedMotion = usePrefersReducedMotion();
+  const hydrated = useIsHydrated();
+  // Only ever true after hydration, and never for a Reduced Motion user - so
+  // the server/hydration render carries no `autoPlay` attribute at all.
+  const autoplayAllowed = hydrated && !prefersReducedMotion;
   const videoRef = useRef<HTMLVideoElement>(null);
-  // Source of truth is the element itself; mirrored here for rendering.
-  const [isPlaying, setIsPlaying] = useState(!prefersReducedMotion);
+  // Fail-safe: paused until the real browser preference has resolved. Source of
+  // truth after that is the element itself, mirrored here for rendering.
+  const [isPlaying, setIsPlaying] = useState(false);
 
   // Keep React state aligned with the real element (autoplay blocked, loop
   // restart, external pause, …) so the control always shows the true state.
@@ -75,8 +83,21 @@ export function MotionVideo({
     };
   }, []);
 
-  // Reduced Motion turning on mid-playback pauses the video; it never
-  // auto-resumes — the user must start it again with the control.
+  // First time the real client preference is known (post-hydration), a normal
+  // user's video starts playing exactly once. A Reduced Motion user's does not.
+  const didAutostartRef = useRef(false);
+  useEffect(() => {
+    if (!hydrated || didAutostartRef.current) return;
+    didAutostartRef.current = true;
+    if (!prefersReducedMotion) {
+      void videoRef.current?.play().catch(() => {
+        /* autoplay/gesture policy — the pause event keeps state honest */
+      });
+    }
+  }, [hydrated, prefersReducedMotion]);
+
+  // Reduced Motion turning on mid-playback pauses the video; turning it off
+  // never auto-resumes — the user restarts it with the control.
   useEffect(() => {
     if (prefersReducedMotion) videoRef.current?.pause();
   }, [prefersReducedMotion]);
@@ -109,7 +130,7 @@ export function MotionVideo({
         src={src}
         aria-label={name ?? "סרטון תרגיל"}
         className={cn("absolute inset-0 h-full w-full", fitClass)}
-        autoPlay={!prefersReducedMotion}
+        autoPlay={autoplayAllowed}
         loop
         muted
         playsInline

@@ -27,9 +27,15 @@ test("exactly one <video> element - no duplicate playback loop", () => {
   assert.equal((source.match(/^\s*<video\b/gm) ?? []).length, 1);
 });
 
-test("Reduced Motion disables autoplay; normal mode keeps autoplay/muted/loop/playsInline", () => {
-  // Autoplay is gated on the Reduced Motion preference, never unconditional.
-  assert.match(source, /autoPlay=\{!prefersReducedMotion\}/);
+test("hydration-safe autoplay gate: never on the server / during hydration, never for Reduced Motion", () => {
+  // Autoplay is allowed only once hydrated AND the user does not prefer
+  // reduced motion - so the SSR/hydration render carries no autoPlay at all.
+  assert.match(source, /const autoplayAllowed = hydrated && !prefersReducedMotion;/);
+  assert.match(source, /autoPlay=\{autoplayAllowed\}/);
+  assert.match(source, /useIsHydrated\(\)/);
+
+  // The old, hydration-unsafe forms must be gone.
+  assert.doesNotMatch(source, /autoPlay=\{!prefersReducedMotion\}/);
   assert.doesNotMatch(source, /autoPlay=\{true\}/);
   assert.doesNotMatch(
     source,
@@ -37,14 +43,33 @@ test("Reduced Motion disables autoplay; normal mode keeps autoplay/muted/loop/pl
     "autoplay must not be an unconditional attribute",
   );
 
-  // The reduced-motion path starts paused and never auto-resumes.
-  assert.match(source, /useState\(!prefersReducedMotion\)/);
-  assert.match(source, /if \(prefersReducedMotion\) videoRef\.current\?\.pause\(\)/);
+  // Fail-safe initial state: paused until the real preference resolves.
+  assert.match(source, /useState\(false\)/);
+  assert.doesNotMatch(source, /useState\(!prefersReducedMotion\)/);
 
   // Normal playback attributes preserved (muted, loop, playsInline).
   for (const attr of [/^\s*loop\s*$/m, /^\s*muted\s*$/m, /^\s*playsInline\s*$/m]) {
     assert.match(source, attr);
   }
+});
+
+test("post-hydration playback transitions", () => {
+  // Normal user: starts exactly once, only after hydration.
+  assert.match(source, /const didAutostartRef = useRef\(false\);/);
+  assert.match(source, /if \(!hydrated \|\| didAutostartRef\.current\) return;/);
+  assert.match(source, /if \(!prefersReducedMotion\) \{\s*void videoRef\.current\?\.play\(\)/);
+
+  // Reduced Motion turning ON pauses; the effect body has no play() call, so
+  // turning it OFF cannot auto-resume.
+  assert.match(
+    source,
+    /\}, \[prefersReducedMotion\]\);/,
+    "a dedicated effect reacts to the reduced-motion preference",
+  );
+  assert.match(
+    source,
+    /if \(prefersReducedMotion\) videoRef\.current\?\.pause\(\);\s*\n\s*\}, \[prefersReducedMotion\]\);/,
+  );
 });
 
 test("visible, accessible Play/Pause control that works with keyboard and touch", () => {

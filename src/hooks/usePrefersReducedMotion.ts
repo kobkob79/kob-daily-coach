@@ -1,41 +1,70 @@
 /**
- * usePrefersReducedMotion — shared reader for the OS "Reduce motion" setting.
+ * usePrefersReducedMotion — shared, hydration-stable reader for the OS
+ * "Reduce motion" setting.
  *
- * Mirrors the `(prefers-reduced-motion: reduce)` media query and stays in sync
- * when the user flips the setting while the app is open. SSR-safe: resolves to
- * `false` when `window`/`matchMedia` is unavailable, matching the framework-free
- * hook style already used by `use-mobile.tsx`.
+ * Built on `useSyncExternalStore` so the server render and the first client
+ * (hydration) render always agree on one snapshot; React then re-renders with
+ * the live value once hydration completes, with no mismatch warning.
  *
- * Consumers use this to decide whether Motion Video may autoplay. When it
- * returns `true` the video must render paused and only start on an explicit
- * user action.
+ * `getReducedMotionServerSnapshot` returns `false` (preference not yet known),
+ * and the companion `useIsHydrated()` lets a consumer keep motion gated until
+ * the real browser preference has resolved — so Motion Video never autoplays
+ * on the server or mid-hydration, not even briefly, for a Reduced Motion user.
  */
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 export const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
+function hasMatchMedia(): boolean {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function";
+}
+
 /** Synchronous best-effort read; `false` on the server or without matchMedia. */
 export function getPrefersReducedMotion(): boolean {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-    return false;
-  }
-  return window.matchMedia(REDUCED_MOTION_QUERY).matches;
+  return hasMatchMedia() ? window.matchMedia(REDUCED_MOTION_QUERY).matches : false;
+}
+
+function subscribeReducedMotion(onStoreChange: () => void): () => void {
+  if (!hasMatchMedia()) return () => {};
+  const mql = window.matchMedia(REDUCED_MOTION_QUERY);
+  mql.addEventListener("change", onStoreChange);
+  return () => mql.removeEventListener("change", onStoreChange);
+}
+
+/** Server + first-client (hydration) snapshot: preference not yet known. */
+export function getReducedMotionServerSnapshot(): boolean {
+  return false;
 }
 
 export function usePrefersReducedMotion(): boolean {
-  const [prefersReducedMotion, setPrefersReducedMotion] =
-    useState<boolean>(getPrefersReducedMotion);
+  return useSyncExternalStore(
+    subscribeReducedMotion,
+    getPrefersReducedMotion,
+    getReducedMotionServerSnapshot,
+  );
+}
 
-  useEffect(() => {
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-      return;
-    }
-    const mql = window.matchMedia(REDUCED_MOTION_QUERY);
-    const onChange = () => setPrefersReducedMotion(mql.matches);
-    onChange();
-    mql.addEventListener("change", onChange);
-    return () => mql.removeEventListener("change", onChange);
-  }, []);
+/** No external source to watch - hydration state flips exactly once. */
+function subscribeHydration(): () => void {
+  return () => {};
+}
+/** Stable snapshot getters (identity matters to useSyncExternalStore). */
+function getHydratedClientSnapshot(): boolean {
+  return true;
+}
+function getHydratedServerSnapshot(): boolean {
+  return false;
+}
 
-  return prefersReducedMotion;
+/**
+ * `false` during SSR and the first client render, `true` on every render after
+ * hydration. Consumers use it to defer motion decisions until the real
+ * preference is known, without risking an SSR/client hydration mismatch.
+ */
+export function useIsHydrated(): boolean {
+  return useSyncExternalStore(
+    subscribeHydration,
+    getHydratedClientSnapshot,
+    getHydratedServerSnapshot,
+  );
 }
