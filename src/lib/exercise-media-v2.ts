@@ -162,3 +162,189 @@ export const MOTION_DRAFT_MESSAGES_HE = {
 } as const;
 
 export type MotionDraftMessageKey = keyof typeof MOTION_DRAFT_MESSAGES_HE;
+
+// ============================================================================
+// VIORA-EXERCISE-MOTION-VIDEO-QUALITY-GATE-001
+//
+// A visible automatic PASS/FAIL report, a mandatory manual visual-review
+// checklist, and an honest "not yet verified" section for properties no
+// browser can inspect. Framework-free, like the rest of this module -
+// MotionVideoDraftSheet.tsx renders these, it does not compute them.
+// ============================================================================
+
+export type AutomaticCheckId = "mime_type" | "file_size" | "resolution" | "duration";
+
+export interface AutomaticCheckStatus {
+  id: AutomaticCheckId;
+  /** Hebrew label naming the check itself (e.g. "סוג קובץ MP4"). */
+  label: string;
+  passed: boolean;
+  /** The detected value, formatted for display (e.g. "1280×720", "2.14MB"). */
+  detail: string;
+}
+
+/**
+ * Maps the errors `validateDetectedMotionVideoMetadata()` already computed
+ * into one visible status row per automatic check - PASS (green) or FAIL
+ * (red) - with the detected value shown alongside. Takes `errors` as an
+ * input rather than recomputing them, so there is exactly one validation
+ * implementation in this module; callers must pass the same array they got
+ * from `validateDetectedMotionVideoMetadata(detected)`.
+ */
+export function mapValidationErrorsToAutomaticChecks(
+  detected: DetectedMotionVideoMetadata,
+  errors: readonly MotionDraftValidationError[],
+): AutomaticCheckStatus[] {
+  const codes = new Set(errors.map((e) => e.code));
+  const sizeMb = (detected.sizeBytes / (1024 * 1024)).toFixed(2);
+  const maxMb = (MOTION_VIDEO_MAX_BYTES / (1024 * 1024)).toFixed(0);
+
+  return [
+    {
+      id: "mime_type",
+      label: "סוג קובץ MP4 (video/mp4)",
+      passed: !codes.has("invalid_mime_type"),
+      detail: detected.mimeType || "לא זוהה סוג קובץ",
+    },
+    {
+      id: "file_size",
+      label: `גודל קובץ עד ${maxMb}MB`,
+      passed: !codes.has("file_too_large"),
+      detail: `${sizeMb}MB`,
+    },
+    {
+      id: "resolution",
+      label: `רזולוציה ${MOTION_VIDEO_WIDTH}×${MOTION_VIDEO_HEIGHT}`,
+      passed: !codes.has("wrong_resolution"),
+      detail: `${detected.width}×${detected.height}`,
+    },
+    {
+      id: "duration",
+      label: `משך ${MOTION_VIDEO_MIN_DURATION_MS / 1000}–${MOTION_VIDEO_MAX_DURATION_MS / 1000} שניות`,
+      passed: !codes.has("duration_out_of_range"),
+      detail: `${(detected.durationMs / 1000).toFixed(1)} שניות`,
+    },
+  ];
+}
+
+export interface ManualReviewItem {
+  id: string;
+  /** Hebrew checklist text, verbatim per the sprint. */
+  label: string;
+}
+
+/**
+ * The mandatory Admin visual-review checklist. Order matches the sprint
+ * spec. Every item is required - see isManualReviewComplete().
+ *
+ * Declared with `as const satisfies` rather than an explicit
+ * `readonly ManualReviewItem[]` annotation: an explicit annotation would
+ * widen every `id` to the generic `string` from ManualReviewItem, which
+ * in turn would widen ManualReviewItemId (below) to `string` and lose the
+ * exact six-key guarantee on ManualReviewConfirmations. `satisfies` checks
+ * the array against the ManualReviewItem shape without widening it.
+ */
+export const MOTION_VIDEO_MANUAL_REVIEW_ITEMS = [
+  { id: "in_frame", label: "הראש וכל הגוף נשארים בתוך המסגרת לאורך כל הסרטון." },
+  {
+    id: "matches_hero",
+    label: "תנוחת הגוף, זווית הצילום והציוד תואמים לתמונת ה־Hero המאושרת.",
+  },
+  {
+    id: "no_invented_props",
+    label: "לא נוספו ספסל, כיסא, ציוד או עצמים שלא קיימים בתמונת המקור.",
+  },
+  {
+    id: "character_consistent",
+    label: "הדמות נשארת עקבית ללא שינוי פנים, גוף, לבוש או אנטומיה.",
+  },
+  { id: "biomechanics_sound", label: "התנועה נראית ביומכנית תקינה ומתאימה לתרגיל." },
+  { id: "loops_smoothly", label: "תחילת הסרטון וסופו מאפשרים לולאה חלקה." },
+] as const satisfies readonly ManualReviewItem[];
+
+export type ManualReviewItemId = (typeof MOTION_VIDEO_MANUAL_REVIEW_ITEMS)[number]["id"];
+
+export type ManualReviewConfirmations = Record<ManualReviewItemId, boolean>;
+
+/** All checklist items unconfirmed - the required state after a reset. */
+export function createEmptyManualReviewConfirmations(): ManualReviewConfirmations {
+  const confirmations = {} as ManualReviewConfirmations;
+  for (const item of MOTION_VIDEO_MANUAL_REVIEW_ITEMS) {
+    confirmations[item.id] = false;
+  }
+  return confirmations;
+}
+
+/** True only when every mandatory checklist item is confirmed. */
+export function isManualReviewComplete(confirmations: ManualReviewConfirmations): boolean {
+  return MOTION_VIDEO_MANUAL_REVIEW_ITEMS.every((item) => confirmations[item.id] === true);
+}
+
+export interface UnverifiedProperty {
+  id: "codec" | "frame_rate" | "no_audio_track";
+  /** Hebrew label naming the property. Deliberately carries no `passed` field - see the module doc. */
+  label: string;
+}
+
+/**
+ * Properties no browser (and no part of the current upload pipeline - see
+ * exercise-motion-draft-core.ts) can reliably inspect. Deliberately typed
+ * without a `passed`/`detail` field: there is no PASS state for these, and
+ * nothing here may ever claim one. Their unverified state does not block
+ * saving as Draft, but a Draft with any of these unconfirmed must never
+ * reach qa_passed/published - that gate is future privileged-QA-service
+ * work, not this sheet's job.
+ */
+export const MOTION_VIDEO_UNVERIFIED_PROPERTIES: readonly UnverifiedProperty[] = [
+  { id: "codec", label: "קודק H.264" },
+  { id: "frame_rate", label: "קצב 30 פריימים לשנייה" },
+  { id: "no_audio_track", label: "ללא ערוץ אודיו" },
+] as const;
+
+/** The four automatic checks every Draft upload must report - see AutomaticCheckId. */
+export const REQUIRED_AUTOMATIC_CHECK_IDS: readonly AutomaticCheckId[] = [
+  "mime_type",
+  "file_size",
+  "resolution",
+  "duration",
+] as const;
+
+/**
+ * True only when `automaticChecks` contains exactly the four required
+ * check ids - each exactly once - and every one of them passed. Fails
+ * closed rather than passing vacuously: an empty array, an array missing
+ * a required id, or a duplicate id standing in for a missing one, all
+ * resolve to false.
+ */
+function hasAllRequiredAutomaticChecksPassing(
+  automaticChecks: readonly AutomaticCheckStatus[],
+): boolean {
+  if (automaticChecks.length !== REQUIRED_AUTOMATIC_CHECK_IDS.length) return false;
+
+  const seenIds = new Set<AutomaticCheckId>();
+  for (const check of automaticChecks) {
+    if (seenIds.has(check.id)) return false; // a duplicate id can never substitute for a missing one
+    seenIds.add(check.id);
+  }
+
+  return (
+    REQUIRED_AUTOMATIC_CHECK_IDS.every((id) => seenIds.has(id)) &&
+    automaticChecks.every((check) => check.passed)
+  );
+}
+
+/**
+ * The Draft upload button's gate: exactly the four required automatic
+ * checks must be present and all must pass, AND every manual-review item
+ * must be confirmed. Unverified technical properties (codec/fps/audio)
+ * are never part of this gate - they may still allow saving as Draft,
+ * per the sprint.
+ */
+export function isMotionDraftReadyToUpload(
+  automaticChecks: readonly AutomaticCheckStatus[],
+  confirmations: ManualReviewConfirmations,
+): boolean {
+  return (
+    hasAllRequiredAutomaticChecksPassing(automaticChecks) && isManualReviewComplete(confirmations)
+  );
+}

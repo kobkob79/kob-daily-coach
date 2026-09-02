@@ -15,6 +15,7 @@ import { Loader2, Video } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Sheet,
   SheetContent,
@@ -28,8 +29,14 @@ import { uploadMediaInboxFile } from "@/services/media-inbox.service";
 import {
   MOTION_DRAFT_MESSAGES_HE,
   MOTION_VIDEO_MIME_TYPE,
+  MOTION_VIDEO_MANUAL_REVIEW_ITEMS,
+  MOTION_VIDEO_UNVERIFIED_PROPERTIES,
+  createEmptyManualReviewConfirmations,
+  isMotionDraftReadyToUpload,
+  mapValidationErrorsToAutomaticChecks,
   validateDetectedMotionVideoMetadata,
   type DetectedMotionVideoMetadata,
+  type ManualReviewConfirmations,
   type MotionDraftValidationError,
 } from "@/lib/exercise-media-v2";
 import {
@@ -88,6 +95,9 @@ export function MotionVideoDraftSheet({ open, onClose }: Props) {
   const [resultMessage, setResultMessage] = useState<string | null>(null);
   const [frameRatePending, setFrameRatePending] = useState(false);
   const [conflictStatus, setConflictStatus] = useState<string | null>(null);
+  const [confirmations, setConfirmations] = useState<ManualReviewConfirmations>(
+    createEmptyManualReviewConfirmations(),
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const objectUrlRef = useRef<string | null>(null);
   /** Staged Media Inbox path for the currently `detected` file, so a
@@ -123,6 +133,7 @@ export function MotionVideoDraftSheet({ open, onClose }: Props) {
     setResultMessage(null);
     setFrameRatePending(false);
     setConflictStatus(null);
+    setConfirmations(createEmptyManualReviewConfirmations());
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -134,6 +145,7 @@ export function MotionVideoDraftSheet({ open, onClose }: Props) {
   async function pickExercise(id: string) {
     setPickerOpen(false);
     setBusy(true);
+    setConfirmations(createEmptyManualReviewConfirmations());
     try {
       const { data } = await supabase
         .from("exercises")
@@ -165,6 +177,7 @@ export function MotionVideoDraftSheet({ open, onClose }: Props) {
     stagedRef.current = null; // a new file invalidates any previously staged copy
     setDetected(null);
     setResultMessage(null);
+    setConfirmations(createEmptyManualReviewConfirmations());
 
     if (file.type !== MOTION_VIDEO_MIME_TYPE) {
       toast.error(MOTION_DRAFT_MESSAGES_HE.invalid_mime_type);
@@ -194,7 +207,12 @@ export function MotionVideoDraftSheet({ open, onClose }: Props) {
   }
 
   async function confirmUpload(confirmReplace: boolean) {
-    if (!exercise || !detected || detected.errors.length > 0 || busy) return;
+    if (!exercise || !detected || busy) return;
+    const ready = isMotionDraftReadyToUpload(
+      mapValidationErrorsToAutomaticChecks(detected.metadata, detected.errors),
+      confirmations,
+    );
+    if (!ready) return;
 
     setBusy(true);
     try {
@@ -258,6 +276,10 @@ export function MotionVideoDraftSheet({ open, onClose }: Props) {
   }
 
   const sheetOpen = !pickerOpen && step !== "pick-exercise" && !!exercise;
+  const automaticChecks = detected
+    ? mapValidationErrorsToAutomaticChecks(detected.metadata, detected.errors)
+    : [];
+  const isReady = detected ? isMotionDraftReadyToUpload(automaticChecks, confirmations) : false;
 
   return (
     <>
@@ -355,38 +377,89 @@ export function MotionVideoDraftSheet({ open, onClose }: Props) {
                     className="w-full rounded-lg motion-reduce:opacity-90"
                     aria-label="תצוגה מקדימה מקומית של סרטון התנועה"
                   />
-                  <dl className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
-                    <div>
-                      <dt>גודל</dt>
-                      <dd dir="ltr">
-                        {(detected.metadata.sizeBytes / (1024 * 1024)).toFixed(2)} MB
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>רזולוציה</dt>
-                      <dd dir="ltr">
-                        {detected.metadata.width}×{detected.metadata.height}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>משך</dt>
-                      <dd dir="ltr">{(detected.metadata.durationMs / 1000).toFixed(1)}s</dd>
-                    </div>
-                  </dl>
 
-                  {detected.errors.length > 0 && (
-                    <ul className="space-y-1 text-xs text-destructive">
-                      {detected.errors.map((e) => (
-                        <li key={e.code}>{e.message}</li>
+                  {/* 1. Automatic technical report - reuses
+                      validateDetectedMotionVideoMetadata() via
+                      mapValidationErrorsToAutomaticChecks(); no second
+                      validation implementation. */}
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      בדיקה טכנית אוטומטית
+                    </p>
+                    <ul className="space-y-1.5">
+                      {automaticChecks.map((check) => (
+                        <li
+                          key={check.id}
+                          className="flex items-center justify-between gap-2 text-xs"
+                        >
+                          <span>{check.label}</span>
+                          <span className="flex items-center gap-2">
+                            <span dir="ltr" className="text-muted-foreground">
+                              {check.detail}
+                            </span>
+                            <span
+                              className={
+                                check.passed
+                                  ? "font-semibold text-green-600"
+                                  : "font-semibold text-destructive"
+                              }
+                            >
+                              {check.passed ? "PASS" : "FAIL"}
+                            </span>
+                          </span>
+                        </li>
                       ))}
                     </ul>
-                  )}
+                  </div>
+
+                  {/* 3. Unverified technical properties - never shown as
+                      PASS, no detected value fabricated. */}
+                  <div className="space-y-1.5 rounded-lg bg-muted/50 p-2">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      טרם אומת בבדיקה טכנית בצד השרת
+                    </p>
+                    <ul className="space-y-1 text-xs text-muted-foreground">
+                      {MOTION_VIDEO_UNVERIFIED_PROPERTIES.map((prop) => (
+                        <li key={prop.id}>{prop.label}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* 2. Mandatory manual visual-review gate. */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      בדיקה חזותית ידנית (חובה)
+                    </p>
+                    <ul className="space-y-2">
+                      {MOTION_VIDEO_MANUAL_REVIEW_ITEMS.map((item) => (
+                        <li key={item.id} className="flex items-start gap-2">
+                          <Checkbox
+                            id={`manual-review-${item.id}`}
+                            checked={confirmations[item.id]}
+                            onCheckedChange={(checked) =>
+                              setConfirmations((prev) => ({
+                                ...prev,
+                                [item.id]: checked === true,
+                              }))
+                            }
+                            className="mt-0.5"
+                          />
+                          <label
+                            htmlFor={`manual-review-${item.id}`}
+                            className="text-xs leading-5 cursor-pointer"
+                          >
+                            {item.label}
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
               )}
 
               <Button
                 className="h-12 w-full"
-                disabled={busy || !detected || detected.errors.length > 0}
+                disabled={busy || !detected || !isReady}
                 onClick={() => void confirmUpload(step === "confirm-replace")}
               >
                 {busy && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}

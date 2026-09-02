@@ -6,10 +6,19 @@ import assert from "node:assert/strict";
 
 import {
   buildMotionVideoStoragePath,
+  createEmptyManualReviewConfirmations,
   DEFAULT_DEMONSTRATOR_KEY,
   DEMONSTRATOR_KEYS,
+  isManualReviewComplete,
+  isMotionDraftReadyToUpload,
   isUuid,
+  mapValidationErrorsToAutomaticChecks,
+  MOTION_VIDEO_MANUAL_REVIEW_ITEMS,
+  MOTION_VIDEO_UNVERIFIED_PROPERTIES,
+  REQUIRED_AUTOMATIC_CHECK_IDS,
   validateDetectedMotionVideoMetadata,
+  type AutomaticCheckStatus,
+  type ManualReviewItemId,
 } from "./exercise-media-v2.ts";
 
 const EXERCISE_ID = "10000000-0000-0000-0000-000000000001";
@@ -158,3 +167,199 @@ test("VIORA-EXERCISE-GENERIC-DEMONSTRATOR-DECISION-001: the only official V1 dem
     );
   }
 });
+
+// ============================================================================
+// VIORA-EXERCISE-MOTION-VIDEO-QUALITY-GATE-001
+// ============================================================================
+
+const CONFORMING_METADATA = {
+  mimeType: "video/mp4",
+  sizeBytes: 2_000_000,
+  width: 1280,
+  height: 720,
+  durationMs: 8000,
+};
+
+test("mapValidationErrorsToAutomaticChecks: conforming metadata produces four automatic PASS results", () => {
+  const errors = validateDetectedMotionVideoMetadata(CONFORMING_METADATA);
+  const checks = mapValidationErrorsToAutomaticChecks(CONFORMING_METADATA, errors);
+  assert.equal(checks.length, 4);
+  assert.deepEqual(checks.map((c) => c.id).sort(), [
+    "duration",
+    "file_size",
+    "mime_type",
+    "resolution",
+  ]);
+  for (const check of checks) {
+    assert.equal(check.passed, true, `${check.id} should PASS for conforming metadata`);
+    assert.ok(check.detail.length > 0, `${check.id} must show a detected value`);
+  }
+});
+
+test("mapValidationErrorsToAutomaticChecks: wrong mime type produces FAIL only on mime_type", () => {
+  const detected = { ...CONFORMING_METADATA, mimeType: "video/webm" };
+  const errors = validateDetectedMotionVideoMetadata(detected);
+  const checks = mapValidationErrorsToAutomaticChecks(detected, errors);
+  const byId = Object.fromEntries(checks.map((c) => [c.id, c]));
+  assert.equal(byId.mime_type.passed, false);
+  assert.equal(byId.file_size.passed, true);
+  assert.equal(byId.resolution.passed, true);
+  assert.equal(byId.duration.passed, true);
+});
+
+test("mapValidationErrorsToAutomaticChecks: oversized file produces FAIL only on file_size", () => {
+  const detected = { ...CONFORMING_METADATA, sizeBytes: 3_145_729 };
+  const errors = validateDetectedMotionVideoMetadata(detected);
+  const checks = mapValidationErrorsToAutomaticChecks(detected, errors);
+  const byId = Object.fromEntries(checks.map((c) => [c.id, c]));
+  assert.equal(byId.mime_type.passed, true);
+  assert.equal(byId.file_size.passed, false);
+  assert.equal(byId.resolution.passed, true);
+  assert.equal(byId.duration.passed, true);
+});
+
+test("mapValidationErrorsToAutomaticChecks: wrong resolution produces FAIL only on resolution", () => {
+  const detected = { ...CONFORMING_METADATA, width: 1920, height: 1080 };
+  const errors = validateDetectedMotionVideoMetadata(detected);
+  const checks = mapValidationErrorsToAutomaticChecks(detected, errors);
+  const byId = Object.fromEntries(checks.map((c) => [c.id, c]));
+  assert.equal(byId.mime_type.passed, true);
+  assert.equal(byId.file_size.passed, true);
+  assert.equal(byId.resolution.passed, false);
+  assert.equal(byId.duration.passed, true);
+  assert.match(byId.resolution.detail, /1920.*1080/);
+});
+
+test("mapValidationErrorsToAutomaticChecks: out-of-range duration produces FAIL only on duration", () => {
+  const detected = { ...CONFORMING_METADATA, durationMs: 3000 };
+  const errors = validateDetectedMotionVideoMetadata(detected);
+  const checks = mapValidationErrorsToAutomaticChecks(detected, errors);
+  const byId = Object.fromEntries(checks.map((c) => [c.id, c]));
+  assert.equal(byId.mime_type.passed, true);
+  assert.equal(byId.file_size.passed, true);
+  assert.equal(byId.resolution.passed, true);
+  assert.equal(byId.duration.passed, false);
+});
+
+test("createEmptyManualReviewConfirmations: every mandatory item starts unconfirmed", () => {
+  const confirmations = createEmptyManualReviewConfirmations();
+  for (const item of MOTION_VIDEO_MANUAL_REVIEW_ITEMS) {
+    assert.equal(confirmations[item.id], false);
+  }
+  assert.equal(isManualReviewComplete(confirmations), false);
+});
+
+test("isManualReviewComplete: incomplete when any single required item is false", () => {
+  const confirmations = createEmptyManualReviewConfirmations();
+  for (const item of MOTION_VIDEO_MANUAL_REVIEW_ITEMS) confirmations[item.id] = true;
+  const [firstItem] = MOTION_VIDEO_MANUAL_REVIEW_ITEMS;
+  confirmations[firstItem.id] = false;
+  assert.equal(isManualReviewComplete(confirmations), false);
+});
+
+test("isManualReviewComplete: complete only once every required item is true", () => {
+  const confirmations = createEmptyManualReviewConfirmations();
+  for (const item of MOTION_VIDEO_MANUAL_REVIEW_ITEMS) confirmations[item.id] = true;
+  assert.equal(isManualReviewComplete(confirmations), true);
+});
+
+test("isMotionDraftReadyToUpload: false when automatic checks fail even if manual gate is complete", () => {
+  const detected = { ...CONFORMING_METADATA, width: 1920, height: 1080 };
+  const errors = validateDetectedMotionVideoMetadata(detected);
+  const checks = mapValidationErrorsToAutomaticChecks(detected, errors);
+  const confirmations = createEmptyManualReviewConfirmations();
+  for (const item of MOTION_VIDEO_MANUAL_REVIEW_ITEMS) confirmations[item.id] = true;
+  assert.equal(isMotionDraftReadyToUpload(checks, confirmations), false);
+});
+
+test("isMotionDraftReadyToUpload: false when automatic checks pass but manual gate is incomplete", () => {
+  const errors = validateDetectedMotionVideoMetadata(CONFORMING_METADATA);
+  const checks = mapValidationErrorsToAutomaticChecks(CONFORMING_METADATA, errors);
+  const confirmations = createEmptyManualReviewConfirmations();
+  assert.equal(isMotionDraftReadyToUpload(checks, confirmations), false);
+});
+
+test("isMotionDraftReadyToUpload: true only when automatic checks all pass and manual gate is complete", () => {
+  const errors = validateDetectedMotionVideoMetadata(CONFORMING_METADATA);
+  const checks = mapValidationErrorsToAutomaticChecks(CONFORMING_METADATA, errors);
+  const confirmations = createEmptyManualReviewConfirmations();
+  for (const item of MOTION_VIDEO_MANUAL_REVIEW_ITEMS) confirmations[item.id] = true;
+  assert.equal(isMotionDraftReadyToUpload(checks, confirmations), true);
+});
+
+// ----------------------------------------------------------------------
+// VIORA-EXERCISE-MOTION-VIDEO-QUALITY-GATE-REVIEW-001: fail-closed gate.
+// isMotionDraftReadyToUpload() must never pass vacuously on an empty or
+// incomplete automatic-check array.
+// ----------------------------------------------------------------------
+
+function allConfirmed() {
+  const confirmations = createEmptyManualReviewConfirmations();
+  for (const item of MOTION_VIDEO_MANUAL_REVIEW_ITEMS) confirmations[item.id] = true;
+  return confirmations;
+}
+
+function passingCheck(id: (typeof REQUIRED_AUTOMATIC_CHECK_IDS)[number]): AutomaticCheckStatus {
+  return { id, label: id, passed: true, detail: "" };
+}
+
+test("isMotionDraftReadyToUpload: fails closed - empty automatic-check array returns false", () => {
+  assert.equal(isMotionDraftReadyToUpload([], allConfirmed()), false);
+});
+
+test("isMotionDraftReadyToUpload: fails closed - missing one required check returns false", () => {
+  const checks = REQUIRED_AUTOMATIC_CHECK_IDS.filter((id) => id !== "file_size").map(passingCheck);
+  assert.equal(checks.length, 3);
+  assert.equal(isMotionDraftReadyToUpload(checks, allConfirmed()), false);
+});
+
+test("isMotionDraftReadyToUpload: fails closed - a duplicate id cannot substitute for a missing required check", () => {
+  const checks = [
+    passingCheck("mime_type"),
+    passingCheck("mime_type"), // duplicate, standing in for the missing "file_size"
+    passingCheck("resolution"),
+    passingCheck("duration"),
+  ];
+  assert.equal(checks.length, 4);
+  assert.equal(isMotionDraftReadyToUpload(checks, allConfirmed()), false);
+});
+
+test("isMotionDraftReadyToUpload: exactly four unique required passing checks plus all confirmations returns true", () => {
+  const checks = REQUIRED_AUTOMATIC_CHECK_IDS.map(passingCheck);
+  assert.equal(isMotionDraftReadyToUpload(checks, allConfirmed()), true);
+});
+
+test("REQUIRED_AUTOMATIC_CHECK_IDS matches exactly the ids mapValidationErrorsToAutomaticChecks produces", () => {
+  const errors = validateDetectedMotionVideoMetadata(CONFORMING_METADATA);
+  const checks = mapValidationErrorsToAutomaticChecks(CONFORMING_METADATA, errors);
+  assert.deepEqual(checks.map((c) => c.id).sort(), [...REQUIRED_AUTOMATIC_CHECK_IDS].sort());
+});
+
+test("MOTION_VIDEO_UNVERIFIED_PROPERTIES: covers codec/frame_rate/no_audio_track and structurally cannot represent PASS", () => {
+  assert.deepEqual(MOTION_VIDEO_UNVERIFIED_PROPERTIES.map((p) => p.id).sort(), [
+    "codec",
+    "frame_rate",
+    "no_audio_track",
+  ]);
+  for (const prop of MOTION_VIDEO_UNVERIFIED_PROPERTIES) {
+    assert.ok(!("passed" in prop), `${prop.id} must not carry a passed/PASS field`);
+    assert.ok(!("detail" in prop), `${prop.id} must not carry a fabricated detected value`);
+    assert.ok(prop.label.length > 0);
+  }
+});
+
+// ----------------------------------------------------------------------
+// Compile-time only, per VIORA-EXERCISE-MOTION-VIDEO-QUALITY-GATE-REVIEW-001:
+// confirms ManualReviewItemId stayed the exact six-key literal union
+// rather than widening to `string`. Node's type-stripping erases these
+// annotations at runtime (both calls just execute harmlessly), but
+// `npx tsc --noEmit` fails if the `@ts-expect-error` line below does NOT
+// produce a type error - i.e. if the union ever widens back to `string`.
+// ----------------------------------------------------------------------
+function assertManualReviewIdIsExactLiteralUnion(id: ManualReviewItemId) {
+  return id;
+}
+assertManualReviewIdIsExactLiteralUnion("in_frame");
+// @ts-expect-error "not_a_real_manual_review_id" is not one of the six approved ids -
+// if this line stops erroring, ManualReviewItemId has widened back to `string`.
+assertManualReviewIdIsExactLiteralUnion("not_a_real_manual_review_id");
