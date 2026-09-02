@@ -1,19 +1,17 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Camera, ImagePlus, Loader2 } from "lucide-react";
+import { Camera, ImagePlus, Loader2, Video } from "lucide-react";
 
 import { DevConsoleShell } from "@/components/dev/DevConsoleShell";
 import { MediaGallery } from "@/components/media/MediaGallery";
 import { ExerciseAssignSheet } from "@/components/media/ExerciseAssignSheet";
+import { MotionVideoDraftSheet } from "@/components/media/MotionVideoDraftSheet";
 import { Button } from "@/components/ui/button";
 import { PremiumCard } from "@/components/ui-kit/Section";
 import { supabase } from "@/integrations/supabase/client";
 import type { MediaItem } from "@/services/media.service";
-import {
-  MEDIA_INBOX_BUCKET,
-  uploadMediaInboxFile,
-} from "@/services/media-inbox.service";
+import { MEDIA_INBOX_BUCKET, uploadMediaInboxFile } from "@/services/media-inbox.service";
 
 export const Route = createFileRoute("/_authenticated/dev/media")({
   component: MediaInboxPage,
@@ -23,6 +21,7 @@ function MediaInboxPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
+  const [motionSheetOpen, setMotionSheetOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -50,17 +49,10 @@ function MediaInboxPage() {
   }
 
   return (
-    <DevConsoleShell
-      title="Viora Media Inbox"
-      subtitle="העלה תמונות מהטלפון והן יופיעו כאן מיד."
-    >
+    <DevConsoleShell title="Viora Media Inbox" subtitle="העלה תמונות מהטלפון והן יופיעו כאן מיד.">
       <PremiumCard>
         <div className="grid grid-cols-2 gap-3">
-          <Button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-          >
+          <Button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
             {uploading ? (
               <Loader2 className="ml-2 h-4 w-4 animate-spin" />
             ) : (
@@ -96,6 +88,16 @@ function MediaInboxPage() {
           className="hidden"
           onChange={(e) => void handleFile(e.target.files?.[0])}
         />
+
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-3 w-full"
+          onClick={() => setMotionSheetOpen(true)}
+        >
+          <Video className="ml-2 h-4 w-4" />
+          סרטון תנועה לתרגיל (טיוטה)
+        </Button>
       </PremiumCard>
 
       {userId && (
@@ -109,6 +111,7 @@ function MediaInboxPage() {
       )}
 
       <ExerciseAssignSheet item={selectedItem} onClose={() => setSelectedItem(null)} />
+      <MotionVideoDraftSheet open={motionSheetOpen} onClose={() => setMotionSheetOpen(false)} />
     </DevConsoleShell>
   );
 }
