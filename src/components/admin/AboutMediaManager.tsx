@@ -158,10 +158,17 @@ export function AboutMediaManager() {
       stage: "מכין תמונה" as const,
     }));
     for (const fingerprint of fingerprints) submittedFingerprints.current.add(fingerprint);
+    jobsRef.current = jobs;
     setUploadJobs(jobs);
     setIsBatchUploading(true);
     for (const job of jobs) await uploadOne(job);
     setIsBatchUploading(false);
+    // UI-only reset: successful jobs leave the list, failures stay for retry.
+    if (allUploadJobsSucceeded(jobsRef.current)) toast.success("התמונות הועלו ונשמרו");
+    const remaining = pruneCompletedUploadJobs(jobsRef.current);
+    jobsRef.current = remaining;
+    setUploadJobs(remaining);
+    if (uploadInput.current) uploadInput.current.value = "";
   };
 
   const replaceFile = async (file: File | undefined) => {
