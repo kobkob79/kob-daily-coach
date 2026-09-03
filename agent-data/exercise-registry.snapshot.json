@@ -5,12 +5,12 @@
   "summary": {
     "totalExercises": 150,
     "completedExercises": 12,
-    "partialExercises": 2,
-    "notStartedExercises": 136,
+    "partialExercises": 3,
+    "notStartedExercises": 135,
     "coversComplete": 12,
     "infographicsComplete": 12,
-    "thumbnailsComplete": 14,
-    "demosComplete": 2,
+    "thumbnailsComplete": 15,
+    "demosComplete": 3,
     "overallProgressPercent": 8
   },
   "nextRecommendedExercise": {
@@ -2333,19 +2333,18 @@
       "canonicalHebrewName": "בירד דוג",
       "englishName": "Bird Dog",
       "muscleGroup": "core",
-      "status": "NOT_STARTED",
+      "status": "PARTIAL",
       "media": {
         "hasCover": false,
         "hasInfographic": false,
-        "hasThumbnail": false,
-        "hasDemo": false
+        "hasThumbnail": true,
+        "hasDemo": true
       },
       "missingAssets": [
         "cover",
-        "infographic",
-        "thumbnail",
-        "demo"
-      ]
+        "infographic"
+      ],
+      "lastUpdated": "2026-09-03T21:57:01.535Z"
     },
     {
       "exerciseId": "da2ff89f-cf53-4e0d-b73b-d05175470479",
