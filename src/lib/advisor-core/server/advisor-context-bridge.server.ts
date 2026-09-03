@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { ageFromBirthdate } from "../../profile.ts";
 import {
   buildAdvisorContextSnapshot,
   selectAdvisorContext,
@@ -157,7 +158,11 @@ export function createSupabaseAdvisorContextDataSource(
         weightsResult,
         measurementsResult,
       ] = await Promise.all([
-        supabase.from("profiles").select("display_name").eq("id", userId).maybeSingle(),
+        supabase
+          .from("profiles")
+          .select("display_name, gender, birth_date, height_cm, current_weight_kg")
+          .eq("id", userId)
+          .maybeSingle(),
         supabase
           .from("goals")
           .select("title")
@@ -323,6 +328,10 @@ export function createSupabaseAdvisorContextDataSource(
           ? {
               displayName: profileResult.data.display_name,
               timezone: bio?.timezone ?? null,
+              gender: profileResult.data.gender as "male" | "female" | "other" | null,
+              age: ageFromBirthdate(profileResult.data.birth_date),
+              heightCm: profileResult.data.height_cm,
+              currentWeightKg: profileResult.data.current_weight_kg,
             }
           : null,
         goals: (goalsResult.data ?? []).map((goal) => goal.title),
