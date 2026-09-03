@@ -214,19 +214,32 @@ export async function sendPersistentAdvisorMessage(
     const history = boundCompletedAdvisorHistory(
       await store.completedHistory(userId, input.conversationId, ADVISOR_HISTORY_MAX_MESSAGES),
     );
-    const contextResult = await (dependencies.buildContext ?? buildAdvisorContextForUser)(
-      userId,
-      advisorId,
-      createSupabaseAdvisorContextDataSource(dependencies.supabase),
-    );
-    const budgeted = budgetAdvisorRequestContext(
-      {
-        generatedAt: contextResult.context.generatedAt,
-        facts: contextResult.context.facts,
-      },
-      history,
-    );
-    contextFlags = withBudgetFlag(contextResult.contextFlags, budgeted.truncated);
+    let budgeted;
+    const hasConsent =
+      dependencies.hasContextConsent ??
+      createSupabaseAdvisorContextDataSource(dependencies.supabase).hasConsent;
+    if (await hasConsent(userId)) {
+      const contextResult = await (dependencies.buildContext ?? buildAdvisorContextForUser)(
+        userId,
+        advisorId,
+        createSupabaseAdvisorContextDataSource(dependencies.supabase),
+      );
+      budgeted = budgetAdvisorRequestContext(
+        {
+          generatedAt: contextResult.context.generatedAt,
+          facts: contextResult.context.facts,
+        },
+        history,
+      );
+      contextFlags = withBudgetFlag(contextResult.contextFlags, budgeted.truncated);
+    } else {
+      budgeted = budgetAdvisorRequestContext(
+        { generatedAt: new Date().toISOString(), facts: {} },
+        history,
+      );
+      contextFlags = [{ key: "contextSharing", state: "disabled" }];
+    }
+
     const generateResponse =
       dependencies.generateResponse ??
       (await import("./generate-advisor-response.server.ts")).generateAdvisorResponse;
@@ -234,7 +247,7 @@ export async function sendPersistentAdvisorMessage(
       { advisor_id: advisorId, conversation_id: input.conversationId, message: input.message },
       {
         history: budgeted.history,
-        context: budgeted.context,
+        context: contextFlags.some((f) => f.key === "contextSharing" && f.state === "disabled") ? undefined : budgeted.context,
       },
     );
     const metadata = response.provider_metadata;
