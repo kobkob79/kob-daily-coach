@@ -111,7 +111,7 @@ export function AboutMediaManager() {
   const updateJob = (id: string, update: Partial<UploadJob>) =>
     setUploadJobs((jobs) => jobs.map((job) => (job.id === id ? { ...job, ...update } : job)));
 
-  const uploadOne = async (job: UploadJob) => {
+  const uploadOne = async (job: UploadJob): Promise<boolean> => {
     try {
       updateJob(job.id, { stage: "מכווץ", error: undefined });
       const optimized = await optimizeAboutMediaFile(job.file);
