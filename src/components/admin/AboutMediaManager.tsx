@@ -125,11 +125,13 @@ export function AboutMediaManager() {
       });
       updateJob(job.id, { stage: "הושלם" });
       await invalidate();
+      return true;
     } catch (error) {
       updateJob(job.id, {
         stage: "נכשל",
         error: error instanceof Error ? error.message : "ההעלאה נכשלה.",
       });
+      return false;
     }
   };
 
