@@ -110,8 +110,12 @@ export function AboutMediaManager() {
     onSettled: () => setProgress(null),
   });
 
-  const updateJob = (id: string, update: Partial<UploadJob>) =>
-    setUploadJobs((jobs) => jobs.map((job) => (job.id === id ? { ...job, ...update } : job)));
+  const updateJob = (id: string, update: Partial<UploadJob>) => {
+    jobsRef.current = jobsRef.current.map((job) =>
+      job.id === id ? { ...job, ...update } : job,
+    );
+    setUploadJobs(jobsRef.current);
+  };
 
   const uploadOne = async (job: UploadJob): Promise<boolean> => {
     try {
