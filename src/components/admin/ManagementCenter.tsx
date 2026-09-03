@@ -7,6 +7,7 @@ import {
   Database,
   FlaskConical,
   Gauge,
+  Images,
   Loader2,
   RefreshCw,
   ShieldCheck,
@@ -16,7 +17,6 @@ import {
 } from "lucide-react";
 
 import { BuildInfo } from "@/components/BuildInfo";
-import { AboutMediaManager } from "@/components/admin/AboutMediaManager";
 import { MediaInboxCard } from "@/components/media/MediaInboxCard";
 import { Button } from "@/components/ui/button";
 import { PremiumCard, SectionHeader } from "@/components/ui-kit/Section";
