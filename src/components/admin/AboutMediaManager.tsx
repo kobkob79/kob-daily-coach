@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDown,
@@ -34,6 +35,12 @@ import {
   updateAboutMedia,
   uploadAboutMedia,
 } from "@/lib/about-media.functions";
+import {
+  allUploadJobsSucceeded,
+  GALLERY_DEFAULT_EXPANDED,
+  pruneCompletedUploadJobs,
+  toggleGalleryExpanded,
+} from "@/lib/admin-media-hub";
 import { cn } from "@/lib/utils";
 
 const SUBJECT_LABELS: Record<AboutMediaSubject, string> = {
@@ -78,7 +85,9 @@ export function AboutMediaManager() {
   const [replaceId, setReplaceId] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
   const [uploadJobs, setUploadJobs] = useState<UploadJob[]>([]);
+  const jobsRef = useRef<UploadJob[]>([]);
   const [isBatchUploading, setIsBatchUploading] = useState(false);
+  const [galleryExpanded, setGalleryExpanded] = useState(GALLERY_DEFAULT_EXPANDED);
   const query = useQuery({ queryKey: QUERY_KEY, queryFn: getAdminAboutMedia });
   const records = useMemo(
     () => (query.data ?? []).filter((item) => item.subject === subject),
@@ -101,10 +110,14 @@ export function AboutMediaManager() {
     onSettled: () => setProgress(null),
   });
 
-  const updateJob = (id: string, update: Partial<UploadJob>) =>
-    setUploadJobs((jobs) => jobs.map((job) => (job.id === id ? { ...job, ...update } : job)));
+  const updateJob = (id: string, update: Partial<UploadJob>) => {
+    jobsRef.current = jobsRef.current.map((job) =>
+      job.id === id ? { ...job, ...update } : job,
+    );
+    setUploadJobs(jobsRef.current);
+  };
 
-  const uploadOne = async (job: UploadJob) => {
+  const uploadOne = async (job: UploadJob): Promise<boolean> => {
     try {
       updateJob(job.id, { stage: "מכווץ", error: undefined });
       const optimized = await optimizeAboutMediaFile(job.file);
@@ -118,11 +131,13 @@ export function AboutMediaManager() {
       });
       updateJob(job.id, { stage: "הושלם" });
       await invalidate();
+      return true;
     } catch (error) {
       updateJob(job.id, {
         stage: "נכשל",
         error: error instanceof Error ? error.message : "ההעלאה נכשלה.",
       });
+      return false;
     }
   };
 
@@ -149,10 +164,17 @@ export function AboutMediaManager() {
       stage: "מכין תמונה" as const,
     }));
     for (const fingerprint of fingerprints) submittedFingerprints.current.add(fingerprint);
+    jobsRef.current = jobs;
     setUploadJobs(jobs);
     setIsBatchUploading(true);
     for (const job of jobs) await uploadOne(job);
     setIsBatchUploading(false);
+    // UI-only reset: successful jobs leave the list, failures stay for retry.
+    if (allUploadJobsSucceeded(jobsRef.current)) toast.success("התמונות הועלו ונשמרו");
+    const remaining = pruneCompletedUploadJobs(jobsRef.current);
+    jobsRef.current = remaining;
+    setUploadJobs(remaining);
+    if (uploadInput.current) uploadInput.current.value = "";
   };
 
   const replaceFile = async (file: File | undefined) => {
@@ -280,50 +302,72 @@ export function AboutMediaManager() {
         </div>
       )}
 
-      {query.isPending ? (
-        <div className="grid min-h-24 place-items-center">
-          <Loader2 className="h-5 w-5 animate-spin text-primary" />
-        </div>
-      ) : query.isError ? (
-        <div className="flex items-center justify-between rounded-xl bg-destructive/10 p-3 text-xs">
-          <span>המדיה אינה זמינה כרגע.</span>
-          <Button size="sm" variant="outline" onClick={() => void query.refetch()}>
-            <RefreshCw className="ml-1 h-3.5 w-3.5" />
-            ניסיון נוסף
-          </Button>
-        </div>
-      ) : records.length === 0 ? (
-        <p className="rounded-xl bg-muted/25 p-4 text-center text-xs text-muted-foreground">
-          עדיין לא פורסמו תמונות עבור {SUBJECT_LABELS[subject]}.
-        </p>
-      ) : (
-        <div className="space-y-3">
-          {records.map((record, index) => (
-            <MediaEditor
-              key={record.id}
-              record={record}
-              index={index}
-              total={records.length}
-              disabled={action.isPending}
-              onMove={move}
-              onSave={(caption, altText) =>
-                action.mutate(() => updateAboutMedia({ data: { id: record.id, caption, altText } }))
-              }
-              onPrimary={() =>
-                action.mutate(() => setPrimaryAboutMedia({ data: { id: record.id } }))
-              }
-              onReplace={() => {
-                setReplaceId(record.id);
-                replaceInput.current?.click();
-              }}
-              onDelete={() => {
-                if (window.confirm("למחוק את התמונה לצמיתות? לא ניתן לבטל את הפעולה."))
-                  action.mutate(() => deleteAboutMedia({ data: { id: record.id } }));
-              }}
-            />
+      <button
+        type="button"
+        aria-expanded={galleryExpanded}
+        aria-controls="about-media-existing"
+        onClick={() => setGalleryExpanded(toggleGalleryExpanded)}
+        className="flex min-h-11 w-full items-center gap-2 rounded-2xl border border-border/70 bg-card/85 px-3.5 text-[12px] font-bold text-foreground shadow-sm transition hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+      >
+        <ChevronDown
+          className={cn("h-4 w-4 shrink-0 transition-transform", galleryExpanded && "rotate-180")}
+          aria-hidden
+        />
+        <span className="min-w-0 flex-1 text-right">ניהול מדיה קיימת</span>
+        <span className="shrink-0 text-[10px] font-semibold text-muted-foreground">
+          {galleryExpanded ? "פתוח" : "סגור"}
+        </span>
+      </button>
+
+      <div id="about-media-existing" hidden={!galleryExpanded}>
+        {galleryExpanded &&
+          (query.isPending ? (
+            <div className="grid min-h-24 place-items-center">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            </div>
+          ) : query.isError ? (
+            <div className="flex items-center justify-between rounded-xl bg-destructive/10 p-3 text-xs">
+              <span>המדיה אינה זמינה כרגע.</span>
+              <Button size="sm" variant="outline" onClick={() => void query.refetch()}>
+                <RefreshCw className="ml-1 h-3.5 w-3.5" />
+                ניסיון נוסף
+              </Button>
+            </div>
+          ) : records.length === 0 ? (
+            <p className="rounded-xl bg-muted/25 p-4 text-center text-xs text-muted-foreground">
+              עדיין לא פורסמו תמונות עבור {SUBJECT_LABELS[subject]}.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {records.map((record, index) => (
+                <MediaEditor
+                  key={record.id}
+                  record={record}
+                  index={index}
+                  total={records.length}
+                  disabled={action.isPending}
+                  onMove={move}
+                  onSave={(caption, altText) =>
+                    action.mutate(() =>
+                      updateAboutMedia({ data: { id: record.id, caption, altText } }),
+                    )
+                  }
+                  onPrimary={() =>
+                    action.mutate(() => setPrimaryAboutMedia({ data: { id: record.id } }))
+                  }
+                  onReplace={() => {
+                    setReplaceId(record.id);
+                    replaceInput.current?.click();
+                  }}
+                  onDelete={() => {
+                    if (window.confirm("למחוק את התמונה לצמיתות? לא ניתן לבטל את הפעולה."))
+                      action.mutate(() => deleteAboutMedia({ data: { id: record.id } }));
+                  }}
+                />
+              ))}
+            </div>
           ))}
-        </div>
-      )}
+      </div>
       <input
         ref={replaceInput}
         className="sr-only"
