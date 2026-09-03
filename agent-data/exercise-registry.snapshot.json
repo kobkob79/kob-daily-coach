@@ -5,12 +5,12 @@
   "summary": {
     "totalExercises": 150,
     "completedExercises": 12,
-    "partialExercises": 1,
-    "notStartedExercises": 137,
+    "partialExercises": 2,
+    "notStartedExercises": 136,
     "coversComplete": 12,
     "infographicsComplete": 12,
-    "thumbnailsComplete": 13,
-    "demosComplete": 1,
+    "thumbnailsComplete": 14,
+    "demosComplete": 2,
     "overallProgressPercent": 8
   },
   "nextRecommendedExercise": {
@@ -1700,19 +1700,18 @@
       "canonicalHebrewName": "מכרע בולגרי",
       "englishName": "Bulgarian Split Squat",
       "muscleGroup": "legs_glutes",
-      "status": "NOT_STARTED",
+      "status": "PARTIAL",
       "media": {
         "hasCover": false,
         "hasInfographic": false,
-        "hasThumbnail": false,
-        "hasDemo": false
+        "hasThumbnail": true,
+        "hasDemo": true
       },
       "missingAssets": [
         "cover",
-        "infographic",
-        "thumbnail",
-        "demo"
-      ]
+        "infographic"
+      ],
+      "lastUpdated": "2026-09-03T07:51:45.023Z"
     },
     {
       "exerciseId": "c7ff31bc-7acf-4952-95b5-c32330720cda",
