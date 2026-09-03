@@ -51,6 +51,7 @@ import { Route as AuthenticatedCoachAdvisorIdRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminExerciseRegistryRouteImport } from './routes/_authenticated/admin.exercise-registry'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as AuthenticatedAdminMediaIndexRouteImport } from './routes/_authenticated/admin.media.index'
 import { Route as AuthenticatedWorkoutsSessionSessionIdRouteImport } from './routes/_authenticated/workouts.session.$sessionId'
 import { Route as AuthenticatedWorkoutsHistorySessionIdRouteImport } from './routes/_authenticated/workouts.history.$sessionId'
 import { Route as AuthenticatedWorkoutsSessionSessionIdIndexRouteImport } from './routes/_authenticated/workouts.session.$sessionId.index'
@@ -279,6 +280,12 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAdminMediaIndexRoute =
+  AuthenticatedAdminMediaIndexRouteImport.update({
+    id: '/media/',
+    path: '/media/',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedWorkoutsSessionSessionIdRoute =
   AuthenticatedWorkoutsSessionSessionIdRouteImport.update({
     id: '/session/$sessionId',
@@ -366,6 +373,7 @@ export interface FileRoutesByFullPath {
   '/workouts/': typeof AuthenticatedWorkoutsIndexRoute
   '/workouts/history/$sessionId': typeof AuthenticatedWorkoutsHistorySessionIdRoute
   '/workouts/session/$sessionId': typeof AuthenticatedWorkoutsSessionSessionIdRouteWithChildren
+  '/admin/media/': typeof AuthenticatedAdminMediaIndexRoute
   '/workouts/session/$sessionId/brief': typeof AuthenticatedWorkoutsSessionSessionIdBriefRoute
   '/workouts/session/$sessionId/debrief': typeof AuthenticatedWorkoutsSessionSessionIdDebriefRoute
   '/workouts/session/$sessionId/summary': typeof AuthenticatedWorkoutsSessionSessionIdSummaryRoute
@@ -411,6 +419,7 @@ export interface FileRoutesByTo {
   '/dev': typeof AuthenticatedDevIndexRoute
   '/workouts': typeof AuthenticatedWorkoutsIndexRoute
   '/workouts/history/$sessionId': typeof AuthenticatedWorkoutsHistorySessionIdRoute
+  '/admin/media': typeof AuthenticatedAdminMediaIndexRoute
   '/workouts/session/$sessionId/brief': typeof AuthenticatedWorkoutsSessionSessionIdBriefRoute
   '/workouts/session/$sessionId/debrief': typeof AuthenticatedWorkoutsSessionSessionIdDebriefRoute
   '/workouts/session/$sessionId/summary': typeof AuthenticatedWorkoutsSessionSessionIdSummaryRoute
@@ -463,6 +472,7 @@ export interface FileRoutesById {
   '/_authenticated/workouts/': typeof AuthenticatedWorkoutsIndexRoute
   '/_authenticated/workouts/history/$sessionId': typeof AuthenticatedWorkoutsHistorySessionIdRoute
   '/_authenticated/workouts/session/$sessionId': typeof AuthenticatedWorkoutsSessionSessionIdRouteWithChildren
+  '/_authenticated/admin/media/': typeof AuthenticatedAdminMediaIndexRoute
   '/_authenticated/workouts/session/$sessionId/brief': typeof AuthenticatedWorkoutsSessionSessionIdBriefRoute
   '/_authenticated/workouts/session/$sessionId/debrief': typeof AuthenticatedWorkoutsSessionSessionIdDebriefRoute
   '/_authenticated/workouts/session/$sessionId/summary': typeof AuthenticatedWorkoutsSessionSessionIdSummaryRoute
@@ -515,6 +525,7 @@ export interface FileRouteTypes {
     | '/workouts/'
     | '/workouts/history/$sessionId'
     | '/workouts/session/$sessionId'
+    | '/admin/media/'
     | '/workouts/session/$sessionId/brief'
     | '/workouts/session/$sessionId/debrief'
     | '/workouts/session/$sessionId/summary'
@@ -560,6 +571,7 @@ export interface FileRouteTypes {
     | '/dev'
     | '/workouts'
     | '/workouts/history/$sessionId'
+    | '/admin/media'
     | '/workouts/session/$sessionId/brief'
     | '/workouts/session/$sessionId/debrief'
     | '/workouts/session/$sessionId/summary'
@@ -611,6 +623,7 @@ export interface FileRouteTypes {
     | '/_authenticated/workouts/'
     | '/_authenticated/workouts/history/$sessionId'
     | '/_authenticated/workouts/session/$sessionId'
+    | '/_authenticated/admin/media/'
     | '/_authenticated/workouts/session/$sessionId/brief'
     | '/_authenticated/workouts/session/$sessionId/debrief'
     | '/_authenticated/workouts/session/$sessionId/summary'
@@ -928,6 +941,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/admin/media/': {
+      id: '/_authenticated/admin/media/'
+      path: '/media'
+      fullPath: '/admin/media/'
+      preLoaderRoute: typeof AuthenticatedAdminMediaIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/workouts/session/$sessionId': {
       id: '/_authenticated/workouts/session/$sessionId'
       path: '/session/$sessionId'
@@ -983,12 +1003,14 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminExerciseRegistryRoute: typeof AuthenticatedAdminExerciseRegistryRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+  AuthenticatedAdminMediaIndexRoute: typeof AuthenticatedAdminMediaIndexRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminExerciseRegistryRoute:
     AuthenticatedAdminExerciseRegistryRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+  AuthenticatedAdminMediaIndexRoute: AuthenticatedAdminMediaIndexRoute,
 }
 
 const AuthenticatedAdminRouteWithChildren =
