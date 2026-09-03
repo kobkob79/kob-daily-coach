@@ -6,7 +6,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -162,6 +162,7 @@ function TemplatesPage() {
             <Button
               size="sm"
               variant="ghost"
+              disabled={duplicate.isPending}
               onClick={() => duplicate.mutate(tpl.id)}
               title={t("templates.duplicate")}
             >
@@ -278,7 +279,7 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
   });
 
   const [name, setName] = useState<string>("");
-  useMemo(() => {
+  useEffect(() => {
     if (tplQ.data) setName(tplQ.data.name);
   }, [tplQ.data]);
 
@@ -374,7 +375,7 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
                     <div className="flex flex-col">
                       <button
                         className="p-1 text-muted-foreground disabled:opacity-30"
-                        disabled={idx === 0}
+                        disabled={idx === 0 || swap.isPending}
                         onClick={() => {
                           const prev = rowsQ.data![idx - 1];
                           swap.mutate({ a: r, b: prev });
@@ -385,7 +386,7 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
                       </button>
                       <button
                         className="p-1 text-muted-foreground disabled:opacity-30"
-                        disabled={idx === (rowsQ.data!.length - 1)}
+                        disabled={idx === (rowsQ.data!.length - 1) || swap.isPending}
                         onClick={() => {
                           const next = rowsQ.data![idx + 1];
                           swap.mutate({ a: r, b: next });
@@ -401,40 +402,43 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
                         {r.exercises?.muscle_group ?? ""}
                       </p>
                     </div>
-                    <Button size="sm" variant="ghost" onClick={() => removeRow.mutate(r.id)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={removeRow.isPending}
+                      onClick={() => removeRow.mutate(r.id)}
+                    >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
                   <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
                     <div>
                       <Label className="text-[10px]">{t("templates.targetSets")}</Label>
-                      <Input
+                      <DebouncedNumberInput
                         type="number" min={1} value={r.target_sets ?? 3}
-                        onChange={(e) =>
-                          patchRow.mutate({ id: r.id, target_sets: Number(e.target.value) || 1 })
-                        }
+                        onCommit={(v) => patchRow.mutate({ id: r.id, target_sets: Number(v) || 1 })}
                       />
                     </div>
                     <div>
                       <Label className="text-[10px]">{t("templates.targetReps")}</Label>
-                      <Input
+                      <DebouncedNumberInput
                         type="number" min={0} value={r.target_reps ?? ""}
-                        onChange={(e) =>
+                        onCommit={(v) =>
                           patchRow.mutate({
                             id: r.id,
-                            target_reps: e.target.value === "" ? null : Number(e.target.value),
+                            target_reps: v === "" ? null : Number(v),
                           })
                         }
                       />
                     </div>
                     <div>
                       <Label className="text-[10px]">{t("templates.targetWeight")}</Label>
-                      <Input
+                      <DebouncedNumberInput
                         type="number" step="0.5" min={0} value={r.target_weight_kg ?? ""}
-                        onChange={(e) =>
+                        onCommit={(v) =>
                           patchRow.mutate({
                             id: r.id,
-                            target_weight_kg: e.target.value === "" ? null : Number(e.target.value),
+                            target_weight_kg: v === "" ? null : Number(v),
                           })
                         }
                       />
@@ -445,7 +449,11 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
             </div>
 
             <div className="mt-3">
-              <Button className="w-full" onClick={() => setPickerVisible(true)}>
+              <Button
+                className="w-full"
+                disabled={addExercise.isPending}
+                onClick={() => setPickerVisible(true)}
+              >
                 <Plus className="mr-1 h-4 w-4" />
                 {t("templates.addExercise")}
               </Button>
@@ -454,7 +462,10 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
             <ExercisePicker
               open={pickerVisible}
               onClose={() => setPickerVisible(false)}
-              onSelect={(id) => addExercise.mutate(id)}
+              onSelect={(id) => {
+                if (addExercise.isPending) return;
+                addExercise.mutate(id);
+              }}
             />
 
           </div>
@@ -468,5 +479,56 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+const PATCH_DEBOUNCE_MS = 500;
+
+/**
+ * A number Input that types locally and only commits (one network write +
+ * list refetch) after the user pauses, instead of on every keystroke. With
+ * several exercise rows in a template, firing a mutation + full-list
+ * invalidate per digit made rapid editing pile up concurrent requests and
+ * re-renders, which showed up as the editor stalling.
+ */
+function DebouncedNumberInput({
+  value,
+  onCommit,
+  ...props
+}: {
+  value: number | string;
+  onCommit: (value: string) => void;
+} & Omit<React.ComponentProps<typeof Input>, "value" | "onChange" | "onBlur">) {
+  const [local, setLocal] = useState(String(value ?? ""));
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => setLocal(String(value ?? "")), [value]);
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    [],
+  );
+
+  const flush = (v: string) => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    onCommit(v);
+  };
+
+  return (
+    <Input
+      {...props}
+      value={local}
+      onChange={(e) => {
+        const v = e.target.value;
+        setLocal(v);
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => flush(v), PATCH_DEBOUNCE_MS);
+      }}
+      onBlur={() => flush(local)}
+    />
   );
 }
