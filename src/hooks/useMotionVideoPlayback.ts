@@ -1,17 +1,19 @@
 /**
- * useMotionVideoPlayback — reliable autoplay + three-cycle playback controller
- * for `MotionVideo` (VIORA-MOTION-VIDEO-THREE-CYCLE-AUTOPLAY-001).
+ * useMotionVideoPlayback — reliable autoplay + finite (five-cycle) playback
+ * controller for `MotionVideo` (VIORA-MOTION-VIDEO-FIVE-CYCLE-ADDENDUM-001).
  *
  * Normal users:
  * - Waits for hydration and media readiness, then starts muted playback.
- * - The native infinite `loop` is gone; every `ended` event is counted and the
- *   element is restarted after cycles 1 and 2 and stopped after cycle 3.
- * - Cycle 4 never starts automatically.
+ * - The native infinite `loop` is gone; every completion event is counted and
+ *   the element is restarted after cycles 1–4 and left stopped after cycle
+ *   `MOTION_VIDEO_MAX_CYCLES` (5).
+ * - A sixth cycle never starts automatically; duplicate/stale completion
+ *   events are ignored once the cap is reached.
  * - One early failed `play()` gets a single readiness-triggered retry; nothing
  *   is marked "autoplay done" until a `play()` promise settles.
- * - `toggle()` pauses / resumes a live run (count retained) and replays once
- *   the run is complete; `onSurfaceActivate()` (tap the video) does the same,
- *   and starts a fresh three-cycle run after completion.
+ * - `toggle()` pauses / resumes a live session (count retained) and replays
+ *   once the session is complete; `onSurfaceActivate()` (tap the video) does
+ *   the same, and starts a fresh five-cycle session after completion.
  *
  * Reduced Motion:
  * - Never autoplays. Enabling it pauses immediately; disabling it does not
@@ -29,7 +31,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   isMediaReady,
-  MOTION_VIDEO_CYCLE_TARGET,
+  MOTION_VIDEO_MAX_CYCLES,
   resolveCycleEnd,
 } from "@/lib/motion-video-playback";
 
@@ -48,9 +50,9 @@ export interface MotionVideoPlaybackOptions {
 
 export interface MotionVideoPlaybackState {
   isPlaying: boolean;
-  /** True once three full cycles have played; the control shows "replay". */
+  /** True once the five-cycle allowance is spent; the control shows "replay". */
   runComplete: boolean;
-  /** Pause ⇄ resume a live run (count retained); replay once complete. */
+  /** Pause ⇄ resume a live session (count retained); replay once complete. */
   toggle: () => void;
   /** Pointer handler for the video surface itself. */
   onSurfaceActivate: () => void;
@@ -65,7 +67,8 @@ export function useMotionVideoPlayback({
   const [isPlaying, setIsPlaying] = useState(false);
   const [runComplete, setRunComplete] = useState(false);
 
-  /** Completed cycles for the current run (0…3). Counted from `ended` only. */
+  /** Completed cycles for the current session (0…5). Counted from the
+   *  completion event only. */
   const cyclesRef = useRef(0);
   /**
    * Automatic-first-run state machine. "done"/"retried" block any further
@@ -109,13 +112,16 @@ export function useMotionVideoPlayback({
     };
   }, [videoRef]);
 
-  // Cycle counter: driven purely by `ended` events, never a timer.
+  // Cycle counter: driven purely by the `ended` completion event, never a
+  // timer. Duplicate or stale `ended` events after the cap are ignored, so a
+  // sixth cycle can never begin.
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     const onEnded = () => {
+      if (cyclesRef.current >= MOTION_VIDEO_MAX_CYCLES) return;
       cyclesRef.current += 1;
-      const done = cyclesRef.current >= MOTION_VIDEO_CYCLE_TARGET;
+      const done = cyclesRef.current >= MOTION_VIDEO_MAX_CYCLES;
       if (resolveCycleEnd(cyclesRef.current) === "complete" || reducedMotionRef.current) {
         setRunComplete(done);
         return;

@@ -56,7 +56,7 @@ test("visible control supports pause, resume AND replay, keyboard + touch", () =
   // Tapping the video surface itself is wired too.
   assert.match(source, /onClick=\{onSurfaceActivate\}/);
 
-  // Replay label after a completed three-cycle run.
+  // Replay label after a completed playback session (five-cycle allowance spent).
   assert.equal(MOTION_VIDEO_REPLAY_LABEL, "הפעל שוב");
   assert.match(
     source,
@@ -69,7 +69,7 @@ test("visible control supports pause, resume AND replay, keyboard + touch", () =
 });
 
 test("playback state is conveyed without relying on colour alone", () => {
-  // Three distinct icon shapes: replay ↺ / pause ❚❚ / play ▶.
+  // A distinct icon shape per state: replay ↺ / pause ❚❚ / play ▶.
   assert.match(source, /import \{ Pause, Play, RotateCcw \} from "lucide-react"/);
   assert.match(source, /runComplete \? \(\s*<RotateCcw/);
   assert.match(source, /\) : isPlaying \? \(\s*<Pause/);

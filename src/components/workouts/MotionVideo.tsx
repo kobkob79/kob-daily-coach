@@ -7,12 +7,14 @@
  *
  * Reduced Motion / hydration: the server and hydration render carry no autoplay
  * (fail-safe — no flash, no SSR/client mismatch). Once hydrated and the media
- * is ready, a normal user's video plays exactly three cycles and then stops (no
- * native infinite `loop`); a Reduced Motion user's stays paused. Enabling
- * Reduced Motion pauses immediately; disabling it does not resume.
+ * is ready, a normal user's video plays up to `MOTION_VIDEO_MAX_CYCLES` (5)
+ * cycles and then stops (no native infinite `loop`); a Reduced Motion user's
+ * stays paused. Enabling Reduced Motion pauses immediately; disabling it does
+ * not resume.
  *
- * Replay: after three cycles the control switches to "הפעל שוב"; tapping the
- * video does the same. Pause/resume keeps the cycle count.
+ * Replay: after the five-cycle allowance is spent the control switches to
+ * "הפעל שוב"; tapping the video does the same. Pause/resume keeps the cycle
+ * count.
  *
  * Lifecycle: exactly one `<video>`, paused on unmount. The signed-URL
  * retry/error fallback is unchanged — `onError` is forwarded straight to the

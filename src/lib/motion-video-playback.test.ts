@@ -1,8 +1,8 @@
 /**
  * Run with: node --test src/lib/motion-video-playback.test.ts
  *
- * Pure-logic regression for VIORA-MOTION-VIDEO-THREE-CYCLE-AUTOPLAY-001: the
- * three-cycle decision and the media-readiness gate, which together determine
+ * Pure-logic regression for VIORA-MOTION-VIDEO-FIVE-CYCLE-ADDENDUM-001: the
+ * five-cycle decision and the media-readiness gate, which together determine
  * how many times the `<video>` restarts and when the first autoplay may fire.
  */
 import test from "node:test";
@@ -11,33 +11,37 @@ import assert from "node:assert/strict";
 import {
   isMediaReady,
   MEDIA_READY_STATE,
-  MOTION_VIDEO_CYCLE_TARGET,
+  MOTION_VIDEO_MAX_CYCLES,
   resolveCycleEnd,
 } from "./motion-video-playback.ts";
 
-test("a run is exactly three cycles", () => {
-  assert.equal(MOTION_VIDEO_CYCLE_TARGET, 3);
+test("a playback session is capped at five completed cycles", () => {
+  assert.equal(MOTION_VIDEO_MAX_CYCLES, 5);
 });
 
-test("resolveCycleEnd: restart after cycles 1 and 2, stop after cycle 3, never a 4th", () => {
+test("resolveCycleEnd: restart after cycles 1-4, stop after cycle 5, never a 6th", () => {
   assert.equal(resolveCycleEnd(1), "restart");
   assert.equal(resolveCycleEnd(2), "restart");
-  assert.equal(resolveCycleEnd(3), "complete");
-  // Defensive: even if a stray `ended` slips through, it never restarts.
-  assert.equal(resolveCycleEnd(4), "complete");
+  assert.equal(resolveCycleEnd(3), "restart");
+  assert.equal(resolveCycleEnd(4), "restart");
+  assert.equal(resolveCycleEnd(5), "complete");
+  // Defensive: a duplicate/stale completion event never restarts.
+  assert.equal(resolveCycleEnd(6), "complete");
   assert.equal(resolveCycleEnd(99), "complete");
 });
 
-test("exactly three restarts-then-stop when folded over successive ended events", () => {
+test("exactly four restarts-then-stop when folded over successive completion events", () => {
   let cycles = 0;
   const restarts: number[] = [];
   // Simulate: play -> ended -> (maybe restart) -> ended -> ...
-  for (let endedEvent = 1; endedEvent <= 6; endedEvent += 1) {
+  for (let endedEvent = 1; endedEvent <= 8; endedEvent += 1) {
+    if (cycles >= MOTION_VIDEO_MAX_CYCLES) break; // cap guard, mirrors the hook
     cycles += 1;
     if (resolveCycleEnd(cycles) === "restart") restarts.push(cycles);
   }
-  assert.deepEqual(restarts, [1, 2], "restarts only after cycle 1 and cycle 2");
-  assert.equal(resolveCycleEnd(3), "complete", "cycle 3 is the last");
+  assert.deepEqual(restarts, [1, 2, 3, 4], "restarts only after cycles 1-4");
+  assert.equal(cycles, MOTION_VIDEO_MAX_CYCLES, "stops exactly at the cap");
+  assert.equal(resolveCycleEnd(cycles), "complete", "cycle 5 is the last");
 });
 
 test("isMediaReady mirrors HAVE_FUTURE_DATA (readyState >= 3)", () => {

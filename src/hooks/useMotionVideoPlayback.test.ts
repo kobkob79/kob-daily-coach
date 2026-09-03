@@ -1,8 +1,8 @@
 /**
  * Run with: node --test src/hooks/useMotionVideoPlayback.test.ts
  *
- * Source-level regression for the three-cycle autoplay controller
- * (VIORA-MOTION-VIDEO-THREE-CYCLE-AUTOPLAY-001). There is no React render
+ * Source-level regression for the finite (five-cycle) autoplay controller
+ * (VIORA-MOTION-VIDEO-FIVE-CYCLE-ADDENDUM-001). There is no React render
  * harness in this repo and `node --test` cannot load `.tsx`, so the controller
  * invariants are proven against the hook's source; the numeric decision itself
  * is covered by `src/lib/motion-video-playback.test.ts`.
@@ -25,13 +25,22 @@ test("cycles are counted from `ended` events only - never timers", () => {
   assert.doesNotMatch(source, /setInterval|setTimeout|requestAnimationFrame/);
 });
 
+test("the five-cycle cap is a single named constant, guarded against stale events", () => {
+  // No inline "5" for the limit - only the shared constant.
+  assert.match(source, /MOTION_VIDEO_MAX_CYCLES/);
+  assert.doesNotMatch(source, /MOTION_VIDEO_CYCLE_TARGET/);
+  // Duplicate / stale `ended` after the cap is ignored → never a sixth cycle.
+  assert.match(source, /if \(cyclesRef\.current >= MOTION_VIDEO_MAX_CYCLES\) return;/);
+  assert.match(source, /const done = cyclesRef\.current >= MOTION_VIDEO_MAX_CYCLES;/);
+});
+
 test("no native infinite loop is reintroduced here", () => {
   assert.doesNotMatch(source, /\.loop\s*=/);
   assert.doesNotMatch(source, /loop:\s*true/);
 });
 
 test("restart path seeks to 0 and calls play(); completion path stops", () => {
-  // After cycles 1 and 2: rewind + play. After cycle 3: setRunComplete, return.
+  // After cycles 1-4: rewind + play. After cycle 5: setRunComplete, return.
   assert.match(
     source,
     /if \(resolveCycleEnd\(cyclesRef\.current\) === "complete" \|\| reducedMotionRef\.current\) \{\s*setRunComplete\(done\);\s*return;\s*\}/,
@@ -40,6 +49,18 @@ test("restart path seeks to 0 and calls play(); completion path stops", () => {
     source,
     /video\.currentTime = 0;\s*\n\s*}\s*catch[\s\S]*?void video\.play\(\)\.catch/,
   );
+});
+
+test("visual state stays accurate when browser autoplay is rejected", () => {
+  // isPlaying mirrors the real element via play/playing/pause listeners, so a
+  // rejected play() (element stays paused) leaves the control showing "play".
+  assert.match(source, /const sync = \(\) => setIsPlaying\(!video\.paused && !video\.ended\);/);
+  assert.match(source, /video\.addEventListener\("play", sync\);/);
+  assert.match(source, /video\.addEventListener\("playing", sync\);/);
+  assert.match(source, /video\.addEventListener\("pause", sync\);/);
+  // Every autoplay/replay/resume play() call swallows rejection so no unhandled
+  // promise, and the pause event keeps state honest.
+  assert.doesNotMatch(source, /await video\.play\(\)/);
 });
 
 test("automatic first run waits for hydration + media readiness", () => {
