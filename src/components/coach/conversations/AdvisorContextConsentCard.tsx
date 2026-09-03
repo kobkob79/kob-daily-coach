@@ -61,19 +61,26 @@ export function AdvisorContextConsentCard({ onChanged }: AdvisorContextConsentCa
           </p>
           {enabled !== null && (
             <div className="mt-3 flex items-center justify-between gap-3">
-              <span className="text-xs font-medium">{enabled ? "השיתוף פעיל" : "השיתוף כבוי"}</span>
+              <span className="text-xs font-medium" aria-live="polite">
+                {enabled ? "השיתוף פעיל" : "השיתוף כבוי"}
+              </span>
               <Button
                 type="button"
                 size="sm"
                 variant={enabled ? "outline" : "default"}
                 disabled={saving}
+                aria-pressed={enabled}
                 onClick={() => void update(!enabled)}
               >
                 {saving ? "שומר…" : enabled ? "ביטול שיתוף" : "אישור שיתוף"}
               </Button>
             </div>
           )}
-          {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+          {error && (
+            <p className="mt-2 text-xs text-destructive" role="alert">
+              {error}
+            </p>
+          )}
         </div>
       </div>
     </section>

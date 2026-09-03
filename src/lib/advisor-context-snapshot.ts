@@ -61,10 +61,23 @@ export interface AdvisorContextSnapshot {
   facts: Record<AdvisorContextKey, ContextFact<unknown>>;
 }
 
+/** Approved Advisor Personal Context V1 basic-profile block. `birthDate` is
+ *  deliberately absent — the bridge derives an integer `age` server-side and
+ *  never forwards the raw date. All fields are optional/nullable: a missing
+ *  value stays missing/null, it is never inferred. */
+export interface AdvisorContextProfileInput {
+  displayName?: string | null;
+  timezone?: string | null;
+  gender?: "male" | "female" | "other" | null;
+  age?: number | null;
+  heightCm?: number | null;
+  currentWeightKg?: number | null;
+}
+
 export interface AdvisorContextInput {
   userId: string;
   now: Date;
-  profile?: { displayName?: string | null; timezone?: string | null } | null;
+  profile?: AdvisorContextProfileInput | null;
   goals?: string[];
   bioDay?: BioDayRecord | null;
   shift?: { kind: string; source: string; observedAt?: string | null } | null;
@@ -72,6 +85,38 @@ export interface AdvisorContextInput {
   progress?: SafeProgressSummary | null;
   timeline: UnifiedTimelineItem[];
   conflicts?: AdvisorContextKey[];
+}
+
+/**
+ * Server-side integer age from a `YYYY-MM-DD` (or ISO) birth date, by exact
+ * calendar comparison in UTC — never an elapsed-time approximation.
+ *
+ * Returns `null` (age unknown, never guessed) when the input is null/empty,
+ * unparseable, or in the future. The raw birth date is used only here; callers
+ * pass on the returned integer and nothing else.
+ */
+export function computeAgeFromBirthDate(
+  birthDate: string | null | undefined,
+  now: Date,
+): number | null {
+  if (!birthDate) return null;
+  const birth = new Date(birthDate);
+  if (Number.isNaN(birth.getTime())) return null;
+  if (birth.getTime() > now.getTime()) return null;
+
+  const by = birth.getUTCFullYear();
+  const bm = birth.getUTCMonth();
+  const bd = birth.getUTCDate();
+  const ny = now.getUTCFullYear();
+  const nm = now.getUTCMonth();
+  const nd = now.getUTCDate();
+
+  let age = ny - by;
+  // Subtract a year if this year's birthday has not occurred yet. A Feb-29
+  // birth date rolls over on Mar 1 in non-leap years.
+  if (nm < bm || (nm === bm && nd < bd)) age -= 1;
+
+  return age >= 0 && Number.isFinite(age) ? age : null;
 }
 
 const STALE_AFTER_MS = 36 * 60 * 60 * 1000;
@@ -141,6 +186,10 @@ export function buildAdvisorContextSnapshot(input: AdvisorContextInput): Advisor
           ? {
               displayName: input.profile.displayName ?? null,
               timezone: input.profile.timezone ?? null,
+              gender: input.profile.gender ?? null,
+              age: input.profile.age ?? null,
+              heightCm: input.profile.heightCm ?? null,
+              currentWeightKg: input.profile.currentWeightKg ?? null,
             }
           : null,
         null,
