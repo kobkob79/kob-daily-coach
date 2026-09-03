@@ -16,13 +16,13 @@
  * "הפעל שוב"; tapping the video does the same. Pause/resume keeps the cycle
  * count.
  *
- * Lifecycle: exactly one `<video>`, paused on unmount. The signed-URL
- * retry/error fallback is unchanged — `onError` is forwarded straight to the
- * `<video>` so `ExerciseMediaView` can refetch once and then fall back to a
- * still/placeholder.
+ * Lifecycle: exactly one `<video>`, bound through a **callback ref** so the
+ * playback controller's listeners follow the real element when the media
+ * changes; paused + detached on unmount. The signed-URL retry/error fallback is
+ * unchanged — `onError` is forwarded straight to the `<video>` so
+ * `ExerciseMediaView` can refetch once and then fall back to a still/placeholder.
  */
 import { Pause, Play, RotateCcw } from "lucide-react";
-import { useRef } from "react";
 
 import { useIsHydrated, usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { useMotionVideoPlayback } from "@/hooks/useMotionVideoPlayback";
@@ -68,14 +68,9 @@ export function MotionVideo({
   // Only ever true after hydration, and never for a Reduced Motion user - used
   // to hint eager buffering so the readiness-gated first play starts promptly.
   const autoplayAllowed = hydrated && !prefersReducedMotion;
-  const videoRef = useRef<HTMLVideoElement>(null);
 
-  const { isPlaying, runComplete, toggle, onSurfaceActivate } = useMotionVideoPlayback({
-    videoRef,
-    hydrated,
-    prefersReducedMotion,
-    mediaKey,
-  });
+  const { isPlaying, runComplete, toggle, onSurfaceActivate, setVideoElement } =
+    useMotionVideoPlayback({ hydrated, prefersReducedMotion });
 
   const controlLabel = runComplete
     ? MOTION_VIDEO_REPLAY_LABEL
@@ -95,9 +90,15 @@ export function MotionVideo({
 
   return (
     <div className={cn("relative overflow-hidden", className)}>
+      {/*
+        `key={mediaKey}` replaces the DOM node on a media change; the callback
+        ref then fires null → newNode so the playback controller detaches its
+        listeners from the old element and rebinds to the new one. A refreshed
+        signed URL keeps the same key (same node), so the cycle count survives.
+      */}
       <video
         key={mediaKey}
-        ref={videoRef}
+        ref={setVideoElement}
         src={src}
         aria-label={name ?? "סרטון תרגיל"}
         className={cn("absolute inset-0 h-full w-full cursor-pointer", fitClass)}

@@ -1,12 +1,12 @@
 /**
  * Run with: node --test src/components/workouts/MotionVideo.test.ts
  *
- * Source-level regression for the Motion Video surface. There is no React
- * render harness in this repo and `node --test` cannot load `.tsx`, so the
- * invariants are proven against MotionVideo's source plus the JSX-free label
- * module. Playback behaviour itself is covered by
- * `src/hooks/useMotionVideoPlayback.test.ts` and
- * `src/lib/motion-video-playback.test.ts`.
+ * Source-level regression for the Motion Video surface markup. There is no
+ * React render harness in this repo and `node --test` cannot load `.tsx`, so
+ * these assertions cover the static JSX only. Playback behaviour and media-
+ * element listener lifetime are proven executably in
+ * `src/lib/motion-video-playback-controller.test.ts`; the numeric cycle policy
+ * in `src/lib/motion-video-playback.test.ts`.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -46,7 +46,7 @@ test("normal playback attributes preserved: muted, playsInline, readiness-hinted
 test("hydration-safe: no autoplay on the server / during hydration, none for Reduced Motion", () => {
   assert.match(source, /useIsHydrated\(\)/);
   assert.match(source, /usePrefersReducedMotion\(\)/);
-  assert.match(source, /hydrated,\s*\n\s*prefersReducedMotion,\s*\n\s*mediaKey,/);
+  assert.match(source, /useMotionVideoPlayback\(\{ hydrated, prefersReducedMotion \}\)/);
 });
 
 test("visible control supports pause, resume AND replay, keyboard + touch", () => {
@@ -85,12 +85,17 @@ test("playback state is conveyed without relying on colour alone", () => {
   assert.equal(MOTION_VIDEO_COMPLETE_STATUS, "הסרטון הסתיים");
 });
 
-test("media identity + signed-URL fallback are preserved", () => {
-  // Keyed by the Storage path so a genuinely different item resets the surface,
-  // but a re-signed URL for the same item does not remount.
-  assert.match(source, /key=\{mediaKey\}/);
-  assert.match(source, /mediaKey,\s*\n\s*\}\);/);
-  // onError forwarded verbatim so ExerciseMediaView's retry/fallback still runs.
+test("the <video> is replaced on media change and bound by a callback ref", () => {
+  // key={mediaKey} tears down / recreates the node; the callback ref then
+  // fires null → newNode so the controller re-binds its listeners. Executable
+  // proof of the listener migration lives in
+  // motion-video-playback-controller.test.ts.
+  assert.match(source, /<video\s*\n\s*key=\{mediaKey\}\s*\n\s*ref=\{setVideoElement\}/);
+  assert.doesNotMatch(source, /ref=\{videoRef\}/);
+  assert.doesNotMatch(source, /\buseRef\b/, "MotionVideo keeps no video ref object");
+});
+
+test("signed-URL fallback is preserved: onError forwarded verbatim to the <video>", () => {
   assert.match(source, /onError=\{onError\}/);
   assert.match(source, /onError: React\.ReactEventHandler<HTMLVideoElement>/);
 });
