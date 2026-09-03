@@ -350,7 +350,7 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{tplQ.data?.name ?? "…"}</DialogTitle>
         </DialogHeader>
