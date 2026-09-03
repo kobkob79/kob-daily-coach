@@ -9,68 +9,59 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
-import { Route as AboutRouteImport } from './routes/about'
-import { Route as AuthRouteImport } from './routes/auth'
 import { Route as McpRouteImport } from './routes/mcp'
-import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
-import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
-import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
-import { Route as AuthenticatedAskRouteImport } from './routes/_authenticated/ask'
-import { Route as AuthenticatedCaptureRouteImport } from './routes/_authenticated/capture'
-import { Route as AuthenticatedCoachRouteImport } from './routes/_authenticated/coach'
-import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedDevRouteImport } from './routes/_authenticated/dev'
-import { Route as AuthenticatedExercisesRouteImport } from './routes/_authenticated/exercises'
-import { Route as AuthenticatedExportRouteImport } from './routes/_authenticated/export'
-import { Route as AuthenticatedHealthRouteImport } from './routes/_authenticated/health'
-import { Route as AuthenticatedHydrationRouteImport } from './routes/_authenticated/hydration'
-import { Route as AuthenticatedJournalRouteImport } from './routes/_authenticated/journal'
-import { Route as AuthenticatedMealsRouteImport } from './routes/_authenticated/meals'
-import { Route as AuthenticatedMediaInboxRouteImport } from './routes/_authenticated/media-inbox'
-import { Route as AuthenticatedNutritionRouteImport } from './routes/_authenticated/nutrition'
-import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
-import { Route as AuthenticatedProgressRouteImport } from './routes/_authenticated/progress'
-import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
-import { Route as AuthenticatedWorkoutTemplatesRouteImport } from './routes/_authenticated/workout-templates'
-import { Route as AuthenticatedWorkoutsRouteImport } from './routes/_authenticated/workouts'
-import { Route as AboutPersonRouteImport } from './routes/about_.$person'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiExerciseRegistryRouteImport } from './routes/api/exercise-registry'
-import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
-import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
-import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
-import { Route as AuthenticatedAdminExerciseRegistryRouteImport } from './routes/_authenticated/admin.exercise-registry'
-import { Route as AuthenticatedCoachIndexRouteImport } from './routes/_authenticated/coach.index'
-import { Route as AuthenticatedCoachAdvisorIdRouteImport } from './routes/_authenticated/coach.$advisorId'
-import { Route as AuthenticatedDevIndexRouteImport } from './routes/_authenticated/dev.index'
-import { Route as AuthenticatedDevAssetsRouteImport } from './routes/_authenticated/dev.assets'
-import { Route as AuthenticatedDevCharactersRouteImport } from './routes/_authenticated/dev.characters'
-import { Route as AuthenticatedDevMediaRouteImport } from './routes/_authenticated/dev.media'
-import { Route as AuthenticatedWorkoutSessionWorkoutIdRouteImport } from './routes/_authenticated/workout-session.$workoutId'
+import { Route as AboutPersonRouteImport } from './routes/about_.$person'
+import { Route as AuthenticatedWorkoutsRouteImport } from './routes/_authenticated/workouts'
+import { Route as AuthenticatedWorkoutTemplatesRouteImport } from './routes/_authenticated/workout-templates'
+import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
+import { Route as AuthenticatedProgressRouteImport } from './routes/_authenticated/progress'
+import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
+import { Route as AuthenticatedNutritionRouteImport } from './routes/_authenticated/nutrition'
+import { Route as AuthenticatedMediaInboxRouteImport } from './routes/_authenticated/media-inbox'
+import { Route as AuthenticatedMealsRouteImport } from './routes/_authenticated/meals'
+import { Route as AuthenticatedJournalRouteImport } from './routes/_authenticated/journal'
+import { Route as AuthenticatedHydrationRouteImport } from './routes/_authenticated/hydration'
+import { Route as AuthenticatedHealthRouteImport } from './routes/_authenticated/health'
+import { Route as AuthenticatedExportRouteImport } from './routes/_authenticated/export'
+import { Route as AuthenticatedExercisesRouteImport } from './routes/_authenticated/exercises'
+import { Route as AuthenticatedDevRouteImport } from './routes/_authenticated/dev'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedCoachRouteImport } from './routes/_authenticated/coach'
+import { Route as AuthenticatedCaptureRouteImport } from './routes/_authenticated/capture'
+import { Route as AuthenticatedAskRouteImport } from './routes/_authenticated/ask'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AuthenticatedWorkoutsIndexRouteImport } from './routes/_authenticated/workouts.index'
-import { Route as AuthenticatedWorkoutsHistoryRouteImport } from './routes/_authenticated/workouts.history'
+import { Route as AuthenticatedDevIndexRouteImport } from './routes/_authenticated/dev.index'
+import { Route as AuthenticatedCoachIndexRouteImport } from './routes/_authenticated/coach.index'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedWorkoutsProgramRouteImport } from './routes/_authenticated/workouts.program'
-import { Route as AuthenticatedWorkoutsHistorySessionIdRouteImport } from './routes/_authenticated/workouts.history.$sessionId'
+import { Route as AuthenticatedWorkoutsHistoryRouteImport } from './routes/_authenticated/workouts.history'
+import { Route as AuthenticatedWorkoutSessionWorkoutIdRouteImport } from './routes/_authenticated/workout-session.$workoutId'
+import { Route as AuthenticatedDevMediaRouteImport } from './routes/_authenticated/dev.media'
+import { Route as AuthenticatedDevCharactersRouteImport } from './routes/_authenticated/dev.characters'
+import { Route as AuthenticatedDevAssetsRouteImport } from './routes/_authenticated/dev.assets'
+import { Route as AuthenticatedCoachAdvisorIdRouteImport } from './routes/_authenticated/coach.$advisorId'
+import { Route as AuthenticatedAdminExerciseRegistryRouteImport } from './routes/_authenticated/admin.exercise-registry'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedWorkoutsSessionSessionIdRouteImport } from './routes/_authenticated/workouts.session.$sessionId'
+import { Route as AuthenticatedWorkoutsHistorySessionIdRouteImport } from './routes/_authenticated/workouts.history.$sessionId'
 import { Route as AuthenticatedWorkoutsSessionSessionIdIndexRouteImport } from './routes/_authenticated/workouts.session.$sessionId.index'
-import { Route as AuthenticatedWorkoutsSessionSessionIdBriefRouteImport } from './routes/_authenticated/workouts.session.$sessionId.brief'
-import { Route as AuthenticatedWorkoutsSessionSessionIdDebriefRouteImport } from './routes/_authenticated/workouts.session.$sessionId.debrief'
 import { Route as AuthenticatedWorkoutsSessionSessionIdSummaryRouteImport } from './routes/_authenticated/workouts.session.$sessionId.summary'
+import { Route as AuthenticatedWorkoutsSessionSessionIdDebriefRouteImport } from './routes/_authenticated/workouts.session.$sessionId.debrief'
+import { Route as AuthenticatedWorkoutsSessionSessionIdBriefRouteImport } from './routes/_authenticated/workouts.session.$sessionId.brief'
 import { Route as AuthenticatedWorkoutsSessionSessionIdExerciseExerciseIdRouteImport } from './routes/_authenticated/workouts.session.$sessionId.exercise.$exerciseId'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AboutRoute = AboutRouteImport.update({
-  id: '/about',
-  path: '/about',
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -78,106 +69,33 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const McpRoute = McpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char91DotmcpChar93ListToolsRoute =
-  Char91DotmcpChar93ListToolsRouteImport.update({
-    id: '/.mcp/list-tools',
-    path: '/.mcp/list-tools',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const Char91DotwellKnownChar93OauthProtectedResourceRoute =
-  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
-    id: '/.well-known/oauth-protected-resource',
-    path: '/.well-known/oauth-protected-resource',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedAskRoute = AuthenticatedAskRouteImport.update({
-  id: '/ask',
-  path: '/ask',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedCaptureRoute = AuthenticatedCaptureRouteImport.update({
-  id: '/capture',
-  path: '/capture',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const ApiExerciseRegistryRoute = ApiExerciseRegistryRouteImport.update({
+  id: '/api/exercise-registry',
+  path: '/api/exercise-registry',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedCoachRoute = AuthenticatedCoachRouteImport.update({
-  id: '/coach',
-  path: '/coach',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const AboutPersonRoute = AboutPersonRouteImport.update({
+  id: '/about_/$person',
+  path: '/about/$person',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedDevRoute = AuthenticatedDevRouteImport.update({
-  id: '/dev',
-  path: '/dev',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedExercisesRoute = AuthenticatedExercisesRouteImport.update({
-  id: '/exercises',
-  path: '/exercises',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedExportRoute = AuthenticatedExportRouteImport.update({
-  id: '/export',
-  path: '/export',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedHealthRoute = AuthenticatedHealthRouteImport.update({
-  id: '/health',
-  path: '/health',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedHydrationRoute = AuthenticatedHydrationRouteImport.update({
-  id: '/hydration',
-  path: '/hydration',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedJournalRoute = AuthenticatedJournalRouteImport.update({
-  id: '/journal',
-  path: '/journal',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedMealsRoute = AuthenticatedMealsRouteImport.update({
-  id: '/meals',
-  path: '/meals',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedMediaInboxRoute = AuthenticatedMediaInboxRouteImport.update({
-  id: '/media-inbox',
-  path: '/media-inbox',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedNutritionRoute = AuthenticatedNutritionRouteImport.update({
-  id: '/nutrition',
-  path: '/nutrition',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedProgressRoute = AuthenticatedProgressRouteImport.update({
-  id: '/progress',
-  path: '/progress',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedShiftRoute = AuthenticatedShiftRouteImport.update({
-  id: '/shift',
-  path: '/shift',
+const AuthenticatedWorkoutsRoute = AuthenticatedWorkoutsRouteImport.update({
+  id: '/workouts',
+  path: '/workouts',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedWorkoutTemplatesRoute =
@@ -186,85 +104,128 @@ const AuthenticatedWorkoutTemplatesRoute =
     path: '/workout-templates',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedWorkoutsRoute = AuthenticatedWorkoutsRouteImport.update({
-  id: '/workouts',
-  path: '/workouts',
+const AuthenticatedShiftRoute = AuthenticatedShiftRouteImport.update({
+  id: '/shift',
+  path: '/shift',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AboutPersonRoute = AboutPersonRouteImport.update({
-  id: '/about_/$person',
-  path: '/about/$person',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedProgressRoute = AuthenticatedProgressRouteImport.update({
+  id: '/progress',
+  path: '/progress',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiExerciseRegistryRoute = ApiExerciseRegistryRouteImport.update({
-  id: '/api/exercise-registry',
-  path: '/api/exercise-registry',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
-  id: '/.lovable/oauth/consent',
-  path: '/.lovable/oauth/consent',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedNutritionRoute = AuthenticatedNutritionRouteImport.update({
+  id: '/nutrition',
+  path: '/nutrition',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const Char91DotmcpChar93InvokeToolToolRoute =
-  Char91DotmcpChar93InvokeToolToolRouteImport.update({
-    id: '/.mcp/invoke-tool/$tool',
-    path: '/.mcp/invoke-tool/$tool',
+const AuthenticatedMediaInboxRoute = AuthenticatedMediaInboxRouteImport.update({
+  id: '/media-inbox',
+  path: '/media-inbox',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMealsRoute = AuthenticatedMealsRouteImport.update({
+  id: '/meals',
+  path: '/meals',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedJournalRoute = AuthenticatedJournalRouteImport.update({
+  id: '/journal',
+  path: '/journal',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHydrationRoute = AuthenticatedHydrationRouteImport.update({
+  id: '/hydration',
+  path: '/hydration',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHealthRoute = AuthenticatedHealthRouteImport.update({
+  id: '/health',
+  path: '/health',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedExportRoute = AuthenticatedExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedExercisesRoute = AuthenticatedExercisesRouteImport.update({
+  id: '/exercises',
+  path: '/exercises',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDevRoute = AuthenticatedDevRouteImport.update({
+  id: '/dev',
+  path: '/dev',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCoachRoute = AuthenticatedCoachRouteImport.update({
+  id: '/coach',
+  path: '/coach',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCaptureRoute = AuthenticatedCaptureRouteImport.update({
+  id: '/capture',
+  path: '/capture',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAskRoute = AuthenticatedAskRouteImport.update({
+  id: '/ask',
+  path: '/ask',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
     getParentRoute: () => rootRouteImport,
   } as any)
-const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AuthenticatedAdminRoute,
-} as any)
-const AuthenticatedAdminExerciseRegistryRoute =
-  AuthenticatedAdminExerciseRegistryRouteImport.update({
-    id: '/exercise-registry',
-    path: '/exercise-registry',
-    getParentRoute: () => AuthenticatedAdminRoute,
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
   } as any)
-const AuthenticatedCoachIndexRoute = AuthenticatedCoachIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AuthenticatedCoachRoute,
-} as any)
-const AuthenticatedCoachAdvisorIdRoute =
-  AuthenticatedCoachAdvisorIdRouteImport.update({
-    id: '/$advisorId',
-    path: '/$advisorId',
-    getParentRoute: () => AuthenticatedCoachRoute,
+const AuthenticatedWorkoutsIndexRoute =
+  AuthenticatedWorkoutsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedWorkoutsRoute,
   } as any)
 const AuthenticatedDevIndexRoute = AuthenticatedDevIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedDevRoute,
 } as any)
-const AuthenticatedDevAssetsRoute = AuthenticatedDevAssetsRouteImport.update({
-  id: '/assets',
-  path: '/assets',
-  getParentRoute: () => AuthenticatedDevRoute,
+const AuthenticatedCoachIndexRoute = AuthenticatedCoachIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedCoachRoute,
 } as any)
-const AuthenticatedDevCharactersRoute =
-  AuthenticatedDevCharactersRouteImport.update({
-    id: '/characters',
-    path: '/characters',
-    getParentRoute: () => AuthenticatedDevRoute,
-  } as any)
-const AuthenticatedDevMediaRoute = AuthenticatedDevMediaRouteImport.update({
-  id: '/media',
-  path: '/media',
-  getParentRoute: () => AuthenticatedDevRoute,
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
-const AuthenticatedWorkoutSessionWorkoutIdRoute =
-  AuthenticatedWorkoutSessionWorkoutIdRouteImport.update({
-    id: '/workout-session/$workoutId',
-    path: '/workout-session/$workoutId',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedWorkoutsIndexRoute =
-  AuthenticatedWorkoutsIndexRouteImport.update({
-    id: '/',
-    path: '/',
+const AuthenticatedWorkoutsProgramRoute =
+  AuthenticatedWorkoutsProgramRouteImport.update({
+    id: '/program',
+    path: '/program',
     getParentRoute: () => AuthenticatedWorkoutsRoute,
   } as any)
 const AuthenticatedWorkoutsHistoryRoute =
@@ -273,10 +234,55 @@ const AuthenticatedWorkoutsHistoryRoute =
     path: '/history',
     getParentRoute: () => AuthenticatedWorkoutsRoute,
   } as any)
-const AuthenticatedWorkoutsProgramRoute =
-  AuthenticatedWorkoutsProgramRouteImport.update({
-    id: '/program',
-    path: '/program',
+const AuthenticatedWorkoutSessionWorkoutIdRoute =
+  AuthenticatedWorkoutSessionWorkoutIdRouteImport.update({
+    id: '/workout-session/$workoutId',
+    path: '/workout-session/$workoutId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDevMediaRoute = AuthenticatedDevMediaRouteImport.update({
+  id: '/media',
+  path: '/media',
+  getParentRoute: () => AuthenticatedDevRoute,
+} as any)
+const AuthenticatedDevCharactersRoute =
+  AuthenticatedDevCharactersRouteImport.update({
+    id: '/characters',
+    path: '/characters',
+    getParentRoute: () => AuthenticatedDevRoute,
+  } as any)
+const AuthenticatedDevAssetsRoute = AuthenticatedDevAssetsRouteImport.update({
+  id: '/assets',
+  path: '/assets',
+  getParentRoute: () => AuthenticatedDevRoute,
+} as any)
+const AuthenticatedCoachAdvisorIdRoute =
+  AuthenticatedCoachAdvisorIdRouteImport.update({
+    id: '/$advisorId',
+    path: '/$advisorId',
+    getParentRoute: () => AuthenticatedCoachRoute,
+  } as any)
+const AuthenticatedAdminExerciseRegistryRoute =
+  AuthenticatedAdminExerciseRegistryRouteImport.update({
+    id: '/exercise-registry',
+    path: '/exercise-registry',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const Char91DotmcpChar93InvokeToolToolRoute =
+  Char91DotmcpChar93InvokeToolToolRouteImport.update({
+    id: '/.mcp/invoke-tool/$tool',
+    path: '/.mcp/invoke-tool/$tool',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedWorkoutsSessionSessionIdRoute =
+  AuthenticatedWorkoutsSessionSessionIdRouteImport.update({
+    id: '/session/$sessionId',
+    path: '/session/$sessionId',
     getParentRoute: () => AuthenticatedWorkoutsRoute,
   } as any)
 const AuthenticatedWorkoutsHistorySessionIdRoute =
@@ -285,22 +291,16 @@ const AuthenticatedWorkoutsHistorySessionIdRoute =
     path: '/$sessionId',
     getParentRoute: () => AuthenticatedWorkoutsHistoryRoute,
   } as any)
-const AuthenticatedWorkoutsSessionSessionIdRoute =
-  AuthenticatedWorkoutsSessionSessionIdRouteImport.update({
-    id: '/session/$sessionId',
-    path: '/session/$sessionId',
-    getParentRoute: () => AuthenticatedWorkoutsRoute,
-  } as any)
 const AuthenticatedWorkoutsSessionSessionIdIndexRoute =
   AuthenticatedWorkoutsSessionSessionIdIndexRouteImport.update({
     id: '/',
     path: '/',
     getParentRoute: () => AuthenticatedWorkoutsSessionSessionIdRoute,
   } as any)
-const AuthenticatedWorkoutsSessionSessionIdBriefRoute =
-  AuthenticatedWorkoutsSessionSessionIdBriefRouteImport.update({
-    id: '/brief',
-    path: '/brief',
+const AuthenticatedWorkoutsSessionSessionIdSummaryRoute =
+  AuthenticatedWorkoutsSessionSessionIdSummaryRouteImport.update({
+    id: '/summary',
+    path: '/summary',
     getParentRoute: () => AuthenticatedWorkoutsSessionSessionIdRoute,
   } as any)
 const AuthenticatedWorkoutsSessionSessionIdDebriefRoute =
@@ -309,10 +309,10 @@ const AuthenticatedWorkoutsSessionSessionIdDebriefRoute =
     path: '/debrief',
     getParentRoute: () => AuthenticatedWorkoutsSessionSessionIdRoute,
   } as any)
-const AuthenticatedWorkoutsSessionSessionIdSummaryRoute =
-  AuthenticatedWorkoutsSessionSessionIdSummaryRouteImport.update({
-    id: '/summary',
-    path: '/summary',
+const AuthenticatedWorkoutsSessionSessionIdBriefRoute =
+  AuthenticatedWorkoutsSessionSessionIdBriefRouteImport.update({
+    id: '/brief',
+    path: '/brief',
     getParentRoute: () => AuthenticatedWorkoutsSessionSessionIdRoute,
   } as any)
 const AuthenticatedWorkoutsSessionSessionIdExerciseExerciseIdRoute =
@@ -634,25 +634,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated': {
-      id: '/_authenticated'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutRouteImport
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -662,165 +648,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/mcp': {
-      id: '/mcp'
-      path: '/mcp'
-      fullPath: '/mcp'
-      preLoaderRoute: typeof McpRouteImport
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.mcp/list-tools': {
-      id: '/.mcp/list-tools'
-      path: '/.mcp/list-tools'
-      fullPath: '/.mcp/list-tools'
-      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.well-known/oauth-protected-resource': {
-      id: '/.well-known/oauth-protected-resource'
-      path: '/.well-known/oauth-protected-resource'
-      fullPath: '/.well-known/oauth-protected-resource'
-      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/admin': {
-      id: '/_authenticated/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AuthenticatedAdminRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/ask': {
-      id: '/_authenticated/ask'
-      path: '/ask'
-      fullPath: '/ask'
-      preLoaderRoute: typeof AuthenticatedAskRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/capture': {
-      id: '/_authenticated/capture'
-      path: '/capture'
-      fullPath: '/capture'
-      preLoaderRoute: typeof AuthenticatedCaptureRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/coach': {
-      id: '/_authenticated/coach'
-      path: '/coach'
-      fullPath: '/coach'
-      preLoaderRoute: typeof AuthenticatedCoachRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/dev': {
-      id: '/_authenticated/dev'
-      path: '/dev'
-      fullPath: '/dev'
-      preLoaderRoute: typeof AuthenticatedDevRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/exercises': {
-      id: '/_authenticated/exercises'
-      path: '/exercises'
-      fullPath: '/exercises'
-      preLoaderRoute: typeof AuthenticatedExercisesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/export': {
-      id: '/_authenticated/export'
-      path: '/export'
-      fullPath: '/export'
-      preLoaderRoute: typeof AuthenticatedExportRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/health': {
-      id: '/_authenticated/health'
-      path: '/health'
-      fullPath: '/health'
-      preLoaderRoute: typeof AuthenticatedHealthRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/hydration': {
-      id: '/_authenticated/hydration'
-      path: '/hydration'
-      fullPath: '/hydration'
-      preLoaderRoute: typeof AuthenticatedHydrationRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/journal': {
-      id: '/_authenticated/journal'
-      path: '/journal'
-      fullPath: '/journal'
-      preLoaderRoute: typeof AuthenticatedJournalRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/meals': {
-      id: '/_authenticated/meals'
-      path: '/meals'
-      fullPath: '/meals'
-      preLoaderRoute: typeof AuthenticatedMealsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/media-inbox': {
-      id: '/_authenticated/media-inbox'
-      path: '/media-inbox'
-      fullPath: '/media-inbox'
-      preLoaderRoute: typeof AuthenticatedMediaInboxRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/nutrition': {
-      id: '/_authenticated/nutrition'
-      path: '/nutrition'
-      fullPath: '/nutrition'
-      preLoaderRoute: typeof AuthenticatedNutritionRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/profile': {
-      id: '/_authenticated/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof AuthenticatedProfileRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/progress': {
-      id: '/_authenticated/progress'
-      path: '/progress'
-      fullPath: '/progress'
-      preLoaderRoute: typeof AuthenticatedProgressRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/shift': {
-      id: '/_authenticated/shift'
-      path: '/shift'
-      fullPath: '/shift'
-      preLoaderRoute: typeof AuthenticatedShiftRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/workout-templates': {
-      id: '/_authenticated/workout-templates'
-      path: '/workout-templates'
-      fullPath: '/workout-templates'
-      preLoaderRoute: typeof AuthenticatedWorkoutTemplatesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/workouts': {
-      id: '/_authenticated/workouts'
-      path: '/workouts'
-      fullPath: '/workouts'
-      preLoaderRoute: typeof AuthenticatedWorkoutsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/about_/$person': {
-      id: '/about_/$person'
-      path: '/about/$person'
-      fullPath: '/about/$person'
-      preLoaderRoute: typeof AboutPersonRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/exercise-registry': {
@@ -830,47 +676,166 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiExerciseRegistryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.lovable/oauth/consent': {
-      id: '/.lovable/oauth/consent'
-      path: '/.lovable/oauth/consent'
-      fullPath: '/.lovable/oauth/consent'
-      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+    '/about_/$person': {
+      id: '/about_/$person'
+      path: '/about/$person'
+      fullPath: '/about/$person'
+      preLoaderRoute: typeof AboutPersonRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.mcp/invoke-tool/$tool': {
-      id: '/.mcp/invoke-tool/$tool'
-      path: '/.mcp/invoke-tool/$tool'
-      fullPath: '/.mcp/invoke-tool/$tool'
-      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+    '/_authenticated/workouts': {
+      id: '/_authenticated/workouts'
+      path: '/workouts'
+      fullPath: '/workouts'
+      preLoaderRoute: typeof AuthenticatedWorkoutsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/workout-templates': {
+      id: '/_authenticated/workout-templates'
+      path: '/workout-templates'
+      fullPath: '/workout-templates'
+      preLoaderRoute: typeof AuthenticatedWorkoutTemplatesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/shift': {
+      id: '/_authenticated/shift'
+      path: '/shift'
+      fullPath: '/shift'
+      preLoaderRoute: typeof AuthenticatedShiftRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/progress': {
+      id: '/_authenticated/progress'
+      path: '/progress'
+      fullPath: '/progress'
+      preLoaderRoute: typeof AuthenticatedProgressRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/profile': {
+      id: '/_authenticated/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AuthenticatedProfileRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/nutrition': {
+      id: '/_authenticated/nutrition'
+      path: '/nutrition'
+      fullPath: '/nutrition'
+      preLoaderRoute: typeof AuthenticatedNutritionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/media-inbox': {
+      id: '/_authenticated/media-inbox'
+      path: '/media-inbox'
+      fullPath: '/media-inbox'
+      preLoaderRoute: typeof AuthenticatedMediaInboxRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/meals': {
+      id: '/_authenticated/meals'
+      path: '/meals'
+      fullPath: '/meals'
+      preLoaderRoute: typeof AuthenticatedMealsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/journal': {
+      id: '/_authenticated/journal'
+      path: '/journal'
+      fullPath: '/journal'
+      preLoaderRoute: typeof AuthenticatedJournalRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/hydration': {
+      id: '/_authenticated/hydration'
+      path: '/hydration'
+      fullPath: '/hydration'
+      preLoaderRoute: typeof AuthenticatedHydrationRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/health': {
+      id: '/_authenticated/health'
+      path: '/health'
+      fullPath: '/health'
+      preLoaderRoute: typeof AuthenticatedHealthRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/export': {
+      id: '/_authenticated/export'
+      path: '/export'
+      fullPath: '/export'
+      preLoaderRoute: typeof AuthenticatedExportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/exercises': {
+      id: '/_authenticated/exercises'
+      path: '/exercises'
+      fullPath: '/exercises'
+      preLoaderRoute: typeof AuthenticatedExercisesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dev': {
+      id: '/_authenticated/dev'
+      path: '/dev'
+      fullPath: '/dev'
+      preLoaderRoute: typeof AuthenticatedDevRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/coach': {
+      id: '/_authenticated/coach'
+      path: '/coach'
+      fullPath: '/coach'
+      preLoaderRoute: typeof AuthenticatedCoachRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/capture': {
+      id: '/_authenticated/capture'
+      path: '/capture'
+      fullPath: '/capture'
+      preLoaderRoute: typeof AuthenticatedCaptureRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/ask': {
+      id: '/_authenticated/ask'
+      path: '/ask'
+      fullPath: '/ask'
+      preLoaderRoute: typeof AuthenticatedAskRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/admin/': {
-      id: '/_authenticated/admin/'
+    '/.mcp/list-tools': {
+      id: '/.mcp/list-tools'
+      path: '/.mcp/list-tools'
+      fullPath: '/.mcp/list-tools'
+      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/workouts/': {
+      id: '/_authenticated/workouts/'
       path: '/'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
-    '/_authenticated/admin/exercise-registry': {
-      id: '/_authenticated/admin/exercise-registry'
-      path: '/exercise-registry'
-      fullPath: '/admin/exercise-registry'
-      preLoaderRoute: typeof AuthenticatedAdminExerciseRegistryRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
-    '/_authenticated/coach/': {
-      id: '/_authenticated/coach/'
-      path: '/'
-      fullPath: '/coach/'
-      preLoaderRoute: typeof AuthenticatedCoachIndexRouteImport
-      parentRoute: typeof AuthenticatedCoachRoute
-    }
-    '/_authenticated/coach/$advisorId': {
-      id: '/_authenticated/coach/$advisorId'
-      path: '/$advisorId'
-      fullPath: '/coach/$advisorId'
-      preLoaderRoute: typeof AuthenticatedCoachAdvisorIdRouteImport
-      parentRoute: typeof AuthenticatedCoachRoute
+      fullPath: '/workouts/'
+      preLoaderRoute: typeof AuthenticatedWorkoutsIndexRouteImport
+      parentRoute: typeof AuthenticatedWorkoutsRoute
     }
     '/_authenticated/dev/': {
       id: '/_authenticated/dev/'
@@ -879,39 +844,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDevIndexRouteImport
       parentRoute: typeof AuthenticatedDevRoute
     }
-    '/_authenticated/dev/assets': {
-      id: '/_authenticated/dev/assets'
-      path: '/assets'
-      fullPath: '/dev/assets'
-      preLoaderRoute: typeof AuthenticatedDevAssetsRouteImport
-      parentRoute: typeof AuthenticatedDevRoute
-    }
-    '/_authenticated/dev/characters': {
-      id: '/_authenticated/dev/characters'
-      path: '/characters'
-      fullPath: '/dev/characters'
-      preLoaderRoute: typeof AuthenticatedDevCharactersRouteImport
-      parentRoute: typeof AuthenticatedDevRoute
-    }
-    '/_authenticated/dev/media': {
-      id: '/_authenticated/dev/media'
-      path: '/media'
-      fullPath: '/dev/media'
-      preLoaderRoute: typeof AuthenticatedDevMediaRouteImport
-      parentRoute: typeof AuthenticatedDevRoute
-    }
-    '/_authenticated/workout-session/$workoutId': {
-      id: '/_authenticated/workout-session/$workoutId'
-      path: '/workout-session/$workoutId'
-      fullPath: '/workout-session/$workoutId'
-      preLoaderRoute: typeof AuthenticatedWorkoutSessionWorkoutIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/workouts/': {
-      id: '/_authenticated/workouts/'
+    '/_authenticated/coach/': {
+      id: '/_authenticated/coach/'
       path: '/'
-      fullPath: '/workouts/'
-      preLoaderRoute: typeof AuthenticatedWorkoutsIndexRouteImport
+      fullPath: '/coach/'
+      preLoaderRoute: typeof AuthenticatedCoachIndexRouteImport
+      parentRoute: typeof AuthenticatedCoachRoute
+    }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/workouts/program': {
+      id: '/_authenticated/workouts/program'
+      path: '/program'
+      fullPath: '/workouts/program'
+      preLoaderRoute: typeof AuthenticatedWorkoutsProgramRouteImport
       parentRoute: typeof AuthenticatedWorkoutsRoute
     }
     '/_authenticated/workouts/history': {
@@ -921,11 +872,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWorkoutsHistoryRouteImport
       parentRoute: typeof AuthenticatedWorkoutsRoute
     }
-    '/_authenticated/workouts/program': {
-      id: '/_authenticated/workouts/program'
-      path: '/program'
-      fullPath: '/workouts/program'
-      preLoaderRoute: typeof AuthenticatedWorkoutsProgramRouteImport
+    '/_authenticated/workout-session/$workoutId': {
+      id: '/_authenticated/workout-session/$workoutId'
+      path: '/workout-session/$workoutId'
+      fullPath: '/workout-session/$workoutId'
+      preLoaderRoute: typeof AuthenticatedWorkoutSessionWorkoutIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dev/media': {
+      id: '/_authenticated/dev/media'
+      path: '/media'
+      fullPath: '/dev/media'
+      preLoaderRoute: typeof AuthenticatedDevMediaRouteImport
+      parentRoute: typeof AuthenticatedDevRoute
+    }
+    '/_authenticated/dev/characters': {
+      id: '/_authenticated/dev/characters'
+      path: '/characters'
+      fullPath: '/dev/characters'
+      preLoaderRoute: typeof AuthenticatedDevCharactersRouteImport
+      parentRoute: typeof AuthenticatedDevRoute
+    }
+    '/_authenticated/dev/assets': {
+      id: '/_authenticated/dev/assets'
+      path: '/assets'
+      fullPath: '/dev/assets'
+      preLoaderRoute: typeof AuthenticatedDevAssetsRouteImport
+      parentRoute: typeof AuthenticatedDevRoute
+    }
+    '/_authenticated/coach/$advisorId': {
+      id: '/_authenticated/coach/$advisorId'
+      path: '/$advisorId'
+      fullPath: '/coach/$advisorId'
+      preLoaderRoute: typeof AuthenticatedCoachAdvisorIdRouteImport
+      parentRoute: typeof AuthenticatedCoachRoute
+    }
+    '/_authenticated/admin/exercise-registry': {
+      id: '/_authenticated/admin/exercise-registry'
+      path: '/exercise-registry'
+      fullPath: '/admin/exercise-registry'
+      preLoaderRoute: typeof AuthenticatedAdminExerciseRegistryRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/workouts/session/$sessionId': {
+      id: '/_authenticated/workouts/session/$sessionId'
+      path: '/session/$sessionId'
+      fullPath: '/workouts/session/$sessionId'
+      preLoaderRoute: typeof AuthenticatedWorkoutsSessionSessionIdRouteImport
       parentRoute: typeof AuthenticatedWorkoutsRoute
     }
     '/_authenticated/workouts/history/$sessionId': {
@@ -935,13 +942,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWorkoutsHistorySessionIdRouteImport
       parentRoute: typeof AuthenticatedWorkoutsHistoryRoute
     }
-    '/_authenticated/workouts/session/$sessionId': {
-      id: '/_authenticated/workouts/session/$sessionId'
-      path: '/session/$sessionId'
-      fullPath: '/workouts/session/$sessionId'
-      preLoaderRoute: typeof AuthenticatedWorkoutsSessionSessionIdRouteImport
-      parentRoute: typeof AuthenticatedWorkoutsRoute
-    }
     '/_authenticated/workouts/session/$sessionId/': {
       id: '/_authenticated/workouts/session/$sessionId/'
       path: '/'
@@ -949,11 +949,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWorkoutsSessionSessionIdIndexRouteImport
       parentRoute: typeof AuthenticatedWorkoutsSessionSessionIdRoute
     }
-    '/_authenticated/workouts/session/$sessionId/brief': {
-      id: '/_authenticated/workouts/session/$sessionId/brief'
-      path: '/brief'
-      fullPath: '/workouts/session/$sessionId/brief'
-      preLoaderRoute: typeof AuthenticatedWorkoutsSessionSessionIdBriefRouteImport
+    '/_authenticated/workouts/session/$sessionId/summary': {
+      id: '/_authenticated/workouts/session/$sessionId/summary'
+      path: '/summary'
+      fullPath: '/workouts/session/$sessionId/summary'
+      preLoaderRoute: typeof AuthenticatedWorkoutsSessionSessionIdSummaryRouteImport
       parentRoute: typeof AuthenticatedWorkoutsSessionSessionIdRoute
     }
     '/_authenticated/workouts/session/$sessionId/debrief': {
@@ -963,11 +963,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWorkoutsSessionSessionIdDebriefRouteImport
       parentRoute: typeof AuthenticatedWorkoutsSessionSessionIdRoute
     }
-    '/_authenticated/workouts/session/$sessionId/summary': {
-      id: '/_authenticated/workouts/session/$sessionId/summary'
-      path: '/summary'
-      fullPath: '/workouts/session/$sessionId/summary'
-      preLoaderRoute: typeof AuthenticatedWorkoutsSessionSessionIdSummaryRouteImport
+    '/_authenticated/workouts/session/$sessionId/brief': {
+      id: '/_authenticated/workouts/session/$sessionId/brief'
+      path: '/brief'
+      fullPath: '/workouts/session/$sessionId/brief'
+      preLoaderRoute: typeof AuthenticatedWorkoutsSessionSessionIdBriefRouteImport
       parentRoute: typeof AuthenticatedWorkoutsSessionSessionIdRoute
     }
     '/_authenticated/workouts/session/$sessionId/exercise/$exerciseId': {
