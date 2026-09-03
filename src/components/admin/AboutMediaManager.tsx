@@ -85,7 +85,9 @@ export function AboutMediaManager() {
   const [replaceId, setReplaceId] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
   const [uploadJobs, setUploadJobs] = useState<UploadJob[]>([]);
+  const jobsRef = useRef<UploadJob[]>([]);
   const [isBatchUploading, setIsBatchUploading] = useState(false);
+  const [galleryExpanded, setGalleryExpanded] = useState(GALLERY_DEFAULT_EXPANDED);
   const query = useQuery({ queryKey: QUERY_KEY, queryFn: getAdminAboutMedia });
   const records = useMemo(
     () => (query.data ?? []).filter((item) => item.subject === subject),
