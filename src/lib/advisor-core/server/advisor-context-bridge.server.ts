@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   buildAdvisorContextSnapshot,
+  computeAgeFromBirthDate,
   selectAdvisorContext,
   type AdvisorContextInput,
   type AdvisorContextKey,
@@ -157,7 +158,11 @@ export function createSupabaseAdvisorContextDataSource(
         weightsResult,
         measurementsResult,
       ] = await Promise.all([
-        supabase.from("profiles").select("display_name").eq("id", userId).maybeSingle(),
+        supabase
+          .from("profiles")
+          .select("display_name, gender, birth_date, height_cm, current_weight_kg")
+          .eq("id", userId)
+          .maybeSingle(),
         supabase
           .from("goals")
           .select("title")
@@ -318,11 +323,30 @@ export function createSupabaseAdvisorContextDataSource(
           row.bio_day_id,
         ]),
       );
+      const profileRow = profileResult.data as {
+        display_name: string | null;
+        gender: string | null;
+        birth_date: string | null;
+        height_cm: number | null;
+        current_weight_kg: number | null;
+      } | null;
       return {
-        profile: profileResult.data
+        // birth_date is read here only to derive an integer age; it is never
+        // placed on the returned profile, so it cannot reach the snapshot,
+        // budgeting, the provider context, the system prompt, or any log.
+        profile: profileRow
           ? {
-              displayName: profileResult.data.display_name,
+              displayName: profileRow.display_name,
               timezone: bio?.timezone ?? null,
+              gender:
+                profileRow.gender === "male" ||
+                profileRow.gender === "female" ||
+                profileRow.gender === "other"
+                  ? profileRow.gender
+                  : null,
+              age: computeAgeFromBirthDate(profileRow.birth_date, now),
+              heightCm: profileRow.height_cm ?? null,
+              currentWeightKg: profileRow.current_weight_kg ?? null,
             }
           : null,
         goals: (goalsResult.data ?? []).map((goal) => goal.title),

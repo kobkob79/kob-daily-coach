@@ -214,19 +214,30 @@ export async function sendPersistentAdvisorMessage(
     const history = boundCompletedAdvisorHistory(
       await store.completedHistory(userId, input.conversationId, ADVISOR_HISTORY_MAX_MESSAGES),
     );
-    const contextResult = await (dependencies.buildContext ?? buildAdvisorContextForUser)(
-      userId,
-      advisorId,
-      createSupabaseAdvisorContextDataSource(dependencies.supabase),
-    );
+    // Strict consent gate: without explicit consent the personal-context
+    // builder is never called and the provider receives no context at all.
+    const hasConsent =
+      dependencies.hasContextConsent ??
+      createSupabaseAdvisorContextDataSource(dependencies.supabase).hasConsent;
+    const consentGranted = await hasConsent(userId);
+    const contextResult = consentGranted
+      ? await (dependencies.buildContext ?? buildAdvisorContextForUser)(
+          userId,
+          advisorId,
+          createSupabaseAdvisorContextDataSource(dependencies.supabase),
+        )
+      : null;
     const budgeted = budgetAdvisorRequestContext(
       {
-        generatedAt: contextResult.context.generatedAt,
-        facts: contextResult.context.facts,
+        generatedAt: contextResult?.context.generatedAt ?? new Date().toISOString(),
+        facts: contextResult?.context.facts ?? {},
       },
       history,
     );
-    contextFlags = withBudgetFlag(contextResult.contextFlags, budgeted.truncated);
+    contextFlags =
+      consentGranted && contextResult
+        ? withBudgetFlag(contextResult.contextFlags, budgeted.truncated)
+        : [{ key: "contextSharing", state: "disabled" }];
     const generateResponse =
       dependencies.generateResponse ??
       (await import("./generate-advisor-response.server.ts")).generateAdvisorResponse;
@@ -234,7 +245,7 @@ export async function sendPersistentAdvisorMessage(
       { advisor_id: advisorId, conversation_id: input.conversationId, message: input.message },
       {
         history: budgeted.history,
-        context: budgeted.context,
+        context: consentGranted ? budgeted.context : undefined,
       },
     );
     const metadata = response.provider_metadata;
