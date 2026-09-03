@@ -35,6 +35,12 @@ import {
   updateAboutMedia,
   uploadAboutMedia,
 } from "@/lib/about-media.functions";
+import {
+  allUploadJobsSucceeded,
+  GALLERY_DEFAULT_EXPANDED,
+  pruneCompletedUploadJobs,
+  toggleGalleryExpanded,
+} from "@/lib/admin-media-hub";
 import { cn } from "@/lib/utils";
 
 const SUBJECT_LABELS: Record<AboutMediaSubject, string> = {
