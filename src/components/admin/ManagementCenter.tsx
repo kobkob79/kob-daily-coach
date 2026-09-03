@@ -232,8 +232,28 @@ export function ManagementCenter() {
       </header>
 
       <section>
-        <SectionHeader className="mb-2" title="צוות וגלריות" subtitle="About media management" />
-        <AboutMediaManager />
+        <SectionHeader className="mb-2" title="מדיה" subtitle="Media management" />
+        <Link to="/admin/media" className="block">
+          <PremiumCard
+            className={cn(
+              CONTROL_SURFACE,
+              "border-primary/25 p-3.5 transition hover:border-primary/40 active:scale-[0.99]",
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+                <Images className="h-[18px] w-[18px]" aria-hidden />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-bold">ניהול מדיה</p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  העלאה, ארגון וניהול המדיה של Viora
+                </p>
+              </div>
+              <ChevronLeft className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            </div>
+          </PremiumCard>
+        </Link>
       </section>
 
       <section>
