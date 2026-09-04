@@ -6,15 +6,17 @@ import { createServer } from "vite";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const read = (path) => readFile(`${root}/${path}`, "utf8");
 
-const [center, manager, hub, aboutPage, adminLayout, registryRoute, aboutViora] = await Promise.all([
-  read("src/components/admin/ManagementCenter.tsx"),
-  read("src/components/admin/AboutMediaManager.tsx"),
-  read("src/routes/_authenticated/admin.media.index.tsx"),
-  read("src/routes/_authenticated/admin.media.about.tsx"),
-  read("src/routes/_authenticated/admin.tsx"),
-  read("src/routes/_authenticated/admin.exercise-registry.tsx"),
-  read("src/components/about/AboutVioraPage.tsx"),
-]);
+const [center, manager, hub, aboutPage, adminLayout, registryRoute, aboutViora] = await Promise.all(
+  [
+    read("src/components/admin/ManagementCenter.tsx"),
+    read("src/components/admin/AboutMediaManager.tsx"),
+    read("src/routes/_authenticated/admin.media.index.tsx"),
+    read("src/routes/_authenticated/admin.media.about.tsx"),
+    read("src/routes/_authenticated/admin.tsx"),
+    read("src/routes/_authenticated/admin.exercise-registry.tsx"),
+    read("src/components/about/AboutVioraPage.tsx"),
+  ],
+);
 
 /* Main admin page: no inline About media, single entry card. */
 assert.doesNotMatch(center, /AboutMediaManager/);
