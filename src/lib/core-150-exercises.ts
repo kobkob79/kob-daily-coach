@@ -152,6 +152,12 @@ const LEGACY_CORE_150_EXERCISE_NAMES = `
 תנועת חתול־פרה
 מוביליות קרסול מול קיר
 הרחקת ירך בשכיבה על הצד
+הליכון
+אופני כושר
+אליפטיקל
+ארגומטר חתירה
+מתיחות
+תרגילי מוביליטי
 `
   .trim()
   .split("\n");
@@ -167,6 +173,7 @@ export const CORE_150_MUSCLE_GROUPS = [
   "core",
   "conditioning",
   "mobility",
+  "cardio",
 ] as const;
 
 export type Core150MuscleGroup = (typeof CORE_150_MUSCLE_GROUPS)[number];
@@ -338,6 +345,12 @@ const CORE_150_V2_DEFINITIONS: readonly Core150Definition[] = [
   [148, "mobility", "תנועת חתול-פרה", "Cat-Cow"],
   [149, "mobility", "מוביליות קרסול מול קיר", "Knee-to-Wall Ankle Mobilization"],
   [150, "mobility", "הרחקת ירך בשכיבה על הצד", "Side-Lying Hip Abduction"],
+  [151, "cardio", "הליכון", "Treadmill"],
+  [152, "cardio", "אופני כושר", "Stationary Bike"],
+  [153, "cardio", "אליפטיקל", "Elliptical Trainer"],
+  [154, "cardio", "ארגומטר חתירה", "Rowing Machine"],
+  [155, "mobility", "מתיחות", "Stretching"],
+  [156, "mobility", "תרגילי מוביליטי", "Mobility Drills"],
 ] as const;
 
 /** Conservative lookup normalization only; intentionally no fuzzy matching. */

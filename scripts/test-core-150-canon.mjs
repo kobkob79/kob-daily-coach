@@ -8,15 +8,15 @@ import {
   getCore150ExerciseByNumber,
 } from "../src/lib/core-150-exercises.ts";
 
-assert.equal(CORE_150_EXERCISES.length, 150, "catalog length");
+assert.equal(CORE_150_EXERCISES.length, 156, "catalog length");
 assert.deepEqual(
   CORE_150_EXERCISES.map((exercise) => exercise.exerciseNumber),
-  Array.from({ length: 150 }, (_, index) => index + 1),
+  Array.from({ length: 156 }, (_, index) => index + 1),
   "exercise numbers",
 );
 assert.equal(
   new Set(CORE_150_EXERCISES.map((exercise) => exercise.canonicalHebrewName)).size,
-  150,
+  156,
   "unique canonical Hebrew names",
 );
 assert.ok(
@@ -48,4 +48,4 @@ assert.equal(findCore150ExerciseByName("  BARBELL BENCH PRESS ")?.exerciseNumber
 assert.equal(findCore150ExerciseByName("לאנג׳ קדמי")?.exerciseNumber, 83);
 assert.equal(findCore150ExerciseByName("תנועת חתול־פרה")?.exerciseNumber, 148);
 
-console.log("Core 150 Naming Canon V2: PASS (150 exercises, no ambiguous names)");
+console.log("Core 150 Naming Canon V2: PASS (156 exercises, no ambiguous names)");

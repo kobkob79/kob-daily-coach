@@ -63,7 +63,7 @@ function ExerciseLibraryPage() {
         </Button>
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-extrabold">מאגר תרגילים</h1>
-          <p className="text-sm text-muted-foreground">150 תרגילי הליבה של Viora</p>
+          <p className="text-sm text-muted-foreground">156 תרגילי הליבה של Viora</p>
         </div>
         <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary/15 text-primary">
           <Dumbbell className="h-5 w-5" aria-hidden />

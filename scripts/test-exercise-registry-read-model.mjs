@@ -29,9 +29,9 @@ const media = (exerciseId, name, overrides = {}) => ({
 
 const allRows = CORE_150_EXERCISES.map((exercise) => row(exercise));
 const emptyRegistry = buildExerciseRegistryReadModel(allRows, []);
-assert.equal(emptyRegistry.records.length, 150);
-assert.equal(emptyRegistry.dashboard.totalExercises, 150);
-assert.equal(emptyRegistry.dashboard.notStartedExercises, 150);
+assert.equal(emptyRegistry.records.length, 156);
+assert.equal(emptyRegistry.dashboard.totalExercises, 156);
+assert.equal(emptyRegistry.dashboard.notStartedExercises, 156);
 assert.equal(emptyRegistry.dashboard.partialExercises, 0);
 assert.equal(emptyRegistry.dashboard.completedExercises, 0);
 assert.ok(
@@ -51,7 +51,7 @@ assert.equal(getExerciseRegistryStatus(populatedRegistry.records[0]), "COMPLETE"
 assert.equal(getExerciseRegistryStatus(populatedRegistry.records[1]), "PARTIAL");
 assert.equal(populatedRegistry.dashboard.completedExercises, 1);
 assert.equal(populatedRegistry.dashboard.partialExercises, 1);
-assert.equal(populatedRegistry.dashboard.notStartedExercises, 148);
+assert.equal(populatedRegistry.dashboard.notStartedExercises, 154);
 assert.equal(populatedRegistry.dashboard.coversComplete, 2);
 assert.equal(populatedRegistry.dashboard.infographicsComplete, 1);
 assert.ok(
@@ -61,12 +61,13 @@ assert.ok(
 const auditRegistry = buildExerciseRegistryReadModel(
   [
     ...allRows.slice(0, 149),
+    ...allRows.slice(150),
     { id: "extra-shared", name: "Legacy non-Core", owner_id: null },
     { id: "user-owned", name: "הרחקת ירך בשכיבה על הצד", owner_id: "user-id" },
   ],
   [],
 );
-assert.equal(auditRegistry.records.length, 149);
+assert.equal(auditRegistry.records.length, 155);
 assert.equal(auditRegistry.resolutionSummary.unresolvedCount, 1);
 assert.equal(auditRegistry.resolutionSummary.ignoredDatabaseRowsCount, 2);
 assert.equal(auditRegistry.diagnostics.unresolvedCoreExercises.length, 1);
@@ -92,11 +93,11 @@ assert.throws(
 
 assert.deepEqual(
   populatedRegistry.records.map((record) => record.exerciseNumber),
-  Array.from({ length: 150 }, (_, index) => index + 1),
+  Array.from({ length: 156 }, (_, index) => index + 1),
 );
 assert.deepEqual(
   populatedRegistry.records.map((record) => record.exerciseId),
-  Array.from({ length: 150 }, (_, index) => `real-db-id-${index + 1}`),
+  Array.from({ length: 156 }, (_, index) => `real-db-id-${index + 1}`),
 );
 assert.ok(populatedRegistry.records.every((record) => !("overallStatus" in record)));
 

@@ -55,7 +55,7 @@ assert.throws(
   },
 );
 
-assert.equal(legacyResult.unresolvedCoreExercises.length, 149);
+assert.equal(legacyResult.unresolvedCoreExercises.length, 155);
 assert.ok(legacyResult.unresolvedCoreExercises.every((exercise) => exercise.exerciseNumber !== 1));
 
 const reversedRows = [
@@ -78,20 +78,20 @@ const completeResult = resolveCore150DatabaseExercises([
 ]);
 const summary = calculateCore150ResolutionSummary(completeResult);
 
-assert.equal(completeResult.resolved.length, 150);
+assert.equal(completeResult.resolved.length, 156);
 assert.equal(completeResult.unresolvedCoreExercises.length, 0);
 assert.deepEqual(
   completeResult.resolved.map((exercise) => exercise.exerciseNumber),
-  Array.from({ length: 150 }, (_, index) => index + 1),
+  Array.from({ length: 156 }, (_, index) => index + 1),
 );
 assert.deepEqual(
   completeResult.resolved.map((exercise) => exercise.exerciseId),
-  Array.from({ length: 150 }, (_, index) => `database-id-${index + 1}`),
+  Array.from({ length: 156 }, (_, index) => `database-id-${index + 1}`),
   "Assembler must preserve every caller-provided database ID",
 );
 assert.deepEqual(summary, {
-  totalCoreExercises: 150,
-  resolvedCount: 150,
+  totalCoreExercises: 156,
+  resolvedCount: 156,
   unresolvedCount: 0,
   ignoredDatabaseRowsCount: 2,
   isComplete: true,
