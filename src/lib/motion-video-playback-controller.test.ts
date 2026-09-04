@@ -31,10 +31,10 @@ class FakeVideoElement {
   addCalls = 0;
   removeCalls = 0;
 
-  #playMode: "resolve" | "reject" = "resolve";
+  #playMode: "resolve" | "reject" | "hang" = "resolve";
   #listeners = new Map<string, Set<() => void>>();
 
-  setPlayMode(mode: "resolve" | "reject") {
+  setPlayMode(mode: "resolve" | "reject" | "hang") {
     this.#playMode = mode;
   }
 
@@ -69,6 +69,9 @@ class FakeVideoElement {
 
   play(): Promise<void> {
     this.playCalls += 1;
+    if (this.#playMode === "hang") {
+      return new Promise<void>(() => {}); // never settles
+    }
     if (this.#playMode === "reject") {
       return Promise.reject(new Error("NotAllowedError"));
     }
@@ -462,6 +465,70 @@ test("setElement() clears a stale playbackError from the previous media", async 
   await flush();
 
   assert.equal(last().playbackError, false);
+});
+
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+test("a user-initiated play() that never settles sets playbackError once the watchdog elapses", async () => {
+  const { controller, last } = makeController({ hydrated: true, playTimeoutMs: 15 });
+  const el = new FakeVideoElement();
+
+  controller.setElement(el);
+  await flush();
+  controller.toggle(); // pause
+  el.setPlayMode("hang"); // play() never resolves or rejects
+  controller.toggle(); // user tries to resume
+  await flush();
+  assert.equal(last().playbackError, false, "not yet - still within the timeout window");
+
+  await wait(30);
+  assert.equal(last().playbackError, true, "the stalled attempt is now treated as failed");
+});
+
+test("the watchdog does not fire once real playback starts before it elapses", async () => {
+  const { controller, last } = makeController({ hydrated: true, playTimeoutMs: 30 });
+  const el = new FakeVideoElement();
+
+  controller.setElement(el);
+  await flush();
+  controller.toggle(); // pause
+  controller.toggle(); // resume - resolves and fires play/playing synchronously
+  await flush();
+  assert.equal(last().isPlaying, true);
+
+  await wait(50); // well past the watchdog window
+  assert.equal(last().playbackError, false, "already playing - the watchdog must not fire");
+});
+
+test("setElement() cancels a pending watchdog from the previous media", async () => {
+  const { controller, last } = makeController({ hydrated: true, playTimeoutMs: 15 });
+  const a = new FakeVideoElement();
+  const b = new FakeVideoElement();
+
+  controller.setElement(a);
+  await flush();
+  controller.toggle(); // pause
+  a.setPlayMode("hang");
+  controller.toggle(); // watchdog armed on A
+  await flush();
+
+  controller.setElement(b); // swap before A's watchdog fires
+  await flush();
+  await wait(30);
+
+  assert.equal(last().playbackError, false, "B's fresh session is untouched by A's stale watchdog");
+});
+
+test("a hung automatic first run stays silent - the watchdog is user-gesture only", async () => {
+  const { controller, last } = makeController({ hydrated: true, playTimeoutMs: 15 });
+  const el = new FakeVideoElement();
+  el.setPlayMode("hang");
+
+  controller.setElement(el); // autostart attempt hangs
+  await flush();
+  await wait(30);
+
+  assert.equal(last().playbackError, false, "autoplay is never surfaced, hung or not");
 });
 
 test("one early failed play() is retried exactly once when the element becomes ready", async () => {

@@ -29,8 +29,17 @@
  *   (see above). A rejected *user-initiated* `play()` — from `toggle()` or a
  *   replay — is a real failure (e.g. unsupported codec) and sets
  *   `playbackError` so the UI can say so instead of staying a dead button.
+ * - A user-initiated `play()` whose promise never settles at all (a stalled
+ *   fetch, a source the browser never actually decodes) is treated the same
+ *   way once `MOTION_VIDEO_USER_PLAY_TIMEOUT_MS` elapses with the element
+ *   still paused — a tap is never met with silence either.
  */
-import { isMediaReady, MOTION_VIDEO_MAX_CYCLES, resolveCycleEnd } from "./motion-video-playback.ts";
+import {
+  isMediaReady,
+  MOTION_VIDEO_MAX_CYCLES,
+  MOTION_VIDEO_USER_PLAY_TIMEOUT_MS,
+  resolveCycleEnd,
+} from "./motion-video-playback.ts";
 
 type MediaListener = () => void;
 
@@ -64,6 +73,8 @@ export interface MotionVideoControllerOptions {
   onChange: (snapshot: MotionVideoPlaybackSnapshot) => void;
   hydrated: boolean;
   prefersReducedMotion: boolean;
+  /** Overrides `MOTION_VIDEO_USER_PLAY_TIMEOUT_MS` — test-only. */
+  playTimeoutMs?: number;
 }
 
 /** Playback events mirrored into `isPlaying`. */
@@ -91,11 +102,15 @@ export class MotionVideoPlaybackController {
   private hydrated: boolean;
   private reducedMotion: boolean;
   private disposed = false;
+  private readonly playTimeoutMs: number;
+  /** Watchdog for a user-initiated `play()` call whose promise never settles. */
+  private playWatchdog: ReturnType<typeof setTimeout> | null = null;
 
   constructor(options: MotionVideoControllerOptions) {
     this.onChange = options.onChange;
     this.hydrated = options.hydrated;
     this.reducedMotion = options.prefersReducedMotion;
+    this.playTimeoutMs = options.playTimeoutMs ?? MOTION_VIDEO_USER_PLAY_TIMEOUT_MS;
   }
 
   // ---- inputs from React -------------------------------------------------
@@ -159,6 +174,7 @@ export class MotionVideoPlaybackController {
       // made directly from a click/tap handler, so unlike the automatic first
       // run a rejection here is a real failure (not an autoplay-policy block)
       // and is surfaced to the UI.
+      this.startPlayWatchdog(el);
       void el.play().then(
         () => {},
         () => this.handlePlaybackError(el),
@@ -199,6 +215,7 @@ export class MotionVideoPlaybackController {
 
   private detach(): void {
     this.clearReadiness();
+    this.clearPlayWatchdog();
     const el = this.element;
     if (!el) return;
     for (const [type, fn] of this.coreHandlers) el.removeEventListener(type, fn);
@@ -228,11 +245,33 @@ export class MotionVideoPlaybackController {
     for (const evt of READINESS_EVENTS) el.addEventListener(evt, handler);
   }
 
+  /**
+   * A `play()` promise for a user-initiated attempt is expected to settle
+   * almost immediately. If it's still pending once `playTimeoutMs` elapses —
+   * a stalled fetch, a source the browser never actually decodes — treat the
+   * still-paused element as failed too, so a tap is never met with silence.
+   */
+  private startPlayWatchdog(el: ControllableMediaElement): void {
+    this.clearPlayWatchdog();
+    this.playWatchdog = setTimeout(() => {
+      this.playWatchdog = null;
+      if (el === this.element && el.paused) this.handlePlaybackError(el);
+    }, this.playTimeoutMs);
+  }
+
+  private clearPlayWatchdog(): void {
+    if (this.playWatchdog !== null) {
+      clearTimeout(this.playWatchdog);
+      this.playWatchdog = null;
+    }
+  }
+
   // ---- playback state ----------------------------------------------
 
   private syncPlaybackState(el: ControllableMediaElement): void {
     if (el !== this.element) return; // event from a replaced element — ignore
     const next = !el.paused && !el.ended;
+    if (next) this.clearPlayWatchdog();
     // Real playback proves the earlier failure is stale (e.g. a manual retry
     // that in fact succeeded after all) — clear it along with the state.
     const clearsError = next && this.playbackError;
@@ -242,9 +281,10 @@ export class MotionVideoPlaybackController {
     this.emit();
   }
 
-  /** A user-initiated `play()` call rejected — surface it, don't swallow it. */
+  /** A user-initiated `play()` call rejected (or never settled) — surface it, don't swallow it. */
   private handlePlaybackError(el: ControllableMediaElement): void {
     if (el !== this.element) return;
+    this.clearPlayWatchdog();
     this.playbackError = true;
     this.isPlaying = false;
     this.emit();
@@ -341,6 +381,7 @@ export class MotionVideoPlaybackController {
     }
     // Also click-triggered (replay control / tapping the surface once
     // complete) — a rejection here is just as real a failure as toggle()'s.
+    this.startPlayWatchdog(el);
     void el.play().then(
       () => {},
       () => this.handlePlaybackError(el),
