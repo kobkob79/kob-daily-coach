@@ -22,7 +22,7 @@
  * unchanged — `onError` is forwarded straight to the `<video>` so
  * `ExerciseMediaView` can refetch once and then fall back to a still/placeholder.
  */
-import { Pause, Play, RotateCcw } from "lucide-react";
+import { AlertTriangle, Pause, Play, RotateCcw } from "lucide-react";
 
 import { useIsHydrated, usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { useMotionVideoPlayback } from "@/hooks/useMotionVideoPlayback";
@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 
 import {
   MOTION_VIDEO_COMPLETE_STATUS,
+  MOTION_VIDEO_ERROR_STATUS,
   MOTION_VIDEO_PAUSE_LABEL,
   MOTION_VIDEO_PAUSE_SHORT,
   MOTION_VIDEO_PAUSED_STATUS,
@@ -38,6 +39,8 @@ import {
   MOTION_VIDEO_PLAYING_STATUS,
   MOTION_VIDEO_REPLAY_LABEL,
   MOTION_VIDEO_REPLAY_SHORT,
+  MOTION_VIDEO_RETRY_LABEL,
+  MOTION_VIDEO_RETRY_SHORT,
 } from "./motion-video-labels";
 
 export interface MotionVideoProps {
@@ -69,24 +72,30 @@ export function MotionVideo({
   // to hint eager buffering so the readiness-gated first play starts promptly.
   const autoplayAllowed = hydrated && !prefersReducedMotion;
 
-  const { isPlaying, runComplete, toggle, onSurfaceActivate, setVideoElement } =
+  const { isPlaying, runComplete, playbackError, toggle, onSurfaceActivate, setVideoElement } =
     useMotionVideoPlayback({ hydrated, prefersReducedMotion });
 
-  const controlLabel = runComplete
-    ? MOTION_VIDEO_REPLAY_LABEL
-    : isPlaying
-      ? MOTION_VIDEO_PAUSE_LABEL
-      : MOTION_VIDEO_PLAY_LABEL;
-  const controlShort = runComplete
-    ? MOTION_VIDEO_REPLAY_SHORT
-    : isPlaying
-      ? MOTION_VIDEO_PAUSE_SHORT
-      : MOTION_VIDEO_PLAY_SHORT;
-  const statusText = runComplete
-    ? MOTION_VIDEO_COMPLETE_STATUS
-    : isPlaying
-      ? MOTION_VIDEO_PLAYING_STATUS
-      : MOTION_VIDEO_PAUSED_STATUS;
+  const controlLabel = playbackError
+    ? MOTION_VIDEO_RETRY_LABEL
+    : runComplete
+      ? MOTION_VIDEO_REPLAY_LABEL
+      : isPlaying
+        ? MOTION_VIDEO_PAUSE_LABEL
+        : MOTION_VIDEO_PLAY_LABEL;
+  const controlShort = playbackError
+    ? MOTION_VIDEO_RETRY_SHORT
+    : runComplete
+      ? MOTION_VIDEO_REPLAY_SHORT
+      : isPlaying
+        ? MOTION_VIDEO_PAUSE_SHORT
+        : MOTION_VIDEO_PLAY_SHORT;
+  const statusText = playbackError
+    ? MOTION_VIDEO_ERROR_STATUS
+    : runComplete
+      ? MOTION_VIDEO_COMPLETE_STATUS
+      : isPlaying
+        ? MOTION_VIDEO_PLAYING_STATUS
+        : MOTION_VIDEO_PAUSED_STATUS;
 
   return (
     <div className={cn("relative overflow-hidden", className)}>
@@ -110,6 +119,19 @@ export function MotionVideo({
       />
 
       {/*
+        A user tapped play/replay and the browser's play() call itself
+        rejected (unsupported codec/container, dead source, ...) — the video
+        surface would otherwise stay a silent black rectangle with a dead
+        button. Say so, plainly, instead of leaving the tap unexplained.
+      */}
+      {playbackError && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-background/90 px-4 text-center">
+          <AlertTriangle className="h-5 w-5 text-muted-foreground" aria-hidden />
+          <p className="text-xs font-medium text-muted-foreground">{MOTION_VIDEO_ERROR_STATUS}</p>
+        </div>
+      )}
+
+      {/*
         Bottom-left, opposite the `bottom-3 right-3` "הראה עוד" affordance the
         details sheet overlays on the same frame, so the two never collide.
       */}
@@ -120,8 +142,10 @@ export function MotionVideo({
         aria-label={controlLabel}
         className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/85 px-3 py-1.5 text-[11px] font-medium backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        {/* Shape, not colour, carries the state: replay ↺ / pause ❚❚ / play ▶. */}
-        {runComplete ? (
+        {/* Shape, not colour, carries the state: retry ⚠ / replay ↺ / pause ❚❚ / play ▶. */}
+        {playbackError ? (
+          <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
+        ) : runComplete ? (
           <RotateCcw className="h-3.5 w-3.5" aria-hidden />
         ) : isPlaying ? (
           <Pause className="h-3.5 w-3.5" aria-hidden />

@@ -376,6 +376,94 @@ test("rejected play() leaves the UI in an accurate paused state", async () => {
   assert.equal(last().runComplete, false);
 });
 
+test("a blocked automatic autoplay is silent — never sets playbackError", async () => {
+  const { controller, last } = makeController();
+  const el = new FakeVideoElement();
+  el.setPlayMode("reject");
+
+  controller.setElement(el);
+  controller.setHydrated(true);
+  await flush();
+
+  assert.equal(last().playbackError, false, "autoplay-policy block is not a real error");
+});
+
+test("a user-initiated play() rejection (tap while paused) sets playbackError", async () => {
+  const { controller, last } = makeController({ hydrated: true });
+  const el = new FakeVideoElement();
+
+  controller.setElement(el); // autostart succeeds
+  await flush();
+  controller.toggle(); // pause
+  assert.equal(el.paused, true);
+
+  el.setPlayMode("reject");
+  controller.toggle(); // user tries to resume — this play() call rejects
+  await flush();
+
+  assert.equal(last().playbackError, true);
+  assert.equal(last().isPlaying, false);
+});
+
+test("a real play() after a playbackError clears it", async () => {
+  const { controller, last } = makeController({ hydrated: true });
+  const el = new FakeVideoElement();
+
+  controller.setElement(el);
+  await flush();
+  controller.toggle(); // pause
+  el.setPlayMode("reject");
+  controller.toggle(); // rejected resume
+  await flush();
+  assert.equal(last().playbackError, true);
+
+  el.setPlayMode("resolve");
+  controller.toggle(); // retry — succeeds
+  await flush();
+
+  assert.equal(last().playbackError, false);
+  assert.equal(last().isPlaying, true);
+});
+
+test("a rejected replay after the five-cycle cap sets playbackError", async () => {
+  const { controller, last } = makeController({ hydrated: true });
+  const el = new FakeVideoElement();
+
+  controller.setElement(el);
+  await flush();
+  for (let cycle = 1; cycle <= MOTION_VIDEO_MAX_CYCLES; cycle += 1) {
+    el.endCycle();
+    await flush();
+  }
+  assert.equal(last().runComplete, true);
+
+  el.setPlayMode("reject");
+  controller.toggle(); // replay attempt rejects
+  await flush();
+
+  assert.equal(last().playbackError, true);
+  assert.equal(last().runComplete, false, "a fresh session was started before the rejection");
+});
+
+test("setElement() clears a stale playbackError from the previous media", async () => {
+  const { controller, last } = makeController({ hydrated: true });
+  const a = new FakeVideoElement();
+  const b = new FakeVideoElement();
+
+  controller.setElement(a);
+  await flush();
+  controller.toggle(); // pause
+  a.setPlayMode("reject");
+  controller.toggle(); // rejected resume
+  await flush();
+  assert.equal(last().playbackError, true);
+
+  controller.setElement(b);
+  await flush();
+
+  assert.equal(last().playbackError, false);
+});
+
 test("one early failed play() is retried exactly once when the element becomes ready", async () => {
   const { controller, last } = makeController({ hydrated: true });
   const el = new FakeVideoElement();
