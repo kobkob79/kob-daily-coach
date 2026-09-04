@@ -5,10 +5,7 @@ import { AboutMediaManager } from "@/components/admin/AboutMediaManager";
 
 export const Route = createFileRoute("/_authenticated/admin/media/about")({
   head: () => ({
-    meta: [
-      { title: "מדיה · מי אנחנו · Viora" },
-      { name: "robots", content: "noindex, nofollow" },
-    ],
+    meta: [{ title: "מדיה · מי אנחנו · Viora" }, { name: "robots", content: "noindex, nofollow" }],
   }),
   component: AboutMediaPage,
 });

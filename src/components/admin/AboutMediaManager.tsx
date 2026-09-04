@@ -111,9 +111,7 @@ export function AboutMediaManager() {
   });
 
   const updateJob = (id: string, update: Partial<UploadJob>) => {
-    jobsRef.current = jobsRef.current.map((job) =>
-      job.id === id ? { ...job, ...update } : job,
-    );
+    jobsRef.current = jobsRef.current.map((job) => (job.id === id ? { ...job, ...update } : job));
     setUploadJobs(jobsRef.current);
   };
 
