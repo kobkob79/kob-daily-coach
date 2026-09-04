@@ -3,15 +3,15 @@
   "schemaVersion": 1,
   "readOnly": true,
   "summary": {
-    "totalExercises": 150,
+    "totalExercises": 156,
     "completedExercises": 12,
-    "partialExercises": 3,
-    "notStartedExercises": 135,
+    "partialExercises": 4,
+    "notStartedExercises": 140,
     "coversComplete": 12,
     "infographicsComplete": 12,
-    "thumbnailsComplete": 15,
-    "demosComplete": 3,
-    "overallProgressPercent": 8
+    "thumbnailsComplete": 16,
+    "demosComplete": 4,
+    "overallProgressPercent": 7.6923076923076925
   },
   "nextRecommendedExercise": {
     "exerciseId": "34440569-9867-4735-953f-867763ed8491",
@@ -3005,11 +3005,130 @@
         "thumbnail",
         "demo"
       ]
+    },
+    {
+      "exerciseId": "e7809945-eaef-4b30-bc6b-8ac2dc475551",
+      "exerciseNumber": 151,
+      "canonicalHebrewName": "הליכון",
+      "englishName": "Treadmill",
+      "muscleGroup": "cardio",
+      "status": "PARTIAL",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": true,
+        "hasDemo": true
+      },
+      "missingAssets": [
+        "cover",
+        "infographic"
+      ],
+      "lastUpdated": "2026-09-04T02:34:42.439Z"
+    },
+    {
+      "exerciseId": "0d0551c1-44e1-4e90-9246-be4f67eea551",
+      "exerciseNumber": 152,
+      "canonicalHebrewName": "אופני כושר",
+      "englishName": "Stationary Bike",
+      "muscleGroup": "cardio",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "eea3ea0e-8c74-4c5f-b1b7-e3805ec03b5c",
+      "exerciseNumber": 153,
+      "canonicalHebrewName": "אליפטיקל",
+      "englishName": "Elliptical Trainer",
+      "muscleGroup": "cardio",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "989fee07-9417-4059-9988-ff8aa7308b84",
+      "exerciseNumber": 154,
+      "canonicalHebrewName": "ארגומטר חתירה",
+      "englishName": "Rowing Machine",
+      "muscleGroup": "cardio",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "79db2b57-53a7-4966-9a1a-1a92fab276bf",
+      "exerciseNumber": 155,
+      "canonicalHebrewName": "מתיחות",
+      "englishName": "Stretching",
+      "muscleGroup": "mobility",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
+    },
+    {
+      "exerciseId": "3fa4b677-939a-4236-a12c-a4aa1ddafc23",
+      "exerciseNumber": 156,
+      "canonicalHebrewName": "תרגילי מוביליטי",
+      "englishName": "Mobility Drills",
+      "muscleGroup": "mobility",
+      "status": "NOT_STARTED",
+      "media": {
+        "hasCover": false,
+        "hasInfographic": false,
+        "hasThumbnail": false,
+        "hasDemo": false
+      },
+      "missingAssets": [
+        "cover",
+        "infographic",
+        "thumbnail",
+        "demo"
+      ]
     }
   ],
   "diagnostics": {
     "unresolvedCount": 0,
-    "ignoredDatabaseRows": 25,
+    "ignoredDatabaseRows": 19,
     "unassignedMediaPathsCount": 0,
     "unexpectedMediaFoldersCount": 0
   }
