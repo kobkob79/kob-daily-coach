@@ -39,3 +39,13 @@ export const MEDIA_READY_STATE = 3;
 export function isMediaReady(readyState: number): boolean {
   return readyState >= MEDIA_READY_STATE;
 }
+
+/**
+ * A user-initiated `play()` call is expected to settle (resolve or reject)
+ * almost immediately. Some real-world failures — a stalled fetch, a source
+ * the browser can probe but never actually decodes — leave the returned
+ * promise pending forever, so neither outcome ever fires. This is the
+ * longest we wait before treating a still-paused element as a failure too,
+ * so a tap never goes unanswered.
+ */
+export const MOTION_VIDEO_USER_PLAY_TIMEOUT_MS = 6000;
