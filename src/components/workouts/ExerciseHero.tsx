@@ -15,6 +15,7 @@ import { useExerciseMedia } from "@/hooks/useExerciseMedia";
 import { EXERCISE_MEDIA_ROLE_LABEL } from "@/lib/exercise-media";
 import { cn } from "@/lib/utils";
 import { ExerciseMediaView } from "./ExerciseMediaView";
+import { MotionVideo } from "./MotionVideo";
 
 export interface ExerciseHeroProps {
   exerciseId: string;
@@ -60,15 +61,13 @@ export function ExerciseHero({
           <div className="h-full w-full animate-pulse bg-muted/50" />
         ) : usableHero ? (
           usableHero.role === "video" ? (
-            <video
+            <MotionVideo
               key={usableHero.item.path}
               src={usableHero.item.url}
-              className="h-full w-full object-contain"
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="metadata"
+              mediaKey={usableHero.item.path}
+              name={name}
+              className="h-full w-full"
+              fitClass="object-contain"
               onError={() => setFailed(true)}
             />
           ) : (
@@ -104,10 +103,15 @@ export function ExerciseHero({
           </span>
         ) : null}
 
+        {/*
+          Bottom-right, opposite the bottom-3 left-3 corner MotionVideo's own
+          Play/Pause/Replay control occupies on that same frame when the hero
+          media is a video, so the two never collide.
+        */}
         <button
           type="button"
           onClick={() => setGuideOpen(true)}
-          className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground shadow-lg"
+          className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground shadow-lg"
 >
           <ArrowUpRight className="h-3.5 w-3.5" />
           {showMoreLabel}
