@@ -75,6 +75,11 @@ export interface SessionSet {
   position: number | null;
   reps: number | null;
   weight_kg: number | null;
+  /** Time-based (cardio) sets, in place of reps/weight_kg. */
+  duration_seconds: number | null;
+  avg_speed_kmh: number | null;
+  /** Manual for now; a future wearable integration can populate it automatically. */
+  max_heart_rate: number | null;
   rpe: number | null;
   completed_at: string | null;
   planned_rest_seconds: number | null;
@@ -82,6 +87,11 @@ export interface SessionSet {
   overtime_seconds: number | null;
   notes: string | null;
   created_at: string;
+}
+
+/** Cardio exercises (treadmill, bike, elliptical, rower...) log by time, not reps/weight. */
+export function isCardioMuscleGroup(muscleGroup: string | null | undefined): boolean {
+  return muscleGroup === "cardio";
 }
 
 export interface PlanSlot {
@@ -366,6 +376,8 @@ export async function insertPlannedSet(input: {
   weightKg: number | null;
   reps: number | null;
   plannedRestSec: number | null;
+  durationSeconds?: number | null;
+  avgSpeedKmh?: number | null;
 }): Promise<SessionSet> {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error("Not signed in");
@@ -379,6 +391,8 @@ export async function insertPlannedSet(input: {
       position: input.position,
       weight_kg: input.weightKg,
       reps: input.reps,
+      duration_seconds: input.durationSeconds ?? null,
+      avg_speed_kmh: input.avgSpeedKmh ?? null,
       planned_rest_seconds: input.plannedRestSec,
     })
     .select("*")
@@ -623,7 +637,12 @@ interface TemplateExerciseRow {
   target_sets: number;
   target_reps: number | null;
   target_weight_kg: number | null;
+  target_duration_seconds: number | null;
+  exercises: { muscle_group: string | null } | null;
 }
+
+/** No history and no explicit target: a sensible default cardio session length. */
+const DEFAULT_CARDIO_DURATION_SEC = 30 * 60;
 
 /**
  * Return the sets from the user's most recent *completed* session that
@@ -689,6 +708,8 @@ export interface ExercisePRStats {
   volumeKg: number;
   /** Best estimated 1RM from a single set. */
   e1rmKg: number;
+  /** Cardio: longest completed set ever, in seconds. */
+  durationSec: number;
 }
 
 export const EMPTY_PR_STATS: ExercisePRStats = {
@@ -696,6 +717,7 @@ export const EMPTY_PR_STATS: ExercisePRStats = {
   reps: 0,
   volumeKg: 0,
   e1rmKg: 0,
+  durationSec: 0,
 };
 
 /**
@@ -711,13 +733,17 @@ export async function getExercisePRStats(
   if (!u.user) return EMPTY_PR_STATS;
   let q = (supabase as any)
     .from("workout_sets")
-    .select("weight_kg, reps")
+    .select("weight_kg, reps, duration_seconds")
     .eq("user_id", u.user.id)
     .eq("exercise_id", exerciseId)
     .not("completed_at", "is", null);
   if (excludeSessionId) q = q.neq("session_id", excludeSessionId);
   const { data } = await q;
-  const rows = (data ?? []) as { weight_kg: number | null; reps: number | null }[];
+  const rows = (data ?? []) as {
+    weight_kg: number | null;
+    reps: number | null;
+    duration_seconds: number | null;
+  }[];
   return rows.reduce<ExercisePRStats>((best, row) => {
     const w = row.weight_kg ?? 0;
     const r = row.reps ?? 0;
@@ -726,6 +752,7 @@ export async function getExercisePRStats(
       reps: Math.max(best.reps, r),
       volumeKg: Math.max(best.volumeKg, w * r),
       e1rmKg: Math.max(best.e1rmKg, estimate1RM(w, r)),
+      durationSec: Math.max(best.durationSec, row.duration_seconds ?? 0),
     };
   }, EMPTY_PR_STATS);
 }
@@ -778,7 +805,9 @@ async function seedSessionFromTemplateInner(
   if (!u.user) throw new Error("Not signed in");
   const { data: rows } = await (supabase as any)
     .from("workout_template_exercises")
-    .select("exercise_id, position, target_sets, target_reps, target_weight_kg")
+    .select(
+      "exercise_id, position, target_sets, target_reps, target_weight_kg, target_duration_seconds, exercises(muscle_group)",
+    )
     .eq("template_id", templateId)
     .order("position");
   const tplRows = (rows ?? []) as TemplateExerciseRow[];
@@ -796,7 +825,9 @@ async function seedSessionFromTemplateInner(
   let pos = 0;
   for (const r of tplRows) {
     const history = historyByEx.get(r.exercise_id) ?? [];
-    const targetSets = r.target_sets ?? 3;
+    // Cardio is logged by time on one continuous set, never multiple rep sets.
+    const isCardio = isCardioMuscleGroup(r.exercises?.muscle_group ?? null);
+    const targetSets = isCardio ? 1 : r.target_sets ?? 3;
     for (let n = 1; n <= targetSets; n++) {
       // A template listing the same exercise twice must not produce two rows
       // with the same set_number — they are one and the same planned set.
@@ -811,8 +842,12 @@ async function seedSessionFromTemplateInner(
         exercise_id: r.exercise_id,
         set_number: n,
         position: pos,
-        weight_kg: past?.weight_kg ?? r.target_weight_kg ?? null,
-        reps: past?.reps ?? r.target_reps ?? null,
+        weight_kg: isCardio ? null : past?.weight_kg ?? r.target_weight_kg ?? null,
+        reps: isCardio ? null : past?.reps ?? r.target_reps ?? null,
+        duration_seconds: isCardio
+          ? past?.duration_seconds ?? r.target_duration_seconds ?? DEFAULT_CARDIO_DURATION_SEC
+          : null,
+        avg_speed_kmh: isCardio ? past?.avg_speed_kmh ?? null : null,
         planned_rest_seconds: past?.planned_rest_seconds ?? DEFAULT_REST,
       });
     }

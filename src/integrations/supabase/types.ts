@@ -1436,10 +1436,13 @@ export type Database = {
       workout_sets: {
         Row: {
           actual_rest_seconds: number | null
+          avg_speed_kmh: number | null
           completed_at: string | null
           created_at: string
+          duration_seconds: number | null
           exercise_id: string
           id: string
+          max_heart_rate: number | null
           notes: string | null
           overtime_seconds: number | null
           planned_rest_seconds: number | null
@@ -1454,10 +1457,13 @@ export type Database = {
         }
         Insert: {
           actual_rest_seconds?: number | null
+          avg_speed_kmh?: number | null
           completed_at?: string | null
           created_at?: string
+          duration_seconds?: number | null
           exercise_id: string
           id?: string
+          max_heart_rate?: number | null
           notes?: string | null
           overtime_seconds?: number | null
           planned_rest_seconds?: number | null
@@ -1472,10 +1478,13 @@ export type Database = {
         }
         Update: {
           actual_rest_seconds?: number | null
+          avg_speed_kmh?: number | null
           completed_at?: string | null
           created_at?: string
+          duration_seconds?: number | null
           exercise_id?: string
           id?: string
+          max_heart_rate?: number | null
           notes?: string | null
           overtime_seconds?: number | null
           planned_rest_seconds?: number | null
@@ -1518,6 +1527,7 @@ export type Database = {
           exercise_id: string
           id: string
           position: number
+          target_duration_seconds: number | null
           target_reps: number | null
           target_sets: number
           target_weight_kg: number | null
@@ -1529,6 +1539,7 @@ export type Database = {
           exercise_id: string
           id?: string
           position?: number
+          target_duration_seconds?: number | null
           target_reps?: number | null
           target_sets?: number
           target_weight_kg?: number | null
@@ -1540,6 +1551,7 @@ export type Database = {
           exercise_id?: string
           id?: string
           position?: number
+          target_duration_seconds?: number | null
           target_reps?: number | null
           target_sets?: number
           target_weight_kg?: number | null
