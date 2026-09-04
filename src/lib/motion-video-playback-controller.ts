@@ -25,6 +25,10 @@
  *   it never auto-resumes; explicit playback stays available (also 5-capped).
  * - `setElement()` (new media element) resets the session and rebinds
  *   listeners; `dispose()` (unmount) pauses the current element and detaches.
+ * - A rejected automatic first run is a normal, silent autoplay-policy block
+ *   (see above). A rejected *user-initiated* `play()` — from `toggle()` or a
+ *   replay — is a real failure (e.g. unsupported codec) and sets
+ *   `playbackError` so the UI can say so instead of staying a dead button.
  */
 import { isMediaReady, MOTION_VIDEO_MAX_CYCLES, resolveCycleEnd } from "./motion-video-playback.ts";
 
@@ -47,6 +51,13 @@ export interface MotionVideoPlaybackSnapshot {
   isPlaying: boolean;
   /** True once the five-cycle allowance is spent; the control shows "replay". */
   runComplete: boolean;
+  /**
+   * True once a user-initiated `play()` call (tap/click, not the automatic
+   * first run) has rejected — e.g. an unsupported codec/container. Autoplay
+   * being blocked by browser policy before any user gesture is normal and
+   * never sets this; only a `play()` call made from `toggle()` does.
+   */
+  playbackError: boolean;
 }
 
 export interface MotionVideoControllerOptions {
@@ -75,6 +86,7 @@ export class MotionVideoPlaybackController {
   private cycles = 0;
   private runComplete = false;
   private isPlaying = false;
+  private playbackError = false;
   private autoState: AutoState = "idle";
   private hydrated: boolean;
   private reducedMotion: boolean;
@@ -104,6 +116,7 @@ export class MotionVideoPlaybackController {
     this.autoState = "idle";
     this.runComplete = false;
     this.isPlaying = false;
+    this.playbackError = false;
 
     if (next && !this.disposed) {
       this.attach(next);
@@ -142,8 +155,14 @@ export class MotionVideoPlaybackController {
       return;
     }
     if (el.paused) {
-      // Resume — the cycle count is deliberately left untouched.
-      void el.play().catch(() => {});
+      // Resume — the cycle count is deliberately left untouched. This call is
+      // made directly from a click/tap handler, so unlike the automatic first
+      // run a rejection here is a real failure (not an autoplay-policy block)
+      // and is surfaced to the UI.
+      void el.play().then(
+        () => {},
+        () => this.handlePlaybackError(el),
+      );
     } else {
       el.pause();
     }
@@ -155,7 +174,11 @@ export class MotionVideoPlaybackController {
   }
 
   getSnapshot(): MotionVideoPlaybackSnapshot {
-    return { isPlaying: this.isPlaying, runComplete: this.runComplete };
+    return {
+      isPlaying: this.isPlaying,
+      runComplete: this.runComplete,
+      playbackError: this.playbackError,
+    };
   }
 
   // ---- element binding ----------------------------------------------
@@ -210,10 +233,21 @@ export class MotionVideoPlaybackController {
   private syncPlaybackState(el: ControllableMediaElement): void {
     if (el !== this.element) return; // event from a replaced element — ignore
     const next = !el.paused && !el.ended;
-    if (next !== this.isPlaying) {
-      this.isPlaying = next;
-      this.emit();
-    }
+    // Real playback proves the earlier failure is stale (e.g. a manual retry
+    // that in fact succeeded after all) — clear it along with the state.
+    const clearsError = next && this.playbackError;
+    if (next === this.isPlaying && !clearsError) return;
+    this.isPlaying = next;
+    if (clearsError) this.playbackError = false;
+    this.emit();
+  }
+
+  /** A user-initiated `play()` call rejected — surface it, don't swallow it. */
+  private handlePlaybackError(el: ControllableMediaElement): void {
+    if (el !== this.element) return;
+    this.playbackError = true;
+    this.isPlaying = false;
+    this.emit();
   }
 
   private handleEnded(el: ControllableMediaElement): void {
@@ -298,16 +332,26 @@ export class MotionVideoPlaybackController {
   private startFreshSession(el: ControllableMediaElement): void {
     this.cycles = 0;
     this.runComplete = false;
+    this.playbackError = false;
     this.emit();
     try {
       el.currentTime = 0;
     } catch {
       /* */
     }
-    void el.play().catch(() => {});
+    // Also click-triggered (replay control / tapping the surface once
+    // complete) — a rejection here is just as real a failure as toggle()'s.
+    void el.play().then(
+      () => {},
+      () => this.handlePlaybackError(el),
+    );
   }
 
   private emit(): void {
-    this.onChange({ isPlaying: this.isPlaying, runComplete: this.runComplete });
+    this.onChange({
+      isPlaying: this.isPlaying,
+      runComplete: this.runComplete,
+      playbackError: this.playbackError,
+    });
   }
 }

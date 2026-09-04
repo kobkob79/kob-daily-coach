@@ -15,11 +15,13 @@ import { fileURLToPath } from "node:url";
 
 import {
   MOTION_VIDEO_COMPLETE_STATUS,
+  MOTION_VIDEO_ERROR_STATUS,
   MOTION_VIDEO_PAUSE_LABEL,
   MOTION_VIDEO_PAUSED_STATUS,
   MOTION_VIDEO_PLAY_LABEL,
   MOTION_VIDEO_PLAYING_STATUS,
   MOTION_VIDEO_REPLAY_LABEL,
+  MOTION_VIDEO_RETRY_LABEL,
 } from "./motion-video-labels.ts";
 
 const source = readFileSync(fileURLToPath(new URL("./MotionVideo.tsx", import.meta.url)), "utf8");
@@ -60,7 +62,7 @@ test("visible control supports pause, resume AND replay, keyboard + touch", () =
   assert.equal(MOTION_VIDEO_REPLAY_LABEL, "הפעל שוב");
   assert.match(
     source,
-    /runComplete\s*\n?\s*\? MOTION_VIDEO_REPLAY_LABEL\s*\n?\s*: isPlaying\s*\n?\s*\? MOTION_VIDEO_PAUSE_LABEL\s*\n?\s*: MOTION_VIDEO_PLAY_LABEL/,
+    /playbackError\s*\n?\s*\? MOTION_VIDEO_RETRY_LABEL\s*\n?\s*: runComplete\s*\n?\s*\? MOTION_VIDEO_REPLAY_LABEL\s*\n?\s*: isPlaying\s*\n?\s*\? MOTION_VIDEO_PAUSE_LABEL\s*\n?\s*: MOTION_VIDEO_PLAY_LABEL/,
   );
   assert.match(source, /aria-label=\{controlLabel\}/);
 
@@ -69,9 +71,10 @@ test("visible control supports pause, resume AND replay, keyboard + touch", () =
 });
 
 test("playback state is conveyed without relying on colour alone", () => {
-  // A distinct icon shape per state: replay ↺ / pause ❚❚ / play ▶.
-  assert.match(source, /import \{ Pause, Play, RotateCcw \} from "lucide-react"/);
-  assert.match(source, /runComplete \? \(\s*<RotateCcw/);
+  // A distinct icon shape per state: retry ⚠ / replay ↺ / pause ❚❚ / play ▶.
+  assert.match(source, /import \{ AlertTriangle, Pause, Play, RotateCcw \} from "lucide-react"/);
+  assert.match(source, /playbackError \? \(\s*<AlertTriangle/);
+  assert.match(source, /\) : runComplete \? \(\s*<RotateCcw/);
   assert.match(source, /\) : isPlaying \? \(\s*<Pause/);
   // A text label on the control...
   assert.match(source, /<span>\{controlShort\}<\/span>/);
@@ -83,6 +86,13 @@ test("playback state is conveyed without relying on colour alone", () => {
   assert.equal(MOTION_VIDEO_PLAYING_STATUS, "הסרטון פועל");
   assert.equal(MOTION_VIDEO_PAUSED_STATUS, "הסרטון מושהה");
   assert.equal(MOTION_VIDEO_COMPLETE_STATUS, "הסרטון הסתיים");
+});
+
+test("a rejected user-initiated play() shows a plain, visible error instead of a dead button", () => {
+  assert.match(source, /playbackError && \(/);
+  assert.match(source, /\{MOTION_VIDEO_ERROR_STATUS\}/);
+  assert.equal(MOTION_VIDEO_ERROR_STATUS, "לא ניתן להפעיל את הסרטון");
+  assert.equal(MOTION_VIDEO_RETRY_LABEL, "נסה שוב");
 });
 
 test("the <video> is replaced on media change and bound by a callback ref", () => {

@@ -11,14 +11,19 @@ export const MOTION_VIDEO_PLAY_LABEL = "הפעל סרטון";
 export const MOTION_VIDEO_PAUSE_LABEL = "השהה סרטון";
 /** Accessible name of the control after a completed playback session (replay). */
 export const MOTION_VIDEO_REPLAY_LABEL = "הפעל שוב";
+/** Accessible name of the control after a user-initiated play() call failed. */
+export const MOTION_VIDEO_RETRY_LABEL = "נסה שוב";
 
 /** Visible short text on the control. */
 export const MOTION_VIDEO_PLAY_SHORT = "הפעל";
 export const MOTION_VIDEO_PAUSE_SHORT = "השהה";
 export const MOTION_VIDEO_REPLAY_SHORT = "הפעל שוב";
+export const MOTION_VIDEO_RETRY_SHORT = "נסה שוב";
 
 /** Screen-reader status strings, announced via an aria-live region. */
 export const MOTION_VIDEO_PLAYING_STATUS = "הסרטון פועל";
 export const MOTION_VIDEO_PAUSED_STATUS = "הסרטון מושהה";
 /** Announced once the playback session has finished its cycle allowance. */
 export const MOTION_VIDEO_COMPLETE_STATUS = "הסרטון הסתיים";
+/** Announced when a user-initiated play() call fails (e.g. unsupported file). */
+export const MOTION_VIDEO_ERROR_STATUS = "לא ניתן להפעיל את הסרטון";

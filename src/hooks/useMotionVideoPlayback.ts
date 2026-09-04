@@ -48,6 +48,7 @@ export function useMotionVideoPlayback({
   const [snapshot, setSnapshot] = useState<MotionVideoPlaybackSnapshot>({
     isPlaying: false,
     runComplete: false,
+    playbackError: false,
   });
 
   // One controller for the lifetime of this hook instance.
@@ -89,6 +90,7 @@ export function useMotionVideoPlayback({
   return {
     isPlaying: snapshot.isPlaying,
     runComplete: snapshot.runComplete,
+    playbackError: snapshot.playbackError,
     toggle,
     onSurfaceActivate,
     setVideoElement,
