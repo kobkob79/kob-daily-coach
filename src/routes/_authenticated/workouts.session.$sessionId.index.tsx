@@ -28,7 +28,6 @@ import {
   discardSession,
   ensureSessionRestored,
   getPriorPRs,
-  isCardioMuscleGroup,
   type SessionSet,
 } from "@/lib/workout-session";
 import { useWorkoutTimer, formatTotalTime } from "@/hooks/useWorkoutTimer";
@@ -281,15 +280,10 @@ function OverviewPage() {
                 );
                 const priorPR = priorPRQ.data?.[exerciseId] ?? 0;
                 const isPR = bestWeight > 0 && bestWeight > priorPR;
-                const isCardio = isCardioMuscleGroup(ex?.muscle_group);
                 const firstOpen = exSets.find((s) => !s.completed_at);
                 const displayWeight =
                   (firstOpen ?? exSets[0])?.weight_kg ?? null;
                 const displayReps = (firstOpen ?? exSets[0])?.reps ?? null;
-                const displayDurationMin = (() => {
-                  const sec = (firstOpen ?? exSets[0])?.duration_seconds ?? null;
-                  return sec != null ? Math.round(sec / 60) : null;
-                })();
                 return (
                   <Link
                     key={exerciseId}
@@ -353,20 +347,12 @@ function OverviewPage() {
                           {done}/{total} סטים
                         </span>
                         <span className="text-muted-foreground">·</span>
-                        {isCardio ? (
-                          <span className="font-extrabold text-primary">
-                            {displayDurationMin != null ? `${displayDurationMin} דק'` : "—"}
-                          </span>
-                        ) : (
-                          <>
-                            <span className="font-extrabold text-primary">
-                              {displayWeight != null ? `${displayWeight}` : "—"}
-                            </span>
-                            <span className="text-muted-foreground">ק״ג</span>
-                            <span className="text-muted-foreground">×</span>
-                            <span className="font-bold">{displayReps ?? "—"}</span>
-                          </>
-                        )}
+                        <span className="font-extrabold text-primary">
+                          {displayWeight != null ? `${displayWeight}` : "—"}
+                        </span>
+                        <span className="text-muted-foreground">ק״ג</span>
+                        <span className="text-muted-foreground">×</span>
+                        <span className="font-bold">{displayReps ?? "—"}</span>
                       </div>
                     </div>
                     <ChevronLeft className="h-4 w-4 shrink-0 text-muted-foreground" />

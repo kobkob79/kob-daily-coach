@@ -9,14 +9,13 @@ import { Trophy, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-export type PRKind = "weight" | "reps" | "volume" | "e1rm" | "duration";
+export type PRKind = "weight" | "reps" | "volume" | "e1rm";
 
 export const PR_KIND_LABEL: Record<PRKind, string> = {
   weight: "משקל",
   reps: "חזרות",
   volume: "נפח",
   e1rm: "1RM משוער",
-  duration: "משך אימון",
 };
 
 export interface PRCelebrationData {

@@ -175,7 +175,6 @@ const HE: Dict = {
   "templates.targetSets": "סטים",
   "templates.targetReps": "חזרות",
   "templates.targetWeight": "משקל",
-  "templates.targetDuration": "משך (דק')",
   "templates.duplicate": "שכפל",
   "templates.delete": "מחק תבנית",
   "templates.deleteConfirm": "למחוק את התבנית?",

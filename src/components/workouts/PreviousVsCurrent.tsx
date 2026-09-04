@@ -11,20 +11,12 @@ import { cn } from "@/lib/utils";
 export interface PreviousPerformance {
   weightKg: number | null;
   reps: number | null;
-  durationSec?: number | null;
-  avgSpeedKmh?: number | null;
 }
 
 export function formatPerformance(p: PreviousPerformance | null | undefined): string | null {
   if (!p) return null;
   const w = p.weightKg;
   const r = p.reps;
-  const durationSec = p.durationSec;
-  const avgSpeedKmh = p.avgSpeedKmh;
-  if (durationSec != null) {
-    const minutes = Math.round(durationSec / 60);
-    return avgSpeedKmh != null ? `${minutes} דק' · ${avgSpeedKmh} קמ"ש` : `${minutes} דק'`;
-  }
   if (w == null && r == null) return null;
   if (w == null) return `${r} חזרות`;
   if (r == null) return `${w} ק״ג`;
@@ -63,6 +55,7 @@ export function PreviousVsCurrent({
           {curText ?? <span className="text-muted-foreground">—</span>}
         </p>
       </div>
+
     </div>
   );
 }
