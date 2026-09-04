@@ -48,4 +48,4 @@ export function isMediaReady(readyState: number): boolean {
  * longest we wait before treating a still-paused element as a failure too,
  * so a tap never goes unanswered.
  */
-export const MOTION_VIDEO_USER_PLAY_TIMEOUT_MS = 6000;
+export const MOTION_VIDEO_USER_PLAY_TIMEOUT_MS = 3500;
