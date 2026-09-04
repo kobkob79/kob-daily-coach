@@ -140,7 +140,12 @@ export function MotionVideo({
         onClick={toggle}
         aria-pressed={isPlaying}
         aria-label={controlLabel}
-        className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/85 px-3 py-1.5 text-[11px] font-medium backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className={cn(
+          "absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          playbackError
+            ? "bg-destructive text-destructive-foreground"
+            : "bg-primary text-primary-foreground",
+        )}
       >
         {/* Shape, not colour, carries the state: retry ⚠ / replay ↺ / pause ❚❚ / play ▶. */}
         {playbackError ? (
