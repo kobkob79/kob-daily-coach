@@ -5,11 +5,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, Sparkles, Droplets, Apple, Moon, Target } from "lucide-react";
+import { Loader2, Share2, Sparkles, Droplets, Apple, Moon, Target } from "lucide-react";
+import { toast } from "sonner";
 import { buildDebriefContext } from "@/lib/coach-debrief";
 import { generateCoachDebrief } from "@/lib/coach-debrief.functions";
 import { fetchLifeProfile } from "@/lib/life-profile";
+import { buildWorkoutExportText } from "@/lib/workout-export";
 
 export const Route = createFileRoute("/_authenticated/workouts/session/$sessionId/debrief")({
   component: DebriefPage,
@@ -19,6 +22,7 @@ function DebriefPage() {
   const { sessionId } = Route.useParams();
   const navigate = useNavigate();
   const run = useServerFn(generateCoachDebrief);
+  const [exporting, setExporting] = useState(false);
 
   const q = useQuery({
     queryKey: ["coach-debrief", sessionId],
@@ -32,6 +36,29 @@ function DebriefPage() {
   });
 
   const d = q.data;
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const text = await buildWorkoutExportText(sessionId, d ?? null);
+      if (navigator.share) {
+        try {
+          await navigator.share({ text });
+          return;
+        } catch (e) {
+          // A deliberate cancel shouldn't fall through to a clipboard copy.
+          if ((e as Error)?.name === "AbortError") return;
+        }
+      }
+      await navigator.clipboard.writeText(text);
+      toast.success("האימון הועתק ללוח");
+    } catch (e) {
+      toast.error("לא הצלחנו לייצא את האימון");
+      console.error("[debrief] export failed", e);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div dir="rtl" className="mx-auto max-w-md space-y-4 py-4">
@@ -87,6 +114,21 @@ function DebriefPage() {
           <Advice icon={<Target className="h-4 w-4" />} text={d.nextFocus} label="האימון הבא" />
         </div>
       )}
+
+      <Button
+        size="lg"
+        variant="outline"
+        className="h-12 w-full text-base"
+        onClick={handleExport}
+        disabled={exporting}
+      >
+        {exporting ? (
+          <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+        ) : (
+          <Share2 className="ml-2 h-4 w-4" />
+        )}
+        ייצוא אימון כטקסט
+      </Button>
 
       <Button
         size="lg"
