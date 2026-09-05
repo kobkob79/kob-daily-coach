@@ -501,7 +501,7 @@ function ExerciseDetailPage() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8 rounded-full bg-accent/10 text-accent hover:bg-accent/20 hover:text-accent"
             onClick={() => setReplacePickerOpen(true)}
             disabled={replaceMut.isPending}
             aria-label="החלף תרגיל לאימון הזה בלבד"
@@ -549,6 +549,8 @@ function ExerciseDetailPage() {
             set={s}
             isActive={s.id === activeSet?.id}
             locked={locked}
+            restActive={s.id === activeSet?.id && rest.active}
+            onStartSet={() => rest.clear()}
             previous={previousBySetNumber.get(s.set_number) ?? null}
             onComplete={() => completeMut.mutate(s)}
             onUncomplete={() => uncompleteMut.mutate(s)}
@@ -574,19 +576,6 @@ function ExerciseDetailPage() {
           <Plus className="h-3.5 w-3.5" /> הוסף סט
         </button>
       </div>
-
-      {/* Start Set: dismiss a running rest timer the moment the athlete begins,
-          instead of waiting for it to hit zero. */}
-      {activeSet && rest.active && (
-        <Button
-          variant="secondary"
-          className="h-11 w-full text-sm font-bold"
-          onClick={() => rest.clear()}
-        >
-          <Play className="ml-1 h-4 w-4" />
-          התחל סט {activeSet.set_number}
-        </Button>
-      )}
 
       {/* Primary action: finish the active set, directly below the table */}
       {activeSet ? (
@@ -683,6 +672,8 @@ function SetRow({
   set,
   isActive,
   locked,
+  restActive,
+  onStartSet,
   previous,
   onComplete,
   onUncomplete,
@@ -694,6 +685,10 @@ function SetRow({
   isActive: boolean;
   /** True once the workout is finished — only then do sets become read-only. */
   locked: boolean;
+  /** This is the active set and a rest timer is currently counting down/over. */
+  restActive: boolean;
+  /** Dismisses the rest timer immediately — "I'm starting this set now." */
+  onStartSet: () => void;
   previous: { weightKg: number | null; reps: number | null } | null;
   onComplete: () => void;
   onUncomplete: () => void;
@@ -746,12 +741,28 @@ function SetRow({
       }`}
 
     >
-      <div className="grid grid-cols-[2rem_1fr_1fr_3rem] items-center gap-2">
-        <span
-          className={`grid h-7 w-7 place-items-center rounded-full text-xs font-bold ${numberClass}`}
-        >
-          {set.set_number}
-        </span>
+      <div
+        className={`grid items-center gap-2 ${
+          restActive ? "grid-cols-[2.75rem_1fr_1fr_3rem]" : "grid-cols-[2rem_1fr_1fr_3rem]"
+        }`}
+      >
+        {restActive ? (
+          <button
+            onClick={onStartSet}
+            className="animate-soft-pulse flex h-7 items-center justify-center gap-0.5 rounded-full bg-accent px-1.5 text-xs font-bold text-accent-foreground shadow-glow-accent"
+            aria-label={`התחל סט ${set.set_number} — עוצר את הטיימר`}
+            title="התחל סט — עוצר את הטיימר"
+          >
+            <Play className="h-3 w-3 fill-current" />
+            {set.set_number}
+          </button>
+        ) : (
+          <span
+            className={`grid h-7 w-7 place-items-center rounded-full text-xs font-bold ${numberClass}`}
+          >
+            {set.set_number}
+          </span>
+        )}
         <Input
           inputMode="decimal"
           type="number"
