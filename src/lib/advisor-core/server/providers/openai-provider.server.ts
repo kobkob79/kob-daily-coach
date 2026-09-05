@@ -92,7 +92,7 @@ function logOpenAIErrorForDevelopment(
   });
 }
 
-function extractResponseText(response: OpenAITextResponse): ExtractedResponseText {
+export function extractResponseText(response: OpenAITextResponse): ExtractedResponseText {
   const aggregateText = response.output_text?.trim() ?? "";
   if (aggregateText) {
     return { source: "output_text", text: aggregateText };

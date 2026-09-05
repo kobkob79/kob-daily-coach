@@ -8,8 +8,11 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
-const MODEL = "google/gemini-2.5-flash";
+import { createOpenAIClient } from "@/lib/advisor-core/server/openai-client.server";
+import { classifyOpenAIAPIError, extractResponseText } from "@/lib/advisor-core/server/providers/openai-provider.server";
+import { AdvisorCoreError } from "@/lib/advisor-core/response";
+import { VIORA_ADVISOR_MODEL } from "@/lib/advisor-core/server/config.server";
+import OpenAI from "openai";
 
 export interface DailyBriefContext {
   now: string;
@@ -111,41 +114,42 @@ export async function generateDailyBriefResult(
   }
 
   const started = Date.now();
-  let res: Response;
+
+  let client: OpenAI;
   try {
-    res = await (options.fetchImpl ?? fetch)("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${options.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          {
-            role: "user",
-            content: `להלן קונטקסט המצב של המשתמש להיום. השב JSON בלבד.\n\n${JSON.stringify(ctx)}`,
-          },
-        ],
-        response_format: { type: "json_object" },
-      }),
+    if (options.apiKey !== process.env.OPENAI_API_KEY || options.fetchImpl) {
+      client = new OpenAI({ apiKey: options.apiKey, fetch: options.fetchImpl });
+    } else {
+      client = createOpenAIClient();
+    }
+  } catch (e) {
+    logUnavailable("daily_brief_unavailable");
+    return { status: "unavailable", reason: "not_configured" };
+  }
+
+  let response;
+  try {
+    response = await client.responses.create({
+      model: VIORA_ADVISOR_MODEL,
+      instructions: SYSTEM_PROMPT,
+      input: [
+        {
+          role: "user",
+          content: `להלן קונטקסט המצב של המשתמש להיום. השב JSON בלבד.\n\n${JSON.stringify(ctx)}`,
+        },
+      ],
+      text: { format: { type: "json_schema", name: "daily_brief_schema", schema: { type: "object" } } },
     });
-  } catch {
+  } catch (e) {
     logUnavailable("daily_brief_provider_error", { stage: "request" });
     return { status: "unavailable", reason: "provider_error" };
   }
   const duration = Date.now() - started;
 
-  if (!res.ok) {
-    logUnavailable("daily_brief_provider_error", { stage: "response", status: res.status });
-    return { status: "unavailable", reason: "provider_error" };
-  }
-
   let parsed: Record<string, unknown>;
   try {
-    const json = await res.json();
-    const raw: string = json?.choices?.[0]?.message?.content ?? "";
+    const extraction = extractResponseText(response);
+    const raw: string = extraction.text;
     const match = raw.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("missing_json");
     parsed = JSON.parse(match[0]);
@@ -191,7 +195,7 @@ export async function generateDailyBriefResult(
       mission: arr(parsed.mission),
       learned: arr(parsed.learned),
       calorieVerdict: String(parsed.calorieVerdict ?? "").trim(),
-      diagnostics: { model: MODEL, duration_ms: duration },
+      diagnostics: { model: VIORA_ADVISOR_MODEL, duration_ms: duration },
     },
   };
 }
@@ -203,5 +207,5 @@ export const generateDailyBrief = createServerFn({ method: "POST" })
     return { ctx };
   })
   .handler(({ data }): Promise<DailyBriefResult> =>
-    generateDailyBriefResult(data.ctx, { apiKey: process.env.LOVABLE_API_KEY }),
+    generateDailyBriefResult(data.ctx, { apiKey: process.env.OPENAI_API_KEY }),
   );
