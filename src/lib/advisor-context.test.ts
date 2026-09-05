@@ -19,8 +19,10 @@ import {
   computeAgeFromBirthDate,
   selectAdvisorContext,
   type AdvisorContextInput,
+  type AdvisorContextWearableRecovery,
   type ContextAdvisorId,
 } from "./advisor-context-snapshot.ts";
+import type { UnifiedTimelineItem } from "./unified-timeline.ts";
 import {
   ADVISOR_CONTEXT_MAX_CHARS,
   budgetAdvisorRequestContext,
@@ -135,6 +137,90 @@ describe("buildAdvisorContextSnapshot — approved basic profile block", () => {
       "age,currentWeightKg,displayName,gender,heightCm,timezone",
     );
     assert.ok(!JSON.stringify(snapshot).toLowerCase().includes("birth"));
+  });
+});
+
+function sleepItem(occurredAt: string, hours: number): UnifiedTimelineItem {
+  return {
+    key: `daily_events:${occurredAt}`,
+    sourceDomain: "sleep",
+    sourceTable: "daily_events",
+    sourceType: "sleep",
+    sourceRecordId: occurredAt,
+    userId: "user-1",
+    bioDayId: null,
+    classification: "completed",
+    scheduledAt: null,
+    occurredAt,
+    title: "שינה",
+    presentation: { metrics: { hours } },
+    status: "recorded",
+    provenance: {
+      sourceTable: "daily_events",
+      sourceRecordId: occurredAt,
+      kind: "direct",
+      externalSource: null,
+    },
+    sensitivity: "personal",
+    legacyFallback: false,
+    conflict: false,
+  };
+}
+
+describe("buildAdvisorContextSnapshot — recovery + wearable signal", () => {
+  const now = new Date("2026-09-05T12:00:00.000Z");
+  const wearable: AdvisorContextWearableRecovery = {
+    restingHeartRateBpm: 58,
+    observedAt: "2026-09-05T06:00:00.000Z",
+    source: "HealthConnect:Oura",
+  };
+
+  test("no sleep and no wearable signal → recovery stays missing, exactly like before wearables existed", () => {
+    const snapshot = buildAdvisorContextSnapshot({
+      ...baseInput(null, now),
+      wearableRecovery: null,
+    });
+    assert.equal(snapshot.facts.recovery.state, "missing");
+    assert.equal(snapshot.facts.recovery.value, null);
+  });
+
+  test("a wearable resting-heart-rate signal alone unlocks recovery, with no sleep data required", () => {
+    const snapshot = buildAdvisorContextSnapshot({
+      ...baseInput(null, now),
+      wearableRecovery: wearable,
+    });
+    const value = snapshot.facts.recovery.value as Record<string, unknown>;
+    assert.equal(snapshot.facts.recovery.state, "known");
+    assert.equal(value.restingHeartRateBpm, 58);
+    assert.equal(value.sleepHours, null);
+    assert.equal(value.workoutCount, 0);
+    assert.equal(snapshot.facts.recovery.observedAt, "2026-09-05T06:00:00.000Z");
+    assert.ok(snapshot.facts.recovery.sources.includes("HealthConnect:Oura"));
+  });
+
+  test("sleep and a wearable signal merge into one recovery fact, observedAt is the later of the two", () => {
+    const snapshot = buildAdvisorContextSnapshot({
+      ...baseInput(null, now),
+      timeline: [sleepItem("2026-09-04T22:00:00.000Z", 7)],
+      wearableRecovery: wearable,
+    });
+    const value = snapshot.facts.recovery.value as Record<string, unknown>;
+    assert.equal(value.sleepHours, 7);
+    assert.equal(value.restingHeartRateBpm, 58);
+    assert.equal(snapshot.facts.recovery.observedAt, "2026-09-05T06:00:00.000Z");
+  });
+
+  test("a wearable connection with no resting-heart-rate value yet does not fabricate a signal", () => {
+    const snapshot = buildAdvisorContextSnapshot({
+      ...baseInput(null, now),
+      wearableRecovery: {
+        restingHeartRateBpm: null,
+        observedAt: null,
+        source: "HealthConnect:Oura",
+      },
+    });
+    assert.equal(snapshot.facts.recovery.state, "missing");
+    assert.ok(!snapshot.facts.recovery.sources.includes("HealthConnect:Oura"));
   });
 });
 

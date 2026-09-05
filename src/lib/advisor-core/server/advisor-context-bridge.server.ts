@@ -5,6 +5,7 @@ import {
   selectAdvisorContext,
   type AdvisorContextInput,
   type AdvisorContextKey,
+  type AdvisorContextWearableRecovery,
   type ContextAdvisorId,
   type SafeMedicalIssue,
   type SafeProgressSummary,
@@ -20,6 +21,7 @@ export interface AdvisorContextSourceData {
   shift: AdvisorContextInput["shift"];
   medical: SafeMedicalIssue[];
   progress: SafeProgressSummary | null;
+  wearableRecovery: AdvisorContextWearableRecovery | null;
   timelineInput: UnifiedTimelineInput;
   conflicts: AdvisorContextKey[];
 }
@@ -81,6 +83,7 @@ export async function buildAdvisorContextForUser(
     shift: data.shift,
     medical: data.medical,
     progress: data.progress,
+    wearableRecovery: data.wearableRecovery,
     timeline,
     conflicts: data.conflicts,
   });
@@ -157,6 +160,7 @@ export function createSupabaseAdvisorContextDataSource(
         medicalResult,
         weightsResult,
         measurementsResult,
+        restingHeartRateResult,
       ] = await Promise.all([
         supabase
           .from("profiles")
@@ -240,6 +244,14 @@ export function createSupabaseAdvisorContextDataSource(
           .eq("user_id", userId)
           .order("measured_on", { ascending: false })
           .limit(40),
+        supabase
+          .from("wearable_metrics")
+          .select("value,occurred_at,external_source")
+          .eq("user_id", userId)
+          .eq("metric_type", "resting_heart_rate")
+          .gte("occurred_at", sinceIso)
+          .order("occurred_at", { ascending: false })
+          .limit(200),
       ]);
       const results = [
         profileResult,
@@ -256,6 +268,7 @@ export function createSupabaseAdvisorContextDataSource(
         medicalResult,
         weightsResult,
         measurementsResult,
+        restingHeartRateResult,
       ];
       if (results.some((result) => result.error)) throw new Error("ADVISOR_CONTEXT_UNAVAILABLE");
 
@@ -317,6 +330,19 @@ export function createSupabaseAdvisorContextDataSource(
             freshness: Date.parse(observedAt) >= freshnessCutoff.getTime() ? "current" : "stale",
           }
         : null;
+      const restingHeartRateRows = restingHeartRateResult.data ?? [];
+      const wearableRecovery: AdvisorContextWearableRecovery | null = restingHeartRateRows.length
+        ? {
+            restingHeartRateBpm:
+              Math.round(
+                (restingHeartRateRows.reduce((sum, row) => sum + Number(row.value), 0) /
+                  restingHeartRateRows.length) *
+                  10,
+              ) / 10,
+            observedAt: restingHeartRateRows[0].occurred_at,
+            source: restingHeartRateRows[0].external_source,
+          }
+        : null;
       const assignments = new Map(
         (assignmentsResult.data ?? []).map((row) => [
           `${row.source_table}:${row.source_record_id}`,
@@ -376,6 +402,7 @@ export function createSupabaseAdvisorContextDataSource(
           : null,
         medical,
         progress,
+        wearableRecovery,
         timelineInput: {
           timezone: bio?.timezone ?? "UTC",
           bioDayAssignments: assignments,
