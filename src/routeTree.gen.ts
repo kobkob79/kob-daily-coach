@@ -20,6 +20,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedAskRouteImport } from './routes/_authenticated/ask'
 import { Route as AuthenticatedCaptureRouteImport } from './routes/_authenticated/capture'
 import { Route as AuthenticatedCoachRouteImport } from './routes/_authenticated/coach'
+import { Route as AuthenticatedCommunityRouteImport } from './routes/_authenticated/community'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedDevRouteImport } from './routes/_authenticated/dev'
 import { Route as AuthenticatedExercisesRouteImport } from './routes/_authenticated/exercises'
@@ -117,6 +118,11 @@ const AuthenticatedCaptureRoute = AuthenticatedCaptureRouteImport.update({
 const AuthenticatedCoachRoute = AuthenticatedCoachRouteImport.update({
   id: '/coach',
   path: '/coach',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCommunityRoute = AuthenticatedCommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -360,6 +366,7 @@ export interface FileRoutesByFullPath {
   '/ask': typeof AuthenticatedAskRoute
   '/capture': typeof AuthenticatedCaptureRoute
   '/coach': typeof AuthenticatedCoachRouteWithChildren
+  '/community': typeof AuthenticatedCommunityRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/dev': typeof AuthenticatedDevRouteWithChildren
   '/exercises': typeof AuthenticatedExercisesRoute
@@ -412,6 +419,7 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/ask': typeof AuthenticatedAskRoute
   '/capture': typeof AuthenticatedCaptureRoute
+  '/community': typeof AuthenticatedCommunityRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/exercises': typeof AuthenticatedExercisesRoute
   '/export': typeof AuthenticatedExportRoute
@@ -465,6 +473,7 @@ export interface FileRoutesById {
   '/_authenticated/ask': typeof AuthenticatedAskRoute
   '/_authenticated/capture': typeof AuthenticatedCaptureRoute
   '/_authenticated/coach': typeof AuthenticatedCoachRouteWithChildren
+  '/_authenticated/community': typeof AuthenticatedCommunityRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/dev': typeof AuthenticatedDevRouteWithChildren
   '/_authenticated/exercises': typeof AuthenticatedExercisesRoute
@@ -521,6 +530,7 @@ export interface FileRouteTypes {
     | '/ask'
     | '/capture'
     | '/coach'
+    | '/community'
     | '/dashboard'
     | '/dev'
     | '/exercises'
@@ -573,6 +583,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/ask'
     | '/capture'
+    | '/community'
     | '/dashboard'
     | '/exercises'
     | '/export'
@@ -625,6 +636,7 @@ export interface FileRouteTypes {
     | '/_authenticated/ask'
     | '/_authenticated/capture'
     | '/_authenticated/coach'
+    | '/_authenticated/community'
     | '/_authenticated/dashboard'
     | '/_authenticated/dev'
     | '/_authenticated/exercises'
@@ -760,6 +772,13 @@ declare module '@tanstack/react-router' {
       path: '/coach'
       fullPath: '/coach'
       preLoaderRoute: typeof AuthenticatedCoachRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/community': {
+      id: '/_authenticated/community'
+      path: '/community'
+      fullPath: '/community'
+      preLoaderRoute: typeof AuthenticatedCommunityRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -1166,6 +1185,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAskRoute: typeof AuthenticatedAskRoute
   AuthenticatedCaptureRoute: typeof AuthenticatedCaptureRoute
   AuthenticatedCoachRoute: typeof AuthenticatedCoachRouteWithChildren
+  AuthenticatedCommunityRoute: typeof AuthenticatedCommunityRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDevRoute: typeof AuthenticatedDevRouteWithChildren
   AuthenticatedExercisesRoute: typeof AuthenticatedExercisesRoute
@@ -1190,6 +1210,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAskRoute: AuthenticatedAskRoute,
   AuthenticatedCaptureRoute: AuthenticatedCaptureRoute,
   AuthenticatedCoachRoute: AuthenticatedCoachRouteWithChildren,
+  AuthenticatedCommunityRoute: AuthenticatedCommunityRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDevRoute: AuthenticatedDevRouteWithChildren,
   AuthenticatedExercisesRoute: AuthenticatedExercisesRoute,
