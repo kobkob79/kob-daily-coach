@@ -50,15 +50,15 @@ export function AdvisorContextConsentCard({ onChanged }: AdvisorContextConsentCa
       <div className="flex gap-3">
         <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
         <div className="min-w-0 flex-1">
-          <h2 className="font-bold">התאמה אישית של ההמלצות</h2>
+          <h2 className="font-bold">שיתוף הקשר אישי עם היועצים</h2>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            אפשר ל־Viora להשתמש בנתוני הפרופיל והפעילות השמורים שלך כדי להתאים את תשובות המדריכים.
+            באפשרותך לשתף מטרות, מגמות תזונה ואימון, מגבלות, סיכום רפואי מובנה ומגמות מדידה מאושרות.
+            מסמכים רפואיים, בדיקות מעבדה, הערות חופשיות, תמונות וקישורי אחסון לעולם אינם משותפים.
           </p>
-          {enabled !== null && !enabled && (
-            <p className="mt-2 text-xs font-medium text-muted-foreground">
-              אפשר להמשיך לשוחח גם ללא שיתוף הנתונים.
-            </p>
-          )}
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+            השיתוף אינו מסומן מראש וניתן לבטל אותו בכל עת. היועצים מספקים הכוונה ואינם מחליפים אנשי
+            מקצוע רפואיים.
+          </p>
           {enabled !== null && (
             <div className="mt-3 flex items-center justify-between gap-3">
               <span className="text-xs font-medium">{enabled ? "השיתוף פעיל" : "השיתוף כבוי"}</span>

@@ -64,14 +64,7 @@ export interface AdvisorContextSnapshot {
 export interface AdvisorContextInput {
   userId: string;
   now: Date;
-  profile?: {
-    displayName?: string | null;
-    timezone?: string | null;
-    gender?: "male" | "female" | "other" | null;
-    age?: number | null;
-    heightCm?: number | null;
-    currentWeightKg?: number | null;
-  } | null;
+  profile?: { displayName?: string | null; timezone?: string | null } | null;
   goals?: string[];
   bioDay?: BioDayRecord | null;
   shift?: { kind: string; source: string; observedAt?: string | null } | null;
@@ -148,10 +141,6 @@ export function buildAdvisorContextSnapshot(input: AdvisorContextInput): Advisor
           ? {
               displayName: input.profile.displayName ?? null,
               timezone: input.profile.timezone ?? null,
-              gender: input.profile.gender ?? null,
-              age: input.profile.age ?? null,
-              heightCm: input.profile.heightCm ?? null,
-              currentWeightKg: input.profile.currentWeightKg ?? null,
             }
           : null,
         null,
