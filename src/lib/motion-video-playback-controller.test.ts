@@ -391,6 +391,27 @@ test("a blocked automatic autoplay is silent — never sets playbackError", asyn
   assert.equal(last().playbackError, false, "autoplay-policy block is not a real error");
 });
 
+test("a tap during an in-flight play() attempt still (re)starts playback, not a silent pause", async () => {
+  const { controller, last } = makeController({ hydrated: true });
+  const el = new FakeVideoElement();
+  el.setPlayMode("hang"); // autostart's play() call never settles or fires events
+
+  controller.setElement(el); // autostart attempt in flight
+  await flush();
+  assert.equal(last().isPlaying, false, "no playing event has fired yet");
+
+  // Real browsers flip `paused` to false synchronously inside play(), well
+  // before the "playing" event fires once buffering actually completes — the
+  // fake's "hang" mode doesn't model that side effect, so set it directly to
+  // reproduce the window a real tap can land in.
+  el.paused = false;
+
+  const playsBeforeTap = el.playCalls;
+  controller.toggle(); // user taps "play" while still buffering
+  assert.equal(el.pauseCalls, 0, "must not silently pause a video that never actually played");
+  assert.equal(el.playCalls, playsBeforeTap + 1, "toggle attempts play() again, not pause()");
+});
+
 test("a user-initiated play() rejection (tap while paused) sets playbackError", async () => {
   const { controller, last } = makeController({ hydrated: true });
   const el = new FakeVideoElement();

@@ -169,7 +169,17 @@ export class MotionVideoPlaybackController {
       this.startFreshSession(el);
       return;
     }
-    if (el.paused) {
+    // Branch on the tracked `isPlaying` state, not the element's raw `paused`
+    // property: `play()` sets `paused` to `false` synchronously (per spec),
+    // well before the "playing" event actually fires — so while the automatic
+    // first run is still buffering, `el.paused` already reads `false` even
+    // though nothing is visibly playing yet. A tap during that window used to
+    // read `el.paused` directly, take the "pause" branch, and immediately
+    // re-pause an element that was never really playing — a silent no-op the
+    // user saw as a dead button.
+    if (this.isPlaying) {
+      el.pause();
+    } else {
       // Resume — the cycle count is deliberately left untouched. This call is
       // made directly from a click/tap handler, so unlike the automatic first
       // run a rejection here is a real failure (not an autoplay-policy block)
@@ -179,8 +189,6 @@ export class MotionVideoPlaybackController {
         () => {},
         () => this.handlePlaybackError(el),
       );
-    } else {
-      el.pause();
     }
   }
 
