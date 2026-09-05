@@ -656,6 +656,41 @@ export async function getLastPerformanceByExercise(
 }
 
 /**
+ * Swap an exercise for a different one, for this session only — the
+ * template it came from is never touched, so the original exercise is back
+ * next time this workout is started. Only sets not yet completed are moved;
+ * anything already logged stays attributed to the exercise actually
+ * performed. Weight/reps on the moved sets reset to the new exercise's own
+ * last performance (the old numbers don't mean anything for a different
+ * exercise).
+ */
+export async function replaceExerciseInSession(
+  sessionId: string,
+  oldExerciseId: string,
+  newExerciseId: string,
+): Promise<void> {
+  if (oldExerciseId === newExerciseId) return;
+  const sets = await getSessionSets(sessionId);
+  if (sets.some((s) => s.exercise_id === newExerciseId)) {
+    throw new Error("התרגיל הזה כבר נמצא באימון — אי אפשר להחליף אליו.");
+  }
+  const toReplace = sets
+    .filter((s) => s.exercise_id === oldExerciseId && !s.completed_at)
+    .sort((a, b) => a.set_number - b.set_number);
+  if (toReplace.length === 0) return;
+
+  const history = await getLastPerformanceByExercise(newExerciseId);
+  for (const s of toReplace) {
+    const past = history.find((h) => h.set_number === s.set_number);
+    await updateSet(s.id, {
+      exercise_id: newExerciseId,
+      weight_kg: past?.weight_kg ?? null,
+      reps: past?.reps ?? null,
+    });
+  }
+}
+
+/**
  * PR = max weight ever lifted for this exercise (completed sets only).
  */
 export async function getExercisePR(exerciseId: string): Promise<number> {

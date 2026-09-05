@@ -31,7 +31,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ChevronRight, Trash2, Plus, Flame, Trophy, CheckCircle2 } from "lucide-react";
+import {
+  ChevronRight,
+  Trash2,
+  Plus,
+  Flame,
+  Trophy,
+  CheckCircle2,
+  Play,
+  Repeat,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   deleteSet,
@@ -39,6 +48,7 @@ import {
   getSession,
   getSessionSets,
   insertPlannedSet,
+  replaceExerciseInSession,
   updateSet,
   getExercisePRStats,
   getLastPerformanceByExercise,
@@ -47,6 +57,7 @@ import {
 } from "@/lib/workout-session";
 import { useWorkoutTimer, formatTotalTime } from "@/hooks/useWorkoutTimer";
 import { ExerciseHero } from "@/components/workouts/ExerciseHero";
+import { ExercisePicker } from "@/components/workouts/ExercisePicker";
 import { formatPerformance } from "@/components/workouts/PreviousVsCurrent";
 import { useSessionRestTimer } from "@/components/workouts/RestTimerProvider";
 import {
@@ -69,6 +80,7 @@ function ExerciseDetailPage() {
   const navigate = useNavigate();
   const rest = useSessionRestTimer();
   const [finishOpen, setFinishOpen] = useState(false);
+  const [replacePickerOpen, setReplacePickerOpen] = useState(false);
   const [pr, setPr] = useState<PRCelebrationData | null>(null);
   const activeCardRef = useRef<HTMLDivElement | null>(null);
   /** Measured height of the floating stack, so content never hides beneath it. */
@@ -315,6 +327,26 @@ function ExerciseDetailPage() {
   });
 
   /**
+   * Swap this exercise for a different one, for this session only — the
+   * template it came from is never touched, so the original exercise is
+   * back automatically next workout.
+   */
+  const replaceMut = useMutation({
+    mutationFn: (newExerciseId: string) =>
+      replaceExerciseInSession(sessionId, exerciseId, newExerciseId),
+    onSuccess: (_r, newExerciseId) => {
+      qc.invalidateQueries({ queryKey: ["session_sets", sessionId] });
+      toast.success("התרגיל הוחלף לאימון הזה");
+      navigate({
+        to: "/workouts/session/$sessionId/exercise/$exerciseId",
+        params: { sessionId, exerciseId: newExerciseId },
+        replace: true,
+      });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  /**
    * The workout is a live draft: sets stay editable while the session is
    * in progress and lock only once the workout itself is finished.
    */
@@ -465,9 +497,29 @@ function ExerciseDetailPage() {
         <p className="truncate text-center text-[11px] text-muted-foreground">
           {doneCount}/{sets.length} סטים
         </p>
-        <div className="w-8" />
+        {remaining > 0 ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setReplacePickerOpen(true)}
+            disabled={replaceMut.isPending}
+            aria-label="החלף תרגיל לאימון הזה בלבד"
+            title="החלף תרגיל (לאימון הזה בלבד)"
+          >
+            <Repeat className="h-4 w-4" />
+          </Button>
+        ) : (
+          <div className="w-8" />
+        )}
       </div>
 
+      <ExercisePicker
+        open={replacePickerOpen}
+        onClose={() => setReplacePickerOpen(false)}
+        onSelect={(id) => replaceMut.mutate(id)}
+        title="החלף תרגיל (לאימון הזה בלבד)"
+      />
 
       <ExerciseHero
         exerciseId={exerciseId}
@@ -522,6 +574,19 @@ function ExerciseDetailPage() {
           <Plus className="h-3.5 w-3.5" /> הוסף סט
         </button>
       </div>
+
+      {/* Start Set: dismiss a running rest timer the moment the athlete begins,
+          instead of waiting for it to hit zero. */}
+      {activeSet && rest.active && (
+        <Button
+          variant="secondary"
+          className="h-11 w-full text-sm font-bold"
+          onClick={() => rest.clear()}
+        >
+          <Play className="ml-1 h-4 w-4" />
+          התחל סט {activeSet.set_number}
+        </Button>
+      )}
 
       {/* Primary action: finish the active set, directly below the table */}
       {activeSet ? (
