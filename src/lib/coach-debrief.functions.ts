@@ -8,8 +8,14 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
-const MODEL = "google/gemini-3.6-flash";
+import { createOpenAIClient } from "@/lib/advisor-core/server/openai-client.server";
+import {
+  classifyOpenAIAPIError,
+  extractResponseText,
+} from "@/lib/advisor-core/server/providers/openai-provider.server";
+import { AdvisorCoreError } from "@/lib/advisor-core/response";
+import { VIORA_ADVISOR_MODEL } from "@/lib/advisor-core/server/config.server";
+import OpenAI from "openai";
 
 export interface DebriefExercise {
   name: string;
@@ -105,59 +111,58 @@ export const generateCoachDebrief = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ({ ctx: (input ?? {}) as CoachDebriefContext }))
   .handler(async ({ data }): Promise<CoachDebrief> => {
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new DebriefNotConnectedError("LOVABLE_API_KEY חסר בשרת.");
-
-    let res: Response;
+    let client: OpenAI;
     try {
-      res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${key}`,
+      client = createOpenAIClient();
+    } catch (e) {
+      throw new DebriefNotConnectedError("OPENAI_API_KEY חסר בשרת.");
+    }
+
+    let response;
+    try {
+      response = await client.responses.create({
+        model: VIORA_ADVISOR_MODEL,
+        instructions: SYSTEM_PROMPT,
+        input: [
+          {
+            role: "user",
+            content: `נתוני האימון שהסתיים. השב JSON בלבד. וריאציה #${Math.floor(
+              Math.random() * 100000,
+            )} — פתח אחרת ממה שהיית פותח בדרך כלל.\n\n${JSON.stringify(data.ctx)}`,
+          },
+        ],
+        text: {
+          format: { type: "json_schema", name: "debrief_schema", schema: { type: "object" } },
         },
-        body: JSON.stringify({
-          model: MODEL,
-          // Higher temperature + a random seed hint keep every debrief distinct.
-          temperature: 1,
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            {
-              role: "user",
-              content: `נתוני האימון שהסתיים. השב JSON בלבד. וריאציה #${Math.floor(
-                Math.random() * 100000,
-              )} — פתח אחרת ממה שהיית פותח בדרך כלל.\n\n${JSON.stringify(data.ctx)}`,
-            },
-          ],
-          response_format: { type: "json_object" },
-        }),
       });
     } catch (e) {
+      if (e instanceof OpenAI.APIError) {
+        const category = classifyOpenAIAPIError(e);
+        if (category === "OPENAI_INSUFFICIENT_QUOTA" || category === "OPENAI_RATE_LIMIT") {
+          return {
+            greeting:
+              category === "OPENAI_INSUFFICIENT_QUOTA"
+                ? "אזלו זיכויי ה-AI — הדיברוף האישי יחזור ברגע שהזיכויים יתחדשו."
+                : "יותר מדי בקשות ל-AI כרגע — ננסה שוב בקרוב.",
+            paragraphs: [],
+            highlights: [],
+            nextFocus: null,
+            recovery: null,
+            nutrition: null,
+            hydration: null,
+            unavailable: true,
+          };
+        }
+        throw new DebriefNotConnectedError(`שגיאת ספק (${e.status}): ${e.message.slice(0, 180)}`);
+      }
+      if (e instanceof AdvisorCoreError) {
+        throw new DebriefNotConnectedError(`שגיאת ספק: ${e.message}`);
+      }
       throw new DebriefNotConnectedError(`לא ניתן להגיע ל-AI: ${(e as Error).message}`);
     }
 
-    if (res.status === 402 || res.status === 429) {
-      return {
-        greeting:
-          res.status === 402
-            ? "אזלו זיכויי ה-AI — הדיברוף האישי יחזור ברגע שהזיכויים יתחדשו."
-            : "יותר מדי בקשות ל-AI כרגע — ננסה שוב בקרוב.",
-        paragraphs: [],
-        highlights: [],
-        nextFocus: null,
-        recovery: null,
-        nutrition: null,
-        hydration: null,
-        unavailable: true,
-      };
-    }
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      throw new DebriefNotConnectedError(`שגיאת ספק (${res.status}): ${body.slice(0, 180)}`);
-    }
-
-    const json = await res.json();
-    const raw: string = json?.choices?.[0]?.message?.content ?? "";
+    const extraction = extractResponseText(response);
+    const raw: string = extraction.text;
     const match = raw.match(/\{[\s\S]*\}/);
     if (!match) throw new DebriefNotConnectedError("תשובת AI לא תקינה.");
 
@@ -169,10 +174,16 @@ export const generateCoachDebrief = createServerFn({ method: "POST" })
     }
 
     const paragraphs = Array.isArray(parsed.paragraphs)
-      ? parsed.paragraphs.map((p) => String(p).trim()).filter(Boolean).slice(0, 5)
+      ? parsed.paragraphs
+          .map((p) => String(p).trim())
+          .filter(Boolean)
+          .slice(0, 5)
       : [];
     const highlights = Array.isArray(parsed.highlights)
-      ? parsed.highlights.map((p) => String(p).trim()).filter(Boolean).slice(0, 3)
+      ? parsed.highlights
+          .map((p) => String(p).trim())
+          .filter(Boolean)
+          .slice(0, 3)
       : [];
 
     return {
