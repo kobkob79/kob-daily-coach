@@ -577,15 +577,17 @@ function ExerciseDetailPage() {
         </button>
       </div>
 
-      {/* Primary action: finish the active set, directly below the table */}
+      {/* Primary action: finish the active set, directly below the table.
+          While a rest timer is running, the athlete must tap ▶ on the set
+          itself first — that's the "I'm starting now" signal. */}
       {activeSet ? (
         <Button
           className="h-12 w-full text-base font-extrabold shadow-glow-accent"
           onClick={() => completeMut.mutate(activeSet)}
-          disabled={completeMut.isPending}
+          disabled={completeMut.isPending || rest.active}
         >
           <CheckCircle2 className="ml-1 h-5 w-5" />
-          סיימתי סט {activeSet.set_number}
+          {rest.active ? "לחץ ▶ כדי להתחיל" : `סיימתי סט ${activeSet.set_number}`}
         </Button>
       ) : (
         <div className="rounded-2xl border border-primary bg-primary/[0.06] p-3 shadow-glow">
@@ -768,7 +770,7 @@ function SetRow({
           type="number"
           step="0.5"
           value={w}
-          disabled={locked}
+          disabled={locked || restActive}
           onChange={(e) => setW(e.target.value)}
           onBlur={() => commit("weight_kg", w)}
           className="h-9 min-w-0 text-center text-sm font-bold tabular-nums"
@@ -777,7 +779,7 @@ function SetRow({
           inputMode="numeric"
           type="number"
           value={r}
-          disabled={locked}
+          disabled={locked || restActive}
           onChange={(e) => setR(e.target.value)}
           onBlur={() => commit("reps", r)}
           className="h-9 min-w-0 text-center text-sm font-bold tabular-nums"
