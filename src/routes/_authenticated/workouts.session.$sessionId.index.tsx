@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Check, Trophy, ChevronLeft, ChevronRight, Flame, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { fieldSetForExercise } from "@/lib/exercise-types";
 import {
   discardSession,
   ensureSessionRestored,
@@ -274,6 +275,7 @@ function OverviewPage() {
                 const isDone = done === total && total > 0;
                 const isCurrent = exerciseId === currentExerciseId;
                 const inProgress = done > 0 && !isDone;
+                const isTimed = fieldSetForExercise(ex?.muscle_group) !== "strength";
                 const bestWeight = Math.max(
                   0,
                   ...exSets.filter((s) => s.completed_at).map((s) => s.weight_kg ?? 0),
@@ -284,6 +286,10 @@ function OverviewPage() {
                 const displayWeight =
                   (firstOpen ?? exSets[0])?.weight_kg ?? null;
                 const displayReps = (firstOpen ?? exSets[0])?.reps ?? null;
+                const displayDurationMin = (() => {
+                  const sec = (firstOpen ?? exSets[0])?.duration_seconds ?? null;
+                  return sec != null ? Math.round(sec / 60) : null;
+                })();
                 return (
                   <Link
                     key={exerciseId}
@@ -347,12 +353,20 @@ function OverviewPage() {
                           {done}/{total} סטים
                         </span>
                         <span className="text-muted-foreground">·</span>
-                        <span className="font-extrabold text-primary">
-                          {displayWeight != null ? `${displayWeight}` : "—"}
-                        </span>
-                        <span className="text-muted-foreground">ק״ג</span>
-                        <span className="text-muted-foreground">×</span>
-                        <span className="font-bold">{displayReps ?? "—"}</span>
+                        {isTimed ? (
+                          <span className="font-extrabold text-primary">
+                            {displayDurationMin != null ? `${displayDurationMin} דק'` : "—"}
+                          </span>
+                        ) : (
+                          <>
+                            <span className="font-extrabold text-primary">
+                              {displayWeight != null ? `${displayWeight}` : "—"}
+                            </span>
+                            <span className="text-muted-foreground">ק״ג</span>
+                            <span className="text-muted-foreground">×</span>
+                            <span className="font-bold">{displayReps ?? "—"}</span>
+                          </>
+                        )}
                       </div>
                     </div>
                     <ChevronLeft className="h-4 w-4 shrink-0 text-muted-foreground" />

@@ -32,6 +32,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  ChevronDown,
   ChevronRight,
   Trash2,
   Plus,
@@ -42,6 +43,7 @@ import {
   Repeat,
 } from "lucide-react";
 import { toast } from "sonner";
+import { fieldSetForExercise, type ExerciseFieldSet } from "@/lib/exercise-types";
 import {
   deleteSet,
   estimate1RM,
@@ -58,7 +60,10 @@ import {
 import { useWorkoutTimer, formatTotalTime } from "@/hooks/useWorkoutTimer";
 import { ExerciseHero } from "@/components/workouts/ExerciseHero";
 import { ExercisePicker } from "@/components/workouts/ExercisePicker";
-import { formatPerformance } from "@/components/workouts/PreviousVsCurrent";
+import {
+  formatPerformance,
+  type PreviousPerformance,
+} from "@/components/workouts/PreviousVsCurrent";
 import { useSessionRestTimer } from "@/components/workouts/RestTimerProvider";
 import {
   PRCelebration,
@@ -67,6 +72,37 @@ import {
 } from "@/components/workouts/PRCelebration";
 
 const DEFAULT_REST = 90;
+
+/** Every field a set row can edit, across all exercise types. */
+type EditableSetField =
+  | "weight_kg"
+  | "reps"
+  | "duration_seconds"
+  | "avg_speed_kmh"
+  | "distance_km"
+  | "incline_pct"
+  | "avg_heart_rate"
+  | "max_heart_rate"
+  | "recovery_heart_rate"
+  | "calories"
+  | "cadence"
+  | "side"
+  | "pain_level";
+
+/**
+ * Per-set readings (heart rate, calories, cadence...) and mobility side
+ * shouldn't carry forward to future sets the way a working weight or a
+ * planned duration should.
+ */
+const NON_PROPAGATABLE_FIELDS = new Set<EditableSetField>([
+  "avg_heart_rate",
+  "max_heart_rate",
+  "recovery_heart_rate",
+  "calories",
+  "cadence",
+  "side",
+  "pain_level",
+]);
 
 export const Route = createFileRoute(
   "/_authenticated/workouts/session/$sessionId/exercise/$exerciseId",
@@ -139,11 +175,18 @@ function ExerciseDetailPage() {
     queryFn: () => getLastPerformanceByExercise(exerciseId),
   });
 
+  const fieldSet = fieldSetForExercise(exQ.data?.muscle_group, exQ.data?.equipment);
+  const isTimed = fieldSet !== "strength";
+
   const prStats = prQ.data ?? EMPTY_PR_STATS;
   const previousBySetNumber = useMemo(() => {
-    const map = new Map<number, { weightKg: number | null; reps: number | null }>();
+    const map = new Map<number, PreviousPerformance>();
     for (const s of prevQ.data ?? []) {
-      map.set(s.set_number, { weightKg: s.weight_kg, reps: s.reps });
+      map.set(s.set_number, {
+        weightKg: s.weight_kg,
+        reps: s.reps,
+        durationSec: s.duration_seconds,
+      });
     }
     return map;
   }, [prevQ.data]);
@@ -201,6 +244,10 @@ function ExerciseDetailPage() {
   /** Which records a just-completed set beat. */
   const detectSetPRs = useCallback(
     (s: SessionSet): PRKind[] => {
+      if (isTimed) {
+        const duration = s.duration_seconds ?? 0;
+        return duration > 0 && duration > prStats.durationSec ? ["duration"] : [];
+      }
       const w = s.weight_kg ?? 0;
       const r = s.reps ?? 0;
       if (w <= 0 && r <= 0) return [];
@@ -211,7 +258,16 @@ function ExerciseDetailPage() {
       if (estimate1RM(w, r) > prStats.e1rmKg && estimate1RM(w, r) > 0) kinds.push("e1rm");
       return kinds;
     },
-    [prStats],
+    [prStats, isTimed],
+  );
+
+  /** Short Hebrew detail line for the PR celebration banner. */
+  const formatPRDetail = useCallback(
+    (s: SessionSet): string =>
+      isTimed
+        ? `${Math.round((s.duration_seconds ?? 0) / 60)} דק'`
+        : `${s.weight_kg ?? "—"} ק״ג × ${s.reps ?? "—"}`,
+    [isTimed],
   );
 
   const completeMut = useMutation({
@@ -231,7 +287,7 @@ function ExerciseDetailPage() {
       if (kinds.length > 0) {
         setPr({
           kinds,
-          detail: `${s.weight_kg ?? "—"} ק״ג × ${s.reps ?? "—"}`,
+          detail: formatPRDetail(s),
           id: `${s.id}-${Date.now()}`,
         });
         try {
@@ -264,7 +320,11 @@ function ExerciseDetailPage() {
     }: {
       id: string;
       patch: Partial<SessionSet>;
-      propagate?: { field: "weight_kg" | "reps"; value: number | null; fromSetNumber: number };
+      propagate?: {
+        field: EditableSetField;
+        value: number | string | null;
+        fromSetNumber: number;
+      };
       /** The set as it looked before the edit — used for live PR recalculation. */
       source?: SessionSet;
     }) => {
@@ -293,7 +353,7 @@ function ExerciseDetailPage() {
         if (kinds.length > 0) {
           setPr({
             kinds,
-            detail: `${edited.weight_kg ?? "—"} ק״ג × ${edited.reps ?? "—"}`,
+            detail: formatPRDetail(edited),
             id: `${edited.id}-${Date.now()}`,
           });
         }
@@ -313,8 +373,9 @@ function ExerciseDetailPage() {
         exerciseId,
         position: nextPos,
         setNumber: nextNumber,
-        weightKg: last?.weight_kg ?? null,
-        reps: last?.reps ?? null,
+        weightKg: isTimed ? null : (last?.weight_kg ?? null),
+        reps: isTimed ? null : (last?.reps ?? null),
+        durationSeconds: isTimed ? (last?.duration_seconds ?? null) : null,
         plannedRestSec: last?.planned_rest_seconds ?? DEFAULT_REST,
       });
     },
@@ -361,11 +422,20 @@ function ExerciseDetailPage() {
       .filter((s) => s.completed_at)
       .reduce((sum, s) => sum + (s.weight_kg ?? 0) * (s.reps ?? 0), 0),
   );
+  const exerciseDurationSec = sets
+    .filter((s) => s.completed_at)
+    .reduce((sum, s) => sum + (s.duration_seconds ?? 0), 0);
   const bestWeight = Math.max(
     0,
     ...sets.filter((s) => s.completed_at).map((s) => s.weight_kg ?? 0),
   );
-  const isPR = bestWeight > 0 && bestWeight > prStats.weightKg;
+  const bestDurationSec = Math.max(
+    0,
+    ...sets.filter((s) => s.completed_at).map((s) => s.duration_seconds ?? 0),
+  );
+  const isPR = isTimed
+    ? bestDurationSec > 0 && bestDurationSec > prStats.durationSec
+    : bestWeight > 0 && bestWeight > prStats.weightKg;
 
   const scrollToActive = useCallback(() => {
     activeCardRef.current?.scrollIntoView({
@@ -422,7 +492,9 @@ function ExerciseDetailPage() {
   };
 
   const progressPct = sets.length > 0 ? Math.round((doneCount / sets.length) * 100) : 0;
-  const hasPrevRecord = prStats.weightKg > 0 || prStats.reps > 0;
+  const hasPrevRecord = isTimed
+    ? prStats.durationSec > 0
+    : prStats.weightKg > 0 || prStats.reps > 0;
 
   /**
    * Header meta: live progress, personal-record badge and the previous-vs-current
@@ -450,9 +522,13 @@ function ExerciseDetailPage() {
           <span className="flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
             <Trophy className="h-3 w-3" />
             שיא אישי{" "}
-            {prStats.weightKg > 0 ? `${prStats.weightKg} ק״ג` : `${prStats.reps} חזרות`}
+            {isTimed
+              ? `${Math.round(prStats.durationSec / 60)} דק'`
+              : prStats.weightKg > 0
+                ? `${prStats.weightKg} ק״ג`
+                : `${prStats.reps} חזרות`}
           </span>
-          {prStats.e1rmKg > 0 && (
+          {!isTimed && prStats.e1rmKg > 0 && (
             <span className="rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
               1RM משוער {prStats.e1rmKg} ק״ג
             </span>
@@ -535,12 +611,35 @@ function ExerciseDetailPage() {
 
       {/* Set table — the single source of truth for the active set */}
       <div className="space-y-1.5">
-        <div className="grid grid-cols-[2rem_1fr_1fr_3rem] items-center gap-2 px-2 text-[9px] uppercase tracking-wider text-muted-foreground">
-          <span>#</span>
-          <span>משקל (ק״ג)</span>
-          <span>חזרות</span>
-          <span />
-        </div>
+        {fieldSet === "cardio" ? (
+          <div className="grid grid-cols-[2rem_1fr_1fr_3rem] items-center gap-2 px-2 text-[9px] uppercase tracking-wider text-muted-foreground">
+            <span>#</span>
+            <span>זמן (דק׳)</span>
+            <span>מהירות (קמ״ש)</span>
+            <span />
+          </div>
+        ) : fieldSet === "core" ? (
+          <div className="grid grid-cols-[2rem_1fr_3rem] items-center gap-2 px-2 text-[9px] uppercase tracking-wider text-muted-foreground">
+            <span>#</span>
+            <span>זמן (דק׳)</span>
+            <span />
+          </div>
+        ) : fieldSet === "stretch" ? (
+          <div className="grid grid-cols-[2rem_1fr_1fr_1fr_3rem] items-center gap-2 px-2 text-[9px] uppercase tracking-wider text-muted-foreground">
+            <span>#</span>
+            <span>זמן (דק׳)</span>
+            <span>צד</span>
+            <span>כאב</span>
+            <span />
+          </div>
+        ) : (
+          <div className="grid grid-cols-[2rem_1fr_1fr_3rem] items-center gap-2 px-2 text-[9px] uppercase tracking-wider text-muted-foreground">
+            <span>#</span>
+            <span>משקל (ק״ג)</span>
+            <span>חזרות</span>
+            <span />
+          </div>
+        )}
 
         {sets.map((s) => (
           <SetRow
@@ -549,6 +648,7 @@ function ExerciseDetailPage() {
             set={s}
             isActive={s.id === activeSet?.id}
             locked={locked}
+            fieldSet={fieldSet}
             restActive={s.id === activeSet?.id && rest.active}
             onStartSet={() => rest.clear()}
             previous={previousBySetNumber.get(s.set_number) ?? null}
@@ -560,9 +660,10 @@ function ExerciseDetailPage() {
                 id: s.id,
                 patch: { [field]: value } as Partial<SessionSet>,
                 source: s,
-                propagate: s.completed_at
-                  ? undefined
-                  : { field, value, fromSetNumber: s.set_number },
+                propagate:
+                  s.completed_at || NON_PROPAGATABLE_FIELDS.has(field)
+                    ? undefined
+                    : { field, value, fromSetNumber: s.set_number },
               })
             }
           />
@@ -597,7 +698,13 @@ function ExerciseDetailPage() {
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {doneCount} סטים
-            {exerciseVolume > 0 ? ` · נפח ${exerciseVolume} ק״ג` : ""}
+            {isTimed
+              ? exerciseDurationSec > 0
+                ? ` · ${Math.round(exerciseDurationSec / 60)} דק'`
+                : ""
+              : exerciseVolume > 0
+                ? ` · נפח ${exerciseVolume} ק״ג`
+                : ""}
           </p>
           {nextExerciseId && (
             <p className="mt-0.5 text-xs text-muted-foreground">
@@ -674,6 +781,7 @@ function SetRow({
   set,
   isActive,
   locked,
+  fieldSet,
   restActive,
   onStartSet,
   previous,
@@ -687,28 +795,61 @@ function SetRow({
   isActive: boolean;
   /** True once the workout is finished — only then do sets become read-only. */
   locked: boolean;
+  /** Which fields this exercise logs by. */
+  fieldSet: ExerciseFieldSet;
   /** This is the active set and a rest timer is currently counting down/over. */
   restActive: boolean;
   /** Dismisses the rest timer immediately — "I'm starting this set now." */
   onStartSet: () => void;
-  previous: { weightKg: number | null; reps: number | null } | null;
+  previous: PreviousPerformance | null;
   onComplete: () => void;
   onUncomplete: () => void;
   onDelete: () => void;
-  onChange: (field: "weight_kg" | "reps", value: number | null) => void;
+  onChange: (field: EditableSetField, value: number | string | null) => void;
 }) {
   const done = !!set.completed_at;
+  const disabled = locked || restActive;
 
   const [w, setW] = useState<string>(set.weight_kg?.toString() ?? "");
   const [r, setR] = useState<string>(set.reps?.toString() ?? "");
-  const initial = useRef({ w: set.weight_kg, r: set.reps });
+  const [durationMin, setDurationMin] = useState<string>(
+    set.duration_seconds != null ? String(Math.round(set.duration_seconds / 60)) : "",
+  );
+  const [speed, setSpeed] = useState<string>(set.avg_speed_kmh?.toString() ?? "");
+  const [side, setSide] = useState<string>(set.side ?? "");
+  const [painLevel, setPainLevel] = useState<string>(set.pain_level ?? "");
+  const initial = useRef({
+    w: set.weight_kg,
+    r: set.reps,
+    durationSec: set.duration_seconds,
+    speed: set.avg_speed_kmh,
+  });
 
   // Rehydrate when parent sets change (propagation)
   useEffect(() => {
     setW(set.weight_kg?.toString() ?? "");
     setR(set.reps?.toString() ?? "");
-    initial.current = { w: set.weight_kg, r: set.reps };
-  }, [set.weight_kg, set.reps, set.id]);
+    setDurationMin(
+      set.duration_seconds != null ? String(Math.round(set.duration_seconds / 60)) : "",
+    );
+    setSpeed(set.avg_speed_kmh?.toString() ?? "");
+    setSide(set.side ?? "");
+    setPainLevel(set.pain_level ?? "");
+    initial.current = {
+      w: set.weight_kg,
+      r: set.reps,
+      durationSec: set.duration_seconds,
+      speed: set.avg_speed_kmh,
+    };
+  }, [
+    set.weight_kg,
+    set.reps,
+    set.duration_seconds,
+    set.avg_speed_kmh,
+    set.side,
+    set.pain_level,
+    set.id,
+  ]);
 
   const commit = (field: "weight_kg" | "reps", raw: string) => {
     const value = raw === "" ? null : Number(raw);
@@ -716,6 +857,21 @@ function SetRow({
     if (field === "weight_kg" && value === initial.current.w) return;
     if (field === "reps" && value === initial.current.r) return;
     onChange(field, value);
+  };
+
+  const commitDuration = (raw: string) => {
+    const minutes = raw === "" ? null : Number(raw);
+    if (Number.isNaN(minutes as number)) return;
+    const seconds = minutes == null ? null : Math.round(minutes * 60);
+    if (seconds === initial.current.durationSec) return;
+    onChange("duration_seconds", seconds);
+  };
+
+  const commitSpeed = (raw: string) => {
+    const value = raw === "" ? null : Number(raw);
+    if (Number.isNaN(value as number)) return;
+    if (value === initial.current.speed) return;
+    onChange("avg_speed_kmh", value);
   };
 
   const rowClass = done
@@ -730,10 +886,23 @@ function SetRow({
       ? "bg-accent text-accent-foreground"
       : "bg-muted";
 
-  const prevText =
-    previous && (previous.weightKg != null || previous.reps != null)
-      ? `${previous.weightKg ?? "—"} × ${previous.reps ?? "—"}`
-      : "ניסיון ראשון";
+  const prevText = formatPerformance(previous) ?? "ניסיון ראשון";
+
+  const gridClass =
+    fieldSet === "core"
+      ? restActive
+        ? "grid-cols-[2.75rem_1fr_3rem]"
+        : "grid-cols-[2rem_1fr_3rem]"
+      : fieldSet === "stretch"
+        ? restActive
+          ? "grid-cols-[2.75rem_1fr_1fr_1fr_3rem]"
+          : "grid-cols-[2rem_1fr_1fr_1fr_3rem]"
+        : restActive
+          ? "grid-cols-[2.75rem_1fr_1fr_3rem]"
+          : "grid-cols-[2rem_1fr_1fr_3rem]";
+
+  const selectClass =
+    "h-9 min-w-0 rounded-md border border-input bg-transparent px-1 text-center text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
     <div
@@ -743,11 +912,7 @@ function SetRow({
       }`}
 
     >
-      <div
-        className={`grid items-center gap-2 ${
-          restActive ? "grid-cols-[2.75rem_1fr_1fr_3rem]" : "grid-cols-[2rem_1fr_1fr_3rem]"
-        }`}
-      >
+      <div className={`grid items-center gap-2 ${gridClass}`}>
         {restActive ? (
           <button
             onClick={onStartSet}
@@ -765,25 +930,113 @@ function SetRow({
             {set.set_number}
           </span>
         )}
-        <Input
-          inputMode="decimal"
-          type="number"
-          step="0.5"
-          value={w}
-          disabled={locked || restActive}
-          onChange={(e) => setW(e.target.value)}
-          onBlur={() => commit("weight_kg", w)}
-          className="h-9 min-w-0 text-center text-sm font-bold tabular-nums"
-        />
-        <Input
-          inputMode="numeric"
-          type="number"
-          value={r}
-          disabled={locked || restActive}
-          onChange={(e) => setR(e.target.value)}
-          onBlur={() => commit("reps", r)}
-          className="h-9 min-w-0 text-center text-sm font-bold tabular-nums"
-        />
+
+        {fieldSet === "strength" && (
+          <>
+            <Input
+              inputMode="decimal"
+              type="number"
+              step="0.5"
+              value={w}
+              disabled={disabled}
+              onChange={(e) => setW(e.target.value)}
+              onBlur={() => commit("weight_kg", w)}
+              className="h-9 min-w-0 text-center text-sm font-bold tabular-nums"
+            />
+            <Input
+              inputMode="numeric"
+              type="number"
+              value={r}
+              disabled={disabled}
+              onChange={(e) => setR(e.target.value)}
+              onBlur={() => commit("reps", r)}
+              className="h-9 min-w-0 text-center text-sm font-bold tabular-nums"
+            />
+          </>
+        )}
+
+        {fieldSet === "cardio" && (
+          <>
+            <Input
+              inputMode="numeric"
+              type="number"
+              placeholder="דק׳"
+              value={durationMin}
+              disabled={disabled}
+              onChange={(e) => setDurationMin(e.target.value)}
+              onBlur={() => commitDuration(durationMin)}
+              className="h-9 min-w-0 text-center text-sm font-bold tabular-nums"
+            />
+            <Input
+              inputMode="decimal"
+              type="number"
+              step="0.1"
+              placeholder="קמ״ש"
+              value={speed}
+              disabled={disabled}
+              onChange={(e) => setSpeed(e.target.value)}
+              onBlur={() => commitSpeed(speed)}
+              className="h-9 min-w-0 text-center text-sm font-bold tabular-nums"
+            />
+          </>
+        )}
+
+        {fieldSet === "core" && (
+          <Input
+            inputMode="numeric"
+            type="number"
+            placeholder="דק׳"
+            value={durationMin}
+            disabled={disabled}
+            onChange={(e) => setDurationMin(e.target.value)}
+            onBlur={() => commitDuration(durationMin)}
+            className="h-9 min-w-0 text-center text-sm font-bold tabular-nums"
+          />
+        )}
+
+        {fieldSet === "stretch" && (
+          <>
+            <Input
+              inputMode="numeric"
+              type="number"
+              placeholder="דק׳"
+              value={durationMin}
+              disabled={disabled}
+              onChange={(e) => setDurationMin(e.target.value)}
+              onBlur={() => commitDuration(durationMin)}
+              className="h-9 min-w-0 text-center text-sm font-bold tabular-nums"
+            />
+            <select
+              value={side}
+              disabled={disabled}
+              onChange={(e) => {
+                setSide(e.target.value);
+                onChange("side", e.target.value === "" ? null : e.target.value);
+              }}
+              className={selectClass}
+            >
+              <option value="">—</option>
+              <option value="left">שמאל</option>
+              <option value="right">ימין</option>
+              <option value="both">שני הצדדים</option>
+            </select>
+            <select
+              value={painLevel}
+              disabled={disabled}
+              onChange={(e) => {
+                setPainLevel(e.target.value);
+                onChange("pain_level", e.target.value === "" ? null : e.target.value);
+              }}
+              className={selectClass}
+            >
+              <option value="">—</option>
+              <option value="none">אין</option>
+              <option value="mild">קל</option>
+              <option value="significant">משמעותי</option>
+            </select>
+          </>
+        )}
+
         <div className="flex items-center justify-end gap-1">
           {done ? (
             <button
@@ -824,6 +1077,11 @@ function SetRow({
           )}
         </div>
       </div>
+
+      {fieldSet === "cardio" && (
+        <CardioExtraMetrics set={set} disabled={disabled} onChange={onChange} />
+      )}
+
       {!done ? (
         <p className="mt-0.5 px-1 text-[9px] text-muted-foreground">קודם: {prevText}</p>
       ) : !locked ? (
@@ -833,6 +1091,136 @@ function SetRow({
       ) : null}
 
     </div>
+  );
+}
+
+/* ---------------- CardioExtraMetrics ---------------- */
+
+/**
+ * Optional manual metrics for a cardio set — distance, incline, heart rate,
+ * calories, cadence. Collapsed by default so the row stays scannable; this
+ * is the groundwork the sprint's "smartwatch architecture" asked for — a
+ * future wearable integration can fill these in without any schema change.
+ */
+function CardioExtraMetrics({
+  set,
+  disabled,
+  onChange,
+}: {
+  set: SessionSet;
+  disabled: boolean;
+  onChange: (field: EditableSetField, value: number | string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const hasValues =
+    set.distance_km != null ||
+    set.incline_pct != null ||
+    set.avg_heart_rate != null ||
+    set.max_heart_rate != null ||
+    set.calories != null ||
+    set.cadence != null ||
+    set.recovery_heart_rate != null;
+
+  return (
+    <div className="mt-1.5">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 px-1 text-[10px] font-medium text-muted-foreground hover:text-foreground"
+      >
+        <ChevronDown className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`} />
+        מדדים נוספים{hasValues && !open ? " •" : ""}
+      </button>
+      {open && (
+        <div className="mt-1.5 grid grid-cols-3 gap-1.5 px-1">
+          <MetricField
+            label="מרחק (ק״מ)"
+            value={set.distance_km}
+            disabled={disabled}
+            onCommit={(v) => onChange("distance_km", v)}
+          />
+          <MetricField
+            label="שיפוע (%)"
+            value={set.incline_pct}
+            disabled={disabled}
+            onCommit={(v) => onChange("incline_pct", v)}
+          />
+          <MetricField
+            label="דופק ממוצע"
+            value={set.avg_heart_rate}
+            disabled={disabled}
+            onCommit={(v) => onChange("avg_heart_rate", v)}
+          />
+          <MetricField
+            label="דופק מקס׳"
+            value={set.max_heart_rate}
+            disabled={disabled}
+            onCommit={(v) => onChange("max_heart_rate", v)}
+          />
+          <MetricField
+            label="דופק התאוששות"
+            value={set.recovery_heart_rate}
+            disabled={disabled}
+            onCommit={(v) => onChange("recovery_heart_rate", v)}
+          />
+          <MetricField
+            label="קלוריות"
+            value={set.calories}
+            disabled={disabled}
+            onCommit={(v) => onChange("calories", v)}
+          />
+          <MetricField
+            label="קדנס"
+            value={set.cadence}
+            disabled={disabled}
+            onCommit={(v) => onChange("cadence", v)}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A small labeled numeric field that commits on blur, for the optional metrics grid. */
+function MetricField({
+  label,
+  value,
+  disabled,
+  onCommit,
+}: {
+  label: string;
+  value: number | null;
+  disabled: boolean;
+  onCommit: (value: number | null) => void;
+}) {
+  const [local, setLocal] = useState<string>(value?.toString() ?? "");
+  const initial = useRef(value);
+
+  useEffect(() => {
+    setLocal(value?.toString() ?? "");
+    initial.current = value;
+  }, [value]);
+
+  const commit = () => {
+    const v = local === "" ? null : Number(local);
+    if (Number.isNaN(v as number)) return;
+    if (v === initial.current) return;
+    onCommit(v);
+  };
+
+  return (
+    <label className="space-y-0.5">
+      <span className="block text-[9px] text-muted-foreground">{label}</span>
+      <Input
+        inputMode="decimal"
+        type="number"
+        step="any"
+        value={local}
+        disabled={disabled}
+        onChange={(e) => setLocal(e.target.value)}
+        onBlur={commit}
+        className="h-8 min-w-0 text-center text-xs font-bold tabular-nums"
+      />
+    </label>
   );
 }
 

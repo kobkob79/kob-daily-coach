@@ -11,12 +11,14 @@ import { cn } from "@/lib/utils";
 export interface PreviousPerformance {
   weightKg: number | null;
   reps: number | null;
+  durationSec?: number | null;
 }
 
 export function formatPerformance(p: PreviousPerformance | null | undefined): string | null {
   if (!p) return null;
   const w = p.weightKg;
   const r = p.reps;
+  if (p.durationSec != null) return `${Math.round(p.durationSec / 60)} דק'`;
   if (w == null && r == null) return null;
   if (w == null) return `${r} חזרות`;
   if (r == null) return `${w} ק״ג`;

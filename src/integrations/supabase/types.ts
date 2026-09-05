@@ -1436,54 +1436,90 @@ export type Database = {
       workout_sets: {
         Row: {
           actual_rest_seconds: number | null
+          avg_heart_rate: number | null
+          avg_speed_kmh: number | null
+          cadence: number | null
+          calories: number | null
           completed_at: string | null
           created_at: string
+          distance_km: number | null
+          duration_seconds: number | null
           exercise_id: string
           id: string
+          incline_pct: number | null
+          max_heart_rate: number | null
           notes: string | null
           overtime_seconds: number | null
+          pain_level: string | null
           planned_rest_seconds: number | null
           position: number | null
+          recovery_heart_rate: number | null
           reps: number | null
           rpe: number | null
           session_id: string | null
           set_number: number
+          side: string | null
+          time_under_tension_seconds: number | null
           user_id: string
           weight_kg: number | null
           workout_id: string | null
         }
         Insert: {
           actual_rest_seconds?: number | null
+          avg_heart_rate?: number | null
+          avg_speed_kmh?: number | null
+          cadence?: number | null
+          calories?: number | null
           completed_at?: string | null
           created_at?: string
+          distance_km?: number | null
+          duration_seconds?: number | null
           exercise_id: string
           id?: string
+          incline_pct?: number | null
+          max_heart_rate?: number | null
           notes?: string | null
           overtime_seconds?: number | null
+          pain_level?: string | null
           planned_rest_seconds?: number | null
           position?: number | null
+          recovery_heart_rate?: number | null
           reps?: number | null
           rpe?: number | null
           session_id?: string | null
           set_number?: number
+          side?: string | null
+          time_under_tension_seconds?: number | null
           user_id: string
           weight_kg?: number | null
           workout_id?: string | null
         }
         Update: {
           actual_rest_seconds?: number | null
+          avg_heart_rate?: number | null
+          avg_speed_kmh?: number | null
+          cadence?: number | null
+          calories?: number | null
           completed_at?: string | null
           created_at?: string
+          distance_km?: number | null
+          duration_seconds?: number | null
           exercise_id?: string
           id?: string
+          incline_pct?: number | null
+          max_heart_rate?: number | null
           notes?: string | null
           overtime_seconds?: number | null
+          pain_level?: string | null
           planned_rest_seconds?: number | null
           position?: number | null
+          recovery_heart_rate?: number | null
           reps?: number | null
           rpe?: number | null
           session_id?: string | null
           set_number?: number
+          side?: string | null
+          time_under_tension_seconds?: number | null
           user_id?: string
           weight_kg?: number | null
           workout_id?: string | null
@@ -1518,6 +1554,7 @@ export type Database = {
           exercise_id: string
           id: string
           position: number
+          target_duration_seconds: number | null
           target_reps: number | null
           target_sets: number
           target_weight_kg: number | null
@@ -1529,6 +1566,7 @@ export type Database = {
           exercise_id: string
           id?: string
           position?: number
+          target_duration_seconds?: number | null
           target_reps?: number | null
           target_sets?: number
           target_weight_kg?: number | null
@@ -1540,6 +1578,7 @@ export type Database = {
           exercise_id?: string
           id?: string
           position?: number
+          target_duration_seconds?: number | null
           target_reps?: number | null
           target_sets?: number
           target_weight_kg?: number | null

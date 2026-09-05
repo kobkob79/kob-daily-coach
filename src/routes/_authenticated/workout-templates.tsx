@@ -17,6 +17,7 @@ import { Plus, Trash2, Copy, Play, ChevronUp, ChevronDown, ChevronRight } from "
 import { toast } from "sonner";
 import { z } from "zod";
 import { t } from "@/lib/i18n";
+import { fieldSetForExercise } from "@/lib/exercise-types";
 import { ActiveSessionConflictError, startOrResumeSessionForTemplate } from "@/lib/workout-session";
 import { ExercisePicker } from "@/components/workouts/ExercisePicker";
 
@@ -38,6 +39,7 @@ type TExercise = {
   target_sets: number;
   target_reps: number | null;
   target_weight_kg: number | null;
+  target_duration_seconds: number | null;
   exercises: { id: string; name: string; muscle_group: string | null } | null;
 };
 
@@ -93,7 +95,7 @@ function TemplatesPage() {
       if (e2) throw e2;
       const { data: rows, error: e3 } = await supabase
         .from("workout_template_exercises")
-        .select("exercise_id,position,target_sets,target_reps,target_weight_kg")
+        .select("exercise_id,position,target_sets,target_reps,target_weight_kg,target_duration_seconds")
         .eq("template_id", id);
       if (e3) throw e3;
       if (rows?.length) {
@@ -270,7 +272,9 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workout_template_exercises")
-        .select("id,template_id,exercise_id,position,target_sets,target_reps,target_weight_kg,exercises(id,name,muscle_group)")
+        .select(
+          "id,template_id,exercise_id,position,target_sets,target_reps,target_weight_kg,target_duration_seconds,exercises(id,name,muscle_group)",
+        )
         .eq("template_id", templateId)
         .order("position", { ascending: true });
       if (error) throw error;
@@ -299,13 +303,20 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
     mutationFn: async (exerciseId: string) => {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) throw new Error("Not signed in");
+      const { data: ex } = await supabase
+        .from("exercises")
+        .select("muscle_group")
+        .eq("id", exerciseId)
+        .maybeSingle();
+      const fieldSet = fieldSetForExercise(ex?.muscle_group ?? null);
       const nextPos = (rowsQ.data?.length ?? 0);
       const { error } = await supabase.from("workout_template_exercises").insert({
         user_id: u.user.id,
         template_id: templateId,
         exercise_id: exerciseId,
         position: nextPos,
-        target_sets: 3,
+        target_sets: fieldSet === "cardio" ? 1 : 3,
+        target_duration_seconds: fieldSet === "cardio" ? 30 * 60 : fieldSet !== "strength" ? 45 : null,
       });
       if (error) throw error;
     },
@@ -411,6 +422,34 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
+                  {fieldSetForExercise(r.exercises?.muscle_group ?? null) !== "strength" ? (
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <Label className="text-[10px]">{t("templates.targetSets")}</Label>
+                        <DebouncedNumberInput
+                          type="number" min={1} value={r.target_sets ?? 1}
+                          onCommit={(v) => patchRow.mutate({ id: r.id, target_sets: Number(v) || 1 })}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[10px]">{t("templates.targetDuration")}</Label>
+                        <DebouncedNumberInput
+                          type="number" min={0}
+                          value={
+                            r.target_duration_seconds != null
+                              ? Math.round(r.target_duration_seconds / 60)
+                              : ""
+                          }
+                          onCommit={(v) =>
+                            patchRow.mutate({
+                              id: r.id,
+                              target_duration_seconds: v === "" ? null : Number(v) * 60,
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                  ) : (
                   <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
                     <div>
                       <Label className="text-[10px]">{t("templates.targetSets")}</Label>
@@ -444,6 +483,7 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
                       />
                     </div>
                   </div>
+                  )}
                 </div>
               ))}
             </div>
