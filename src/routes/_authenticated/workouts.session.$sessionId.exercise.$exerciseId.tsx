@@ -577,7 +577,7 @@ function ExerciseDetailPage() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 rounded-full bg-primary/15 text-primary hover:bg-primary/25 hover:text-primary"
+            className="h-8 w-8 rounded-full bg-accent/10 text-accent hover:bg-accent/20 hover:text-accent"
             onClick={() => setReplacePickerOpen(true)}
             disabled={replaceMut.isPending}
             aria-label="החלף תרגיל לאימון הזה בלבד"
