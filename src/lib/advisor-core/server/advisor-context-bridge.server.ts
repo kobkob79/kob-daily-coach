@@ -197,7 +197,7 @@ export function createSupabaseAdvisorContextDataSource(
           .gte("created_at", sinceIso),
         supabase
           .from("daily_events")
-          .select("id,user_id,kind,label,amount,unit,created_at,biological_day")
+          .select("id,user_id,kind,label,amount,unit,created_at,biological_day,external_source")
           .eq("user_id", userId)
           .gte("created_at", sinceIso),
         supabase
@@ -408,6 +408,7 @@ export function createSupabaseAdvisorContextDataSource(
                 title: row.label,
                 occurredAt: row.created_at,
                 legacyBiologicalDay: row.biological_day,
+                externalSource: row.external_source,
                 metrics,
               };
             }),

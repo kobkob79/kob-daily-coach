@@ -37,7 +37,12 @@ export interface HealthProjectionRow extends TimelineSourceRow {
 export interface TimelineProvenance {
   sourceTable: string;
   sourceRecordId: string;
-  kind: "direct" | "legacy" | "inferred";
+  // "imported" is reserved for a future bulk historical backfill path (e.g.
+  // a first-connect sync of past Health Connect data) - nothing produces it
+  // yet, since today's data has no signal distinguishing a backfill from an
+  // ordinary live device sync. "device_measured" is real: any row carrying
+  // externalSource (e.g. a daily_events row synced from a wearable) is one.
+  kind: "direct" | "legacy" | "inferred" | "device_measured" | "imported";
   externalSource: string | null;
 }
 
@@ -104,7 +109,13 @@ function item(input: {
     provenance: {
       sourceTable: input.table,
       sourceRecordId: input.row.id,
-      kind: input.legacy ? "legacy" : input.row.bioDayId ? "direct" : "inferred",
+      kind: input.legacy
+        ? "legacy"
+        : input.row.externalSource
+          ? "device_measured"
+          : input.row.bioDayId
+            ? "direct"
+            : "inferred",
       externalSource: input.row.externalSource ?? null,
     },
     sensitivity: input.sensitivity ?? "personal",
