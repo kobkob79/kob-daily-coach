@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
 import { WorkoutHistoryList } from "@/components/history/WorkoutHistoryList";
 
-export const Route = createFileRoute("/_authenticated/workouts/history")({
+export const Route = createFileRoute("/_authenticated/workouts/history/")({
   component: HistoryPage,
 });
 

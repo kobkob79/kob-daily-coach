@@ -11,7 +11,7 @@ import { buildDebriefContext } from "@/lib/coach-debrief";
 import { generateCoachDebrief } from "@/lib/coach-debrief.functions";
 import { fetchLifeProfile } from "@/lib/life-profile";
 
-export const Route = createFileRoute("/_authenticated/workouts/session/$sessionId/debrief")({
+export const Route = createFileRoute("/_authenticated/workouts/session/$sessionId/debrief/")({
   component: DebriefPage,
 });
 
