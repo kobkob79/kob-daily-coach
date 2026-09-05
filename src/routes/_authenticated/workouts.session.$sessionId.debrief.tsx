@@ -120,14 +120,14 @@ function DebriefPage() {
         variant="outline"
         className="h-12 w-full text-base"
         onClick={handleExport}
-        disabled={exporting}
+        disabled={exporting || q.isLoading}
       >
-        {exporting ? (
+        {exporting || q.isLoading ? (
           <Loader2 className="ml-2 h-4 w-4 animate-spin" />
         ) : (
           <Share2 className="ml-2 h-4 w-4" />
         )}
-        ייצוא אימון כטקסט
+        {q.isLoading ? "ממתין לתחקיר המאמן…" : "ייצוא אימון כטקסט"}
       </Button>
 
       <Button
