@@ -492,6 +492,8 @@ export type Database = {
           emoji: string | null
           event_date: string
           event_time: string
+          external_id: string | null
+          external_source: string | null
           id: string
           kind: string
           label: string | null
@@ -507,6 +509,8 @@ export type Database = {
           emoji?: string | null
           event_date?: string
           event_time?: string
+          external_id?: string | null
+          external_source?: string | null
           id?: string
           kind: string
           label?: string | null
@@ -522,6 +526,8 @@ export type Database = {
           emoji?: string | null
           event_date?: string
           event_time?: string
+          external_id?: string | null
+          external_source?: string | null
           id?: string
           kind?: string
           label?: string | null
@@ -1185,6 +1191,60 @@ export type Database = {
         }
         Relationships: []
       }
+      user_wearable_connections: {
+        Row: {
+          access_token_ciphertext: string | null
+          connected_at: string | null
+          created_at: string
+          external_account_id: string | null
+          id: string
+          last_sync_error: string | null
+          last_synced_at: string | null
+          provider: string
+          refresh_token_ciphertext: string | null
+          revoked_at: string | null
+          scopes: string[]
+          status: string
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token_ciphertext?: string | null
+          connected_at?: string | null
+          created_at?: string
+          external_account_id?: string | null
+          id?: string
+          last_sync_error?: string | null
+          last_synced_at?: string | null
+          provider: string
+          refresh_token_ciphertext?: string | null
+          revoked_at?: string | null
+          scopes?: string[]
+          status?: string
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token_ciphertext?: string | null
+          connected_at?: string | null
+          created_at?: string
+          external_account_id?: string | null
+          id?: string
+          last_sync_error?: string | null
+          last_synced_at?: string | null
+          provider?: string
+          refresh_token_ciphertext?: string | null
+          revoked_at?: string | null
+          scopes?: string[]
+          status?: string
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       vision_captures: {
         Row: {
           ai_status: string
@@ -1219,6 +1279,99 @@ export type Database = {
           id?: string
           image_path?: string | null
           notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wearable_metrics: {
+        Row: {
+          bio_day_id: string | null
+          connection_id: string | null
+          created_at: string
+          external_id: string
+          external_source: string
+          id: string
+          metric_type: string
+          occurred_at: string
+          occurred_at_end: string | null
+          raw: Json
+          unit: string
+          user_id: string
+          value: number
+        }
+        Insert: {
+          bio_day_id?: string | null
+          connection_id?: string | null
+          created_at?: string
+          external_id: string
+          external_source: string
+          id?: string
+          metric_type: string
+          occurred_at: string
+          occurred_at_end?: string | null
+          raw?: Json
+          unit: string
+          user_id: string
+          value: number
+        }
+        Update: {
+          bio_day_id?: string | null
+          connection_id?: string | null
+          created_at?: string
+          external_id?: string
+          external_source?: string
+          id?: string
+          metric_type?: string
+          occurred_at?: string
+          occurred_at_end?: string | null
+          raw?: Json
+          unit?: string
+          user_id?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wearable_metrics_bio_day_id_fkey"
+            columns: ["bio_day_id"]
+            isOneToOne: false
+            referencedRelation: "bio_days"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wearable_metrics_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "user_wearable_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wearable_sync_preferences: {
+        Row: {
+          consented_at: string | null
+          created_at: string
+          retain_data_on_disconnect: boolean
+          revoked_at: string | null
+          sync_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          consented_at?: string | null
+          created_at?: string
+          retain_data_on_disconnect?: boolean
+          revoked_at?: string | null
+          sync_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          consented_at?: string | null
+          created_at?: string
+          retain_data_on_disconnect?: boolean
+          revoked_at?: string | null
+          sync_enabled?: boolean
           updated_at?: string
           user_id?: string
         }
