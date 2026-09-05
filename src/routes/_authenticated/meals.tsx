@@ -37,7 +37,7 @@ type Favorite = {
   sort_order: number;
 };
 
-function MealsPage() {
+export function MealsPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const bioDay = biologicalDay(new Date());

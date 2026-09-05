@@ -880,6 +880,7 @@ function Dashboard() {
           <div className="mt-3 flex flex-wrap gap-2 text-[12px] font-semibold">
             <Link
               to="/nutrition"
+              search={{ tab: "meals" }}
               className="rounded-full bg-orange-500/15 px-3 py-1.5 text-orange-200"
             >
               מרכז תזונה

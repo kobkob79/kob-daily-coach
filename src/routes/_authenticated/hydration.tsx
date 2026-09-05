@@ -38,7 +38,7 @@ const PRESETS: { label: string; amount: number; emoji: string }[] = [
   { label: "ליטר", amount: 1000, emoji: "💧" },
 ];
 
-function HydrationPage() {
+export function HydrationPage() {
   const qc = useQueryClient();
   const bioDay = biologicalDay(new Date());
   const todayIso = format(new Date(), "yyyy-MM-dd");

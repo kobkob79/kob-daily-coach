@@ -19,6 +19,7 @@ import {
   Sparkles,
   LayoutDashboard,
   Droplet,
+  Users,
 } from "lucide-react";
 
 export type ModuleStatus = "live" | "beta" | "coming-soon";
@@ -35,11 +36,17 @@ export interface AppModule {
 export const MODULES: AppModule[] = [
   { id: "home", labelKey: "nav.home", route: "/dashboard", icon: LayoutDashboard, status: "live" },
   { id: "workouts", labelKey: "nav.train", route: "/workouts", icon: Dumbbell, status: "live" },
-  { id: "meals", labelKey: "nav.meals", route: "/meals", icon: Apple, status: "live" },
-  { id: "hydration", labelKey: "nav.hydration", route: "/hydration", icon: Droplet, status: "live" },
-  { id: "health", labelKey: "nav.health", route: "/health", icon: HeartPulse, status: "live" },
-  { id: "shift", labelKey: "nav.shift", route: "/shift", icon: CalendarClock, status: "live" },
-  { id: "progress", labelKey: "nav.trend", route: "/progress", icon: LineChart, status: "live" },
+  { id: "nutrition", labelKey: "nav.fuel", route: "/nutrition", icon: Apple, status: "live" },
+  { id: "community", labelKey: "nav.community", route: "/community", icon: Users, status: "live" },
+
+  // Health, Progress and Shift moved off the bottom nav (it was too
+  // crowded) onto dedicated home-screen cards instead — reachable
+  // directly via their routes, no registry entry needed for that.
+  { id: "meals", labelKey: "nav.meals", route: "/meals", icon: Apple, status: "beta" },
+  { id: "hydration", labelKey: "nav.hydration", route: "/hydration", icon: Droplet, status: "beta" },
+  { id: "health", labelKey: "nav.health", route: "/health", icon: HeartPulse, status: "beta" },
+  { id: "progress", labelKey: "nav.trend", route: "/progress", icon: LineChart, status: "beta" },
+  { id: "shift", labelKey: "nav.shift", route: "/shift", icon: CalendarClock, status: "beta" },
 
   // Prepared surfaces — no routes yet, exposed via the registry so future work
   // wires them into the shell without touching call sites.

@@ -21,7 +21,7 @@ interface SafeOpenAIConnectionDiagnostics {
   cause_code?: string;
 }
 
-interface OpenAITextResponse {
+export interface OpenAITextResponse {
   id?: string;
   output_text?: string;
   output: Array<{
@@ -37,7 +37,7 @@ interface OpenAITextResponse {
   };
 }
 
-interface ExtractedResponseText {
+export interface ExtractedResponseText {
   source: "output_text" | "output" | "none";
   text: string;
 }
