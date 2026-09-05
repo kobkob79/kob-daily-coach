@@ -1,11 +1,21 @@
 /**
- * Server function that performs REAL AI Vision meal analysis via the
- * Lovable AI Gateway. No fake fallbacks — if the gateway is not reachable
- * or LOVABLE_API_KEY is missing, this throws an error carrying a
- * VISION_NOT_CONNECTED marker so the UI can tell the user explicitly.
+ * Server function that performs REAL AI Vision meal analysis via the same
+ * OpenAI account configured for the Viora advisor (OPENAI_API_KEY) — so
+ * usage bills to that account, not a separate platform-wide credit pool.
+ * No fake fallbacks — if OpenAI is not reachable or not configured, this
+ * throws an error carrying a VISION_NOT_CONNECTED marker so the UI can tell
+ * the user explicitly.
  */
+import OpenAI from "openai";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { createOpenAIClient } from "@/lib/advisor-core/server/openai-client.server";
+import { VIORA_ADVISOR_MODEL } from "@/lib/advisor-core/server/config.server";
+import {
+  classifyOpenAIAPIError,
+  extractResponseText,
+  type OpenAITextResponse,
+} from "@/lib/advisor-core/server/providers/openai-provider.server";
 
 export interface ServerMealIngredient {
   name: string;
@@ -36,8 +46,6 @@ export interface ServerMealAnalysis {
     visionConnected: true;
   };
 }
-
-const MODEL = "google/gemini-2.5-flash";
 
 const SYSTEM_PROMPT = `אתה תזונאי AI מקצועי בעברית. קבל תמונת ארוחה וזהה כל מרכיב אמיתי בשמו העברי (בטטה, טונה, אורז, ביצה, עגבנייה, אבוקדו, קוטג', חזה עוף וכו'). לעולם אל תחזיר קטגוריות גנריות כמו "חלבון" או "פחמימה". אם התמונה אינה של אוכל — החזר ingredients ריק.
 
@@ -77,10 +85,16 @@ function normIngredient(raw: unknown): ServerMealIngredient | null {
   const generic = /^(חלבון|פחמימה|שומן|רכיב לא זוהה|unknown)$/i.test(name);
   if (generic) return null;
   const nutrients = Array.isArray(r.nutrients)
-    ? r.nutrients.map((x) => String(x)).filter(Boolean).slice(0, 6)
+    ? r.nutrients
+        .map((x) => String(x))
+        .filter(Boolean)
+        .slice(0, 6)
     : [];
   const education = Array.isArray(r.education)
-    ? r.education.map((x) => String(x)).filter(Boolean).slice(0, 6)
+    ? r.education
+        .map((x) => String(x))
+        .filter(Boolean)
+        .slice(0, 6)
     : [];
   return {
     name,
@@ -112,11 +126,8 @@ export const analyzeMealServer = createServerFn({ method: "POST" })
     return { dataUrl, corrections };
   })
   .handler(async ({ data }): Promise<ServerMealAnalysis> => {
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) {
-      throw new VisionNotConnectedError(
-        "LOVABLE_API_KEY חסר — AI Vision לא מוגדר בשרת.",
-      );
+    if (!process.env.OPENAI_API_KEY?.trim()) {
+      throw new VisionNotConnectedError("OPENAI_API_KEY חסר — AI Vision לא מוגדר בשרת.");
     }
 
     const correctionsHint =
@@ -126,59 +137,49 @@ export const analyzeMealServer = createServerFn({ method: "POST" })
             .join("\n")}`
         : "";
 
+    const client = createOpenAIClient();
     const started = Date.now();
-    let res: Response;
+    let response: OpenAITextResponse;
     try {
-      res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${key}`,
-        },
-        body: JSON.stringify({
-          model: MODEL,
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT + correctionsHint },
-            {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: "נתח את התמונה. זהה כל מרכיב אמיתי בשמו העברי, ספק ערכים תזונתיים, הסבר תרומה לגוף וציון איכות. החזר JSON בלבד.",
-                },
-                { type: "image_url", image_url: { url: data.dataUrl } },
-              ],
-            },
-          ],
-        }),
-      });
+      response = (await client.responses.create({
+        model: VIORA_ADVISOR_MODEL,
+        instructions: SYSTEM_PROMPT + correctionsHint,
+        input: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "input_text",
+                text: "נתח את התמונה. זהה כל מרכיב אמיתי בשמו העברי, ספק ערכים תזונתיים, הסבר תרומה לגוף וציון איכות. החזר JSON בלבד.",
+              },
+              { type: "input_image", image_url: data.dataUrl, detail: "auto" },
+            ],
+          },
+        ],
+      })) as unknown as OpenAITextResponse;
     } catch (e) {
-      throw new VisionNotConnectedError(
-        `לא ניתן להגיע אל ספק ה-Vision: ${(e as Error).message}`,
-      );
+      if (e instanceof OpenAI.APIConnectionError) {
+        throw new VisionNotConnectedError(`לא ניתן להגיע אל ספק ה-Vision: ${e.message}`);
+      }
+      if (e instanceof OpenAI.APIError) {
+        const category = classifyOpenAIAPIError(e);
+        if (category === "OPENAI_INSUFFICIENT_QUOTA") {
+          throw new VisionNotConnectedError("אזל תקציב ה-API של OpenAI. יש להוסיף יתרה בחשבון.");
+        }
+        if (category === "OPENAI_RATE_LIMIT") {
+          throw new VisionNotConnectedError("יותר מדי בקשות ל-OpenAI Vision — נסה שוב בעוד רגע.");
+        }
+        if (category === "OPENAI_AUTH_FAILURE") {
+          throw new VisionNotConnectedError("מפתח ה-OpenAI לא תקין.");
+        }
+        throw new VisionNotConnectedError(`שגיאת OpenAI (${e.status}): ${e.message.slice(0, 200)}`);
+      }
+      throw new VisionNotConnectedError(`לא ניתן להגיע אל ספק ה-Vision: ${(e as Error).message}`);
     }
 
     const duration = Date.now() - started;
 
-    if (res.status === 402) {
-      throw new VisionNotConnectedError(
-        "אזל תקציב הזיכויים ל-AI. יש להוסיף זיכויים בהגדרות.",
-      );
-    }
-    if (res.status === 429) {
-      throw new VisionNotConnectedError(
-        "יותר מדי בקשות ל-AI Vision — נסה שוב בעוד רגע.",
-      );
-    }
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      throw new VisionNotConnectedError(
-        `שגיאת ספק Vision (${res.status}): ${body.slice(0, 200)}`,
-      );
-    }
-
-    const json = await res.json();
-    const raw: string = json?.choices?.[0]?.message?.content ?? "";
+    const raw = extractResponseText(response).text;
     const match = raw.match(/\{[\s\S]*\}/);
     if (!match) {
       throw new VisionNotConnectedError("Vision החזיר תשובה לא תקינה.");
@@ -192,9 +193,7 @@ export const analyzeMealServer = createServerFn({ method: "POST" })
     }
 
     const ingredients: ServerMealIngredient[] = Array.isArray(parsed.ingredients)
-      ? (parsed.ingredients
-          .map(normIngredient)
-          .filter(Boolean) as ServerMealIngredient[])
+      ? (parsed.ingredients.map(normIngredient).filter(Boolean) as ServerMealIngredient[])
       : [];
 
     const qualityRaw = (parsed.quality ?? {}) as Record<string, unknown>;
@@ -214,8 +213,8 @@ export const analyzeMealServer = createServerFn({ method: "POST" })
       ingredients,
       quality,
       diagnostics: {
-        provider: "Lovable AI Gateway",
-        model: MODEL,
+        provider: "openai",
+        model: VIORA_ADVISOR_MODEL,
         duration_ms: duration,
         visionConnected: true,
       },
