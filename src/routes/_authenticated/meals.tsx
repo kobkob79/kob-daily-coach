@@ -3,7 +3,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
-  Camera, Star, Pencil, Plus, X, Trash2, MapPin, Clock,
+  Camera, Star, Pencil, Plus, X, Clock,
   UtensilsCrossed, Image as ImageIcon, Sparkles, Heart, ChevronLeft,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -20,27 +20,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DailyNutrientPanel } from "@/components/nutrition/DailyNutrientPanel";
+import { MealCard, MacroDot, type Meal } from "@/components/nutrition/MealCard";
 export const Route = createFileRoute("/_authenticated/meals")({
   component: MealsPage,
 });
-
-type Meal = {
-  id: string;
-  date: string;
-  meal_time: string | null;
-  biological_day: string | null;
-  meal_type: string | null;
-  meal: string;
-  location: string | null;
-  food_name: string;
-  foods: FoodItem[] | null;
-  calories: number | null;
-  protein_g: number | null;
-  carbs_g: number | null;
-  fat_g: number | null;
-  notes: string | null;
-  photo_url: string | null;
-};
 
 type Favorite = {
   id: string;
@@ -366,91 +349,6 @@ function SmartTile({
       </span>
       <span className="text-xs font-semibold leading-tight">{label}</span>
     </button>
-  );
-}
-
-/* ---------- Meal card ---------- */
-function MealCard({
-  meal, photoUrl, onDelete, onEdit,
-}: {
-  meal: Meal; photoUrl: string | null; onDelete: () => void; onEdit: () => void;
-}) {
-  const type = meal.meal_type
-    ? MEAL_TYPE_BY_LABEL[meal.meal_type] ?? { emoji: "🍽️", label: meal.meal_type }
-    : { emoji: "🍽️", label: meal.meal };
-  const loc = LOCATIONS.find((l) => l.key === meal.location || l.label === meal.location);
-  const foods = Array.isArray(meal.foods) ? meal.foods : [];
-  const time = meal.meal_time ? meal.meal_time.slice(0, 5) : null;
-
-  return (
-    <PremiumCard className="p-4">
-      <div className="flex gap-3">
-        <div className="flex flex-col items-center gap-1.5 pt-1">
-          <span className="text-2xl leading-none">{type.emoji}</span>
-          {time && (
-            <span className="rounded-full bg-muted/60 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-foreground">
-              {time}
-            </span>
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="truncate text-base font-semibold">{type.label}</p>
-              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
-                {loc && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{loc.emoji} {loc.label}</span>}
-              </div>
-            </div>
-            <div className="flex shrink-0 gap-1">
-              <button onClick={onEdit} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted/60 hover:text-foreground">
-                <Pencil className="h-3.5 w-3.5" />
-              </button>
-              <button onClick={onDelete} className="rounded-full p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-
-          {photoUrl && (
-            <img src={photoUrl} alt="" className="mt-3 h-40 w-full rounded-2xl border border-border/60 object-cover" />
-          )}
-
-          {foods.length > 0 && (
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
-              {foods.map((f, i) => (
-                <span key={i} className="rounded-full bg-muted/50 px-2.5 py-1 text-[11px] font-medium">
-                  {f.name}{f.qty ? ` · ${f.qty}` : ""}
-                </span>
-              ))}
-            </div>
-          )}
-          {foods.length === 0 && meal.food_name && (
-            <p className="mt-2 text-sm">{meal.food_name}</p>
-          )}
-
-          {(meal.calories || meal.protein_g || meal.carbs_g || meal.fat_g) != null && (
-            <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
-              <MacroDot label={t("meals.kcal")} v={meal.calories} />
-              <MacroDot label={t("meals.protein")} v={meal.protein_g} accent />
-              <MacroDot label={t("meals.carbs")} v={meal.carbs_g} />
-              <MacroDot label={t("meals.fat")} v={meal.fat_g} />
-            </div>
-          )}
-
-          {meal.notes && <p className="mt-2 text-xs text-muted-foreground">{meal.notes}</p>}
-        </div>
-      </div>
-    </PremiumCard>
-  );
-}
-
-function MacroDot({ label, v, accent }: { label: string; v: number | null; accent?: boolean }) {
-  if (v == null) return null;
-  return (
-    <span className="inline-flex items-baseline gap-1">
-      <b className={cn("text-sm font-bold", accent ? "text-primary" : "text-foreground")}>{Math.round(Number(v))}</b>
-      <span>{label}</span>
-    </span>
   );
 }
 

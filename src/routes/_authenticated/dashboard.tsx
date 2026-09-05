@@ -852,7 +852,11 @@ function Dashboard() {
             <Link to="/workouts/program" className="rounded-full bg-white/6 px-3 py-1.5">
               מתכנן שבועי
             </Link>
-            <Link to="/workouts/history" className="rounded-full bg-white/6 px-3 py-1.5">
+            <Link
+              to="/history"
+              search={{ tab: "workouts" }}
+              className="rounded-full bg-white/6 px-3 py-1.5"
+            >
               היסטוריה
             </Link>
           </div>
@@ -889,6 +893,13 @@ function Dashboard() {
             </Link>
             <Link to="/capture" className="rounded-full bg-white/6 px-3 py-1.5">
               צילום ארוחה
+            </Link>
+            <Link
+              to="/history"
+              search={{ tab: "meals" }}
+              className="rounded-full bg-white/6 px-3 py-1.5"
+            >
+              היסטוריה
             </Link>
           </div>
         </HomeCard>
