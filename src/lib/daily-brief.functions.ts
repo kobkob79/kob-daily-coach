@@ -9,7 +9,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createOpenAIClient } from "@/lib/advisor-core/server/openai-client.server";
-import { classifyOpenAIAPIError, extractResponseText } from "@/lib/advisor-core/server/providers/openai-provider.server";
+import {
+  classifyOpenAIAPIError,
+  extractResponseText,
+} from "@/lib/advisor-core/server/providers/openai-provider.server";
 import { AdvisorCoreError } from "@/lib/advisor-core/response";
 import { VIORA_ADVISOR_MODEL } from "@/lib/advisor-core/server/config.server";
 import OpenAI from "openai";
@@ -94,7 +97,12 @@ const SYSTEM_PROMPT = `אתה Viora — מאמן AI בכיר בעברית המש
 }`;
 
 function arr(v: unknown, max = 6): string[] {
-  return Array.isArray(v) ? v.map((x) => String(x)).filter(Boolean).slice(0, max) : [];
+  return Array.isArray(v)
+    ? v
+        .map((x) => String(x))
+        .filter(Boolean)
+        .slice(0, max)
+    : [];
 }
 
 function logUnavailable(
@@ -138,7 +146,9 @@ export async function generateDailyBriefResult(
           content: `להלן קונטקסט המצב של המשתמש להיום. השב JSON בלבד.\n\n${JSON.stringify(ctx)}`,
         },
       ],
-      text: { format: { type: "json_schema", name: "daily_brief_schema", schema: { type: "object" } } },
+      text: {
+        format: { type: "json_schema", name: "daily_brief_schema", schema: { type: "object" } },
+      },
     });
   } catch (e) {
     logUnavailable("daily_brief_provider_error", { stage: "request" });

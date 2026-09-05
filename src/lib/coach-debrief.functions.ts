@@ -9,7 +9,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createOpenAIClient } from "@/lib/advisor-core/server/openai-client.server";
-import { classifyOpenAIAPIError, extractResponseText } from "@/lib/advisor-core/server/providers/openai-provider.server";
+import {
+  classifyOpenAIAPIError,
+  extractResponseText,
+} from "@/lib/advisor-core/server/providers/openai-provider.server";
 import { AdvisorCoreError } from "@/lib/advisor-core/response";
 import { VIORA_ADVISOR_MODEL } from "@/lib/advisor-core/server/config.server";
 import OpenAI from "openai";
@@ -128,7 +131,9 @@ export const generateCoachDebrief = createServerFn({ method: "POST" })
             )} — פתח אחרת ממה שהיית פותח בדרך כלל.\n\n${JSON.stringify(data.ctx)}`,
           },
         ],
-        text: { format: { type: "json_schema", name: "debrief_schema", schema: { type: "object" } } },
+        text: {
+          format: { type: "json_schema", name: "debrief_schema", schema: { type: "object" } },
+        },
       });
     } catch (e) {
       if (e instanceof OpenAI.APIError) {
@@ -169,10 +174,16 @@ export const generateCoachDebrief = createServerFn({ method: "POST" })
     }
 
     const paragraphs = Array.isArray(parsed.paragraphs)
-      ? parsed.paragraphs.map((p) => String(p).trim()).filter(Boolean).slice(0, 5)
+      ? parsed.paragraphs
+          .map((p) => String(p).trim())
+          .filter(Boolean)
+          .slice(0, 5)
       : [];
     const highlights = Array.isArray(parsed.highlights)
-      ? parsed.highlights.map((p) => String(p).trim()).filter(Boolean).slice(0, 3)
+      ? parsed.highlights
+          .map((p) => String(p).trim())
+          .filter(Boolean)
+          .slice(0, 3)
       : [];
 
     return {

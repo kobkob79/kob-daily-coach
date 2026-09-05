@@ -68,21 +68,32 @@ try {
     fetchImpl: async () =>
       new Response(
         JSON.stringify({
-          choices: [
+          id: "resp_test",
+          object: "response",
+          status: "completed",
+          output: [
             {
-              message: {
-                content: JSON.stringify({
-                  hero: "תקציר יומי תקין",
-                  statusLine: "הנתונים מעודכנים",
-                  analysis: [],
-                  supplementAnalysis: [],
-                  wellDone: [],
-                  improve: [],
-                  mission: [],
-                  learned: [],
-                  calorieVerdict: "",
-                }),
-              },
+              type: "message",
+              id: "msg_test",
+              status: "completed",
+              role: "assistant",
+              content: [
+                {
+                  type: "output_text",
+                  text: JSON.stringify({
+                    hero: "תקציר יומי תקין",
+                    statusLine: "הנתונים מעודכנים",
+                    analysis: [],
+                    supplementAnalysis: [],
+                    wellDone: [],
+                    improve: [],
+                    mission: [],
+                    learned: [],
+                    calorieVerdict: "",
+                  }),
+                  annotations: [],
+                },
+              ],
             },
           ],
         }),
