@@ -289,7 +289,8 @@ function WorkoutHub() {
           <span className="truncate text-xs font-bold">שבועי</span>
         </Link>
         <Link
-          to="/workouts/history"
+          to="/history"
+          search={{ tab: "workouts" }}
           className="flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-primary/20 bg-primary/[0.06] px-2 text-foreground transition duration-150 active:scale-95 active:bg-primary/15 dark:border-primary/25 dark:bg-primary/[0.09] dark:active:bg-primary/20"
         >
           <History className="h-4 w-4 shrink-0 text-primary" aria-hidden />

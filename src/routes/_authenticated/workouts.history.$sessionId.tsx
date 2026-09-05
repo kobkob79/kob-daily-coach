@@ -45,7 +45,25 @@ function SessionDetailPage() {
   });
 
   if (q.isLoading) return <p className="p-6 text-center text-sm">…</p>;
-  const { session, sets, byId } = q.data!;
+  if (q.isError || !q.data) {
+    return (
+      <div dir="rtl" className="space-y-4">
+        <div className="flex items-center justify-between">
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/workouts/history">
+              <ChevronRight className="ml-1 h-4 w-4 rtl:rotate-180" /> חזור
+            </Link>
+          </Button>
+          <h1 className="text-lg font-bold">אימון</h1>
+          <div className="w-16" />
+        </div>
+        <p className="p-6 text-center text-sm text-muted-foreground">
+          לא הצלחנו לטעון את האימון הזה.
+        </p>
+      </div>
+    );
+  }
+  const { session, sets, byId } = q.data;
 
   // group by exercise, keep order
   const groups: { exerciseId: string; sets: SessionSet[] }[] = [];
