@@ -852,13 +852,6 @@ function Dashboard() {
             <Link to="/workouts/program" className="rounded-full bg-white/6 px-3 py-1.5">
               מתכנן שבועי
             </Link>
-            <Link
-              to="/history"
-              search={{ tab: "workouts" }}
-              className="rounded-full bg-white/6 px-3 py-1.5"
-            >
-              היסטוריה
-            </Link>
           </div>
         </HomeCard>
 
@@ -894,12 +887,31 @@ function Dashboard() {
             <Link to="/capture" className="rounded-full bg-white/6 px-3 py-1.5">
               צילום ארוחה
             </Link>
+          </div>
+        </HomeCard>
+
+        <HomeCard
+          id="history"
+          title="היסטוריה"
+          kpi=""
+          kpiHint="ארוחות ואימונים קודמים"
+          accent="neutral"
+          icon={<History className="h-5 w-5" strokeWidth={1.8} />}
+        >
+          <div className="flex flex-wrap gap-2 text-[12px] font-semibold">
             <Link
               to="/history"
               search={{ tab: "meals" }}
-              className="rounded-full bg-white/6 px-3 py-1.5"
+              className="rounded-full bg-orange-500/15 px-3 py-1.5 text-orange-200"
             >
-              היסטוריה
+              ארוחות
+            </Link>
+            <Link
+              to="/history"
+              search={{ tab: "workouts" }}
+              className="rounded-full bg-primary/12 px-3 py-1.5 text-primary"
+            >
+              כושר
             </Link>
           </div>
         </HomeCard>

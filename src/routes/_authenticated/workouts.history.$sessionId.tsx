@@ -88,6 +88,12 @@ function SessionDetailPage() {
         <div className="w-16" />
       </div>
 
+      {groups.length === 0 && (
+        <p className="p-6 text-center text-sm text-muted-foreground">
+          לא נמצא פירוט סטים עבור האימון הזה — כנראה אימון ישן שנשמר בפורמט קודם.
+        </p>
+      )}
+
       {groups.map((g) => (
         <div key={g.exerciseId} className="surface-card space-y-2 p-4">
           <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
