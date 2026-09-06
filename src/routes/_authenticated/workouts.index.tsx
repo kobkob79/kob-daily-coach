@@ -43,10 +43,21 @@ import {
   listSessions,
   startOrResumeSessionForTemplate,
   WEEKDAY_HE,
-  type PlanSlot,
   type SessionRow,
 } from "@/lib/workout-session";
-import { matchSessionsToSlots, startOfWeek } from "@/lib/workout-occurrence";
+import {
+  dateKey,
+  ensureWeekInstances,
+  startOfWeek,
+  type WorkoutInstance,
+} from "@/lib/workout-instance";
+import {
+  metaMinutes,
+  selectActionQueue,
+  templateMetaQuery,
+  type NextActionKind,
+  type TemplateMeta,
+} from "@/lib/workout-week";
 import { clearWorkoutTimer, formatTotalTime } from "@/hooks/useWorkoutTimer";
 
 export const Route = createFileRoute("/_authenticated/workouts/")({
@@ -54,30 +65,18 @@ export const Route = createFileRoute("/_authenticated/workouts/")({
 });
 
 type Template = { id: string; name: string };
-type TemplateMeta = { exercises: number; sets: number; focus: string | null };
 
 interface Upcoming {
-  weekday: number;
+  kind: NextActionKind;
+  instance: WorkoutInstance;
   date: Date;
-  slot: PlanSlot;
+  weekday: number;
   name: string;
   meta: TemplateMeta | undefined;
 }
 
-function dateForOffset(offset: number): Date {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + offset);
-  return d;
-}
-
 function formatDate(d: Date): string {
   return d.toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" });
-}
-
-function estimateMinutes(meta: TemplateMeta | undefined): number | null {
-  if (!meta || meta.sets <= 0) return null;
-  return Math.max(15, Math.round((meta.sets * 3.5) / 5) * 5);
 }
 
 function workoutLetter(name: string): "A" | "B" | "C" | null {
