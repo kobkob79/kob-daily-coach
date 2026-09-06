@@ -66,7 +66,47 @@ const snapshot = buildAdvisorContextSnapshot({
   timeline,
   shift: { kind: "day", source: "shift_config", observedAt: now.toISOString() },
   conflicts: ["nutrition"],
+  labResults: [
+    {
+      lab: "Superlab",
+      marker: "Ferritin",
+      value: "22 ng/mL",
+      summary: null,
+      testDate: "2026-08-20",
+      freshness: "current",
+    },
+  ],
+  healthMetrics: {
+    restingHeartRate: { value: 58, unit: "bpm", recordedAt: "2026-08-28T06:00:00Z" },
+    sleepMinutes: null,
+    steps: { value: 8000, unit: "steps", recordedAt: "2026-08-28T06:00:00Z" },
+    caloriesBurned: null,
+    workoutMinutes: null,
+  },
 });
+
+// Blood-test markers and wearable metrics are exposed as their own facts,
+// not silently dropped. The outer fact state follows the generic 36h
+// recency window (a lab result drawn 8 days ago reads "stale" there, same
+// as any other non-daily fact), but each result carries its own clinically
+// meaningful freshness (180-day cutoff, like medical issues).
+assert.equal(snapshot.facts.labResults.state, "stale");
+assert.deepEqual(snapshot.facts.labResults.value, [
+  {
+    lab: "Superlab",
+    marker: "Ferritin",
+    value: "22 ng/mL",
+    summary: null,
+    testDate: "2026-08-20",
+    freshness: "current",
+  },
+]);
+assert.equal(snapshot.facts.healthMetrics.state, "known");
+assert.equal(snapshot.facts.healthMetrics.value.restingHeartRate.value, 58);
+assert.equal(snapshot.facts.healthMetrics.value.steps.value, 8000);
+// Meal/workout names are surfaced, not just aggregate totals.
+assert.deepEqual(snapshot.facts.nutrition.value.mealNames, ["ארוחה"]);
+assert.ok(Array.isArray(snapshot.facts.workouts.value.names));
 
 // 13 conflicts remain explicit.
 assert.equal(snapshot.facts.nutrition.state, "conflicting");
@@ -86,6 +126,8 @@ const ALL_KEYS = [
   "limitations",
   "medical",
   "progress",
+  "labResults",
+  "healthMetrics",
 ];
 for (const advisorId of ["adam", "daniel", "maya", "shiran"]) {
   assert.deepEqual(Object.keys(selectAdvisorContext(snapshot, advisorId).facts), ALL_KEYS);

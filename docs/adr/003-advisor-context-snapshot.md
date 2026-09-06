@@ -23,6 +23,13 @@ superseded.
 
 Full medical documents, notes, Storage paths, signed URLs, service-role data and Admin metadata are still excluded regardless of advisor. User identity is obtained from authenticated server context; Admin status does not permit selecting another user.
 
+**Update (2026-09-06, cont.):** Two more facts feed the same "one brain" snapshot: `labResults` (blood/lab markers) and `healthMetrics` (wearable/manual readings: resting heart rate, sleep, steps, calories burned, workout minutes). Both are additive, narrow exceptions to the exclusions above:
+
+- `labResults` reads `vision_captures` filtered to `capture_type = 'blood_test'`, selecting only the structured fields the user typed into that capture's form (`lab`, `marker`, `value`, `test_date`, and a free-text `summary`/notes they wrote themselves) — never `image_path` or a signed URL, so the scanned document itself never reaches the model. A blood marker stays clinically relevant far longer than the generic 36h fact-staleness window, so each result also carries its own `freshness` (`current`/`stale`, 180-day cutoff — the same convention as `SafeMedicalIssue`), independent of the outer fact `state`.
+- `healthMetrics` reads `health_metrics` (the CORE-005 wearable/manual connector layer) and keeps only the latest sample per metric type — a compact snapshot, not the full history.
+
+Both go to every advisor, same as every other fact, per the "one brain" update above.
+
 ## Rejected alternatives
 
 - Passing the entire database/profile to prompts: excessive disclosure and weak provenance.
