@@ -37,10 +37,12 @@ interface UpsertQuery {
   upsert(
     rows: WearableMetricInsertRow[],
     options: { onConflict: string },
-  ): Promise<{
-    data: { id: string; bio_day_id: string | null }[] | null;
-    error: QueryError | null;
-  }>;
+  ): {
+    select(columns: string): Promise<{
+      data: { id: string; bio_day_id: string | null }[] | null;
+      error: QueryError | null;
+    }>;
+  };
 }
 
 interface UpdateQuery {
@@ -124,7 +126,8 @@ export async function upsertWearableMetrics(
 ): Promise<{ upserted: number; bioDayMatched: number }> {
   const { data, error } = await client()
     .from("wearable_metrics")
-    .upsert(rows, { onConflict: "user_id,external_source,external_id" });
+    .upsert(rows, { onConflict: "user_id,external_source,external_id" })
+    .select("id,bio_day_id");
   if (error) throw new WearableSyncUnavailableError(error.message);
   const written = data ?? [];
   return {

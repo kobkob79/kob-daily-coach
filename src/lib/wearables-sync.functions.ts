@@ -66,12 +66,17 @@ export const syncWearablePayload = createServerFn({ method: "POST" })
       bioDayWindows,
     );
 
+    let result: { upserted: number; bioDayMatched: number };
     try {
-      const { upserted, bioDayMatched } = await upsertWearableMetrics(rows);
-      await touchConnectionSynced(eligibility.connectionId);
-      return { received: data.samples.length, upserted, bioDayMatched };
+      result = await upsertWearableMetrics(rows);
     } catch (error) {
-      await recordConnectionSyncError(eligibility.connectionId, (error as Error).message);
+      try {
+        await recordConnectionSyncError(eligibility.connectionId, (error as Error).message);
+      } catch {
+        // Best-effort status update; the original sync failure below is what matters.
+      }
       throw error;
     }
+    await touchConnectionSynced(eligibility.connectionId);
+    return { received: data.samples.length, ...result };
   });

@@ -161,6 +161,7 @@ export function createSupabaseAdvisorContextDataSource(
         weightsResult,
         measurementsResult,
         restingHeartRateResult,
+        wearableSyncPrefResult,
       ] = await Promise.all([
         supabase
           .from("profiles")
@@ -252,6 +253,11 @@ export function createSupabaseAdvisorContextDataSource(
           .gte("occurred_at", sinceIso)
           .order("occurred_at", { ascending: false })
           .limit(200),
+        supabase
+          .from("wearable_sync_preferences")
+          .select("sync_enabled")
+          .eq("user_id", userId)
+          .maybeSingle(),
       ]);
       const results = [
         profileResult,
@@ -269,6 +275,7 @@ export function createSupabaseAdvisorContextDataSource(
         weightsResult,
         measurementsResult,
         restingHeartRateResult,
+        wearableSyncPrefResult,
       ];
       if (results.some((result) => result.error)) throw new Error("ADVISOR_CONTEXT_UNAVAILABLE");
 
@@ -330,7 +337,11 @@ export function createSupabaseAdvisorContextDataSource(
             freshness: Date.parse(observedAt) >= freshnessCutoff.getTime() ? "current" : "stale",
           }
         : null;
-      const restingHeartRateRows = restingHeartRateResult.data ?? [];
+      // Wearable consent gates *use* of already-synced data here, not just new ingest
+      // (see checkSyncEligibility in wearables-sync.server.ts) — revoking it must stop
+      // previously-stored samples from still feeding the advisor, not only block new syncs.
+      const wearableSyncEnabled = Boolean(wearableSyncPrefResult.data?.sync_enabled);
+      const restingHeartRateRows = wearableSyncEnabled ? (restingHeartRateResult.data ?? []) : [];
       const wearableRecovery: AdvisorContextWearableRecovery | null = restingHeartRateRows.length
         ? {
             restingHeartRateBpm:

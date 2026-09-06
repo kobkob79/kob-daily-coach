@@ -53,10 +53,9 @@ function nonBlankString(value: unknown, field: string): string {
 }
 
 function finiteNumber(value: unknown, field: string): number {
-  const n = Number(value);
-  if (!Number.isFinite(n))
+  if (typeof value !== "number" || !Number.isFinite(value))
     throw new WearableSyncValidationError(`${field} must be a finite number`);
-  return n;
+  return value;
 }
 
 function isoTimestamp(value: unknown, field: string): string {
