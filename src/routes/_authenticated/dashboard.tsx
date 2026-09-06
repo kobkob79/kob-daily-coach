@@ -44,7 +44,9 @@ import { useHasChronicPain } from "@/lib/daily-engine";
 import { getShiftPositionForDate } from "@/lib/shift";
 import { estimateCaloriesBurned, useDailyBrief, type DailyBriefContext } from "@/lib/daily-brief";
 import { buildHomeInsight } from "@/lib/home-insight";
-import { buildAdaptiveGreeting, buildTodaysFocus, buildWeeklyProgress } from "@/lib/command-center";
+import { buildAdaptiveGreeting, buildTodaysFocus } from "@/lib/command-center";
+import { dateKey, listInstances } from "@/lib/workout-instance";
+import { selectWeeklyProgress } from "@/lib/workout-week";
 import { buildCoachMessage, buildQuickActions, type QuickAction } from "@/lib/home-coach";
 import { HomeHero } from "@/components/home/HomeHero";
 import { HomeCardStack, HomeCard, HomeStat } from "@/components/home/HomeCardStack";
@@ -219,6 +221,13 @@ function Dashboard() {
     },
   });
 
+  // Weekly workout progress comes from the SAME shared instance selector the
+  // Weekly Planner uses, so Home and Planner can never disagree about a week.
+  const workoutInstancesQ = useQuery({
+    queryKey: ["workout_instances", "dashboard"],
+    queryFn: () => listInstances(format(subDays(new Date(), 60), "yyyy-MM-dd"), dateKey()),
+  });
+
   const PROTEIN_TARGET_G = profileQ.data?.protein_target_g ?? PROTEIN_TARGET_G_DEFAULT;
   const WATER_TARGET_ML = profileQ.data?.water_target_ml ?? WATER_TARGET_ML_DEFAULT;
 
@@ -322,7 +331,12 @@ function Dashboard() {
     gender: (profileQ.data?.gender as "male" | "female" | "other" | null) ?? null,
     activity:
       (profileQ.data?.activity_level as
-        "sedentary" | "light" | "moderate" | "active" | "very_active" | null) ?? null,
+        | "sedentary"
+        | "light"
+        | "moderate"
+        | "active"
+        | "very_active"
+        | null) ?? null,
     shift: shift ?? null,
     workoutMinutes: workoutTodayMinutes,
   });
@@ -541,11 +555,11 @@ function Dashboard() {
   });
 
   const completedSessions = sessionsRecentQ.data ?? [];
-  const completedDates = completedSessions
-    .filter((s) => s.finished_at)
-    .map((s) => format(new Date(s.finished_at as string), "yyyy-MM-dd"));
-  const weekStartIso = format(startOfWeek(now, { weekStartsOn: 0 }), "yyyy-MM-dd");
-  const weeklyProgress = buildWeeklyProgress(completedDates, weekStartIso, todayIso, 4);
+  const weeklyProgress = selectWeeklyProgress(workoutInstancesQ.data ?? [], {
+    weekStart: startOfWeek(now, { weekStartsOn: 0 }),
+    today: todayIso,
+    goal: 4,
+  });
 
   const lastSession = completedSessions[0] ?? null;
   const recoveryPct = briefCtx?.recoveryPct ?? null;

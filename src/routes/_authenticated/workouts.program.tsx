@@ -1,42 +1,47 @@
 /**
  * /workouts/program — Weekly Planner 2.0 (VIORA-PLANNER-001).
  *
- * Planning intent only. Writes ONLY to `workout_plans`; sessions are read
- * for completion status and never modified.
+ * Planning intent only, and PLANNING ONLY: this screen reads dated
+ * `workout_instances` (the persisted planning primitive) through the shared
+ * week selectors, never the legacy session/slot heuristics. Completion is a
+ * History-domain fact and is deliberately not rendered here — the planner
+ * answers "what still has to happen this week?", including `overdue` days
+ * that stay actionable instead of disappearing.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  CalendarDays,
-  CheckCircle2,
-  ChevronRight,
-  ClipboardCopy,
-  Dumbbell,
-  Plus,
-  Timer,
-} from "lucide-react";
+import { CalendarDays, ChevronRight, ClipboardCopy, Dumbbell, Plus, Timer } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getWeeklyPlan, setPlanSlot, WEEKDAY_HE, type SessionRow } from "@/lib/workout-session";
-import { matchSessionsToSlots } from "@/lib/workout-occurrence";
+import { getWeeklyPlan, setPlanSlot, WEEKDAY_HE } from "@/lib/workout-session";
+import {
+  dateKey,
+  ensureWeekInstances,
+  startOfWeek as instanceWeekStart,
+  syncSlotPlanning,
+} from "@/lib/workout-instance";
+import {
+  metaMinutes,
+  selectWeekDays,
+  selectWeeklyProgress,
+  templateMetaQuery,
+} from "@/lib/workout-week";
 
 import { AssignDayDialog, REST_DAY_LABEL } from "@/components/workouts/AssignDayDialog";
 import { PlannerDayCard, type PlannerDay } from "@/components/workouts/PlannerDayCard";
 import {
   dateForWeekday,
-  deriveStatus,
-  estimateMinutes,
   formatMinutes,
   formatWeekRange,
   isWeekInitialized,
   loadMode,
   markWeekInitialized,
   saveMode,
-  startOfWeek,
   weekKey,
+  type DayStatus,
   type PlannerMode,
 } from "@/lib/weekly-planner";
 
@@ -44,13 +49,7 @@ export const Route = createFileRoute("/_authenticated/workouts/program")({
   component: PlannerPage,
 });
 
-type TemplateMeta = {
-  id: string;
-  name: string;
-  exerciseCount: number;
-  setCount: number;
-  type: string | null;
-};
+type TemplateName = { id: string; name: string };
 
 function PlannerPage() {
   const qc = useQueryClient();
@@ -71,80 +70,83 @@ function PlannerPage() {
   const planQ = useQuery({ queryKey: ["weekly-plan"], queryFn: getWeeklyPlan });
 
   const templatesQ = useQuery({
-    queryKey: ["planner_templates_meta"],
-    queryFn: async (): Promise<TemplateMeta[]> => {
-      const { data: tpls, error } = await supabase
+    queryKey: ["workout_templates_min"],
+    queryFn: async (): Promise<TemplateName[]> => {
+      const { data, error } = await supabase
         .from("workout_templates")
         .select("id,name")
         .order("name");
       if (error) throw error;
-      const { data: rows, error: e2 } = await supabase
-        .from("workout_template_exercises")
-        .select("template_id,target_sets,exercises(muscle_group,category)");
-      if (e2) throw e2;
-
-      return (tpls ?? []).map((t) => {
-        const mine = (rows ?? []).filter((r: any) => r.template_id === t.id);
-        const setCount = mine.reduce((s: number, r: any) => s + (r.target_sets ?? 3), 0);
-        const groups = new Map<string, number>();
-        for (const r of mine) {
-          const g = r.exercises?.muscle_group ?? r.exercises?.category;
-          if (g) groups.set(g, (groups.get(g) ?? 0) + 1);
-        }
-        const top = [...groups.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2);
-        return {
-          id: t.id,
-          name: t.name,
-          exerciseCount: mine.length,
-          setCount,
-          type: top.length ? top.map(([g]) => g).join(" · ") : null,
-        };
-      });
+      return (data ?? []) as TemplateName[];
     },
   });
 
+  /** One shared template-meta query (counts, focus, duration) for all screens. */
+  const metaQ = useQuery(templateMetaQuery());
+
   /**
-   * Sessions are READ ONLY here, and completion is derived through the single
-   * shared source of truth (`matchSessionsToSlots`). Matching by template_id
-   * alone — as this screen used to do — marked every day sharing a routine as
-   * completed, which is why planned workouts looked done before being trained.
+   * Dated planning state comes from `workout_instances`, materialised lazily
+   * for the visible week from the recurring plan slots.
    */
-  const sessionsQ = useQuery({
-    queryKey: ["planner_week_sessions", weekKey()],
-    queryFn: async (): Promise<SessionRow[]> => {
-      const from = startOfWeek().toISOString();
-      const { data, error } = await supabase
-        .from("workout_sessions")
-        .select("*")
-        .or(`started_at.gte.${from},status.eq.in_progress`)
-        .order("started_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as unknown as SessionRow[];
-    },
+  const instancesQ = useQuery({
+    queryKey: ["workout_instances", "week", weekKey()],
+    enabled: !!planQ.data,
+    queryFn: () =>
+      ensureWeekInstances(
+        (planQ.data ?? []).map((p) => ({
+          weekday: p.weekday,
+          template_id: p.template_id,
+          display_name: p.display_name,
+        })),
+      ),
   });
 
   const today = new Date().getDay();
-
-  const match = matchSessionsToSlots(planQ.data ?? [], sessionsQ.data ?? [], startOfWeek());
+  const todayKey = dateKey();
+  const weekStart = instanceWeekStart();
+  const instances = instancesQ.data ?? [];
+  const weekDaysView = selectWeekDays(instances, weekStart, todayKey);
+  const progress = selectWeeklyProgress(instances, {
+    weekStart,
+    today: todayKey,
+    meta: metaQ.data,
+  });
 
   const days: PlannerDay[] = WEEKDAY_HE.map((label, idx) => {
     const slot = planQ.data?.find((p) => p.weekday === idx) ?? null;
-    const tpl = slot?.template_id
-      ? templatesQ.data?.find((x) => x.id === slot.template_id)
-      : undefined;
-    const assigned = !!slot?.template_id;
+    const view = weekDaysView[idx];
+    const inst = view?.instance ?? null;
+    const templateId = inst?.template_id ?? slot?.template_id ?? null;
+    const tpl = templateId ? templatesQ.data?.find((x) => x.id === templateId) : undefined;
+    const meta = templateId ? metaQ.data?.get(templateId) : undefined;
+    const assigned = !!templateId;
     const rest = !assigned && slot?.display_name === REST_DAY_LABEL;
-    const completed = match.completedByWeekday.has(idx);
+
+    const status: DayStatus = !assigned
+      ? rest
+        ? "rest"
+        : "empty"
+      : view?.state === "overdue"
+        ? "overdue"
+        : view?.state === "active"
+          ? "active"
+          : view?.state === "planned" || view?.state === "partial" || !view?.state
+            ? idx === today
+              ? "today"
+              : "planned"
+            : "scheduled";
 
     return {
       weekday: idx,
       weekdayLabel: label,
       date: dateForWeekday(idx),
-      status: deriveStatus({ assigned, rest, completed, weekday: idx, today }),
-      workoutName: assigned ? (tpl?.name ?? slot?.display_name ?? "אימון") : (slot?.display_name ?? null),
-      workoutType: assigned ? (tpl?.type ?? null) : null,
-      exerciseCount: tpl?.exerciseCount ?? 0,
-      estimatedMinutes: tpl ? estimateMinutes(tpl.exerciseCount, tpl.setCount) : 0,
+      status,
+      workoutName: assigned
+        ? (inst?.display_name ?? tpl?.name ?? slot?.display_name ?? "אימון")
+        : (slot?.display_name ?? null),
+      workoutType: assigned ? (meta?.focus ?? null) : null,
+      exerciseCount: meta?.exercises ?? 0,
+      estimatedMinutes: metaMinutes(meta),
     };
   });
 
@@ -152,9 +154,8 @@ function PlannerPage() {
   const visible = mode === "planned" ? plannedDays : days;
 
   const plannedCount = plannedDays.length;
-  const completedCount = plannedDays.filter((d) => d.status === "completed").length;
-  const pct = plannedCount ? Math.round((completedCount / plannedCount) * 100) : 0;
-  const totalMinutes = plannedDays.reduce((s, d) => s + d.estimatedMinutes, 0);
+  const totalMinutes =
+    progress.totalMinutes || plannedDays.reduce((s, d) => s + d.estimatedMinutes, 0);
 
   /* ------------------------- drag & drop ------------------------- */
 
@@ -168,9 +169,13 @@ function PlannerPage() {
       const b = planQ.data?.find((p) => p.weekday === to) ?? null;
       await setPlanSlot(to, a?.template_id ?? null, a?.display_name ?? null);
       await setPlanSlot(from, b?.template_id ?? null, b?.display_name ?? null);
+      // Keep the dated instances aligned with the new recurring intent.
+      await syncSlotPlanning(to, a?.template_id ?? null, a?.display_name ?? null);
+      await syncSlotPlanning(from, b?.template_id ?? null, b?.display_name ?? null);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["weekly-plan"] });
+      qc.invalidateQueries({ queryKey: ["workout_instances"] });
       toast.success("האימון הועבר");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -213,13 +218,17 @@ function PlannerPage() {
   const clearWeek = useMutation({
     mutationFn: async () => {
       for (const p of planQ.data ?? []) {
-        if (p.template_id || p.display_name) await setPlanSlot(p.weekday, null, null);
+        if (p.template_id || p.display_name) {
+          await setPlanSlot(p.weekday, null, null);
+          await syncSlotPlanning(p.weekday, null, null);
+        }
       }
     },
     onSuccess: () => {
       markWeekInitialized();
       setWeekReady(true);
       qc.invalidateQueries({ queryKey: ["weekly-plan"] });
+      qc.invalidateQueries({ queryKey: ["workout_instances"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -229,7 +238,7 @@ function PlannerPage() {
     setWeekReady(true);
   };
 
-  const loading = planQ.isPending || templatesQ.isPending;
+  const loading = planQ.isPending || templatesQ.isPending || instancesQ.isPending;
 
   return (
     <div dir="rtl" className="mx-auto max-w-md space-y-4 pb-24 pt-2">
@@ -249,30 +258,17 @@ function PlannerPage() {
           שבוע {formatWeekRange()}
         </p>
         <h2 className="mt-1 text-2xl font-extrabold">סיכום השבוע</h2>
-        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-          <Stat icon={<Dumbbell className="h-3.5 w-3.5" />} value={`${plannedCount}`} label="מתוכננים" />
+        <div className="mt-3 grid grid-cols-2 gap-2 text-center">
           <Stat
-            icon={<CheckCircle2 className="h-3.5 w-3.5" />}
-            value={`${completedCount}`}
-            label="הושלמו"
+            icon={<Dumbbell className="h-3.5 w-3.5" />}
+            value={`${plannedCount}`}
+            label="מתוכננים"
           />
           <Stat
             icon={<Timer className="h-3.5 w-3.5" />}
             value={formatMinutes(totalMinutes)}
             label="זמן משוער"
           />
-        </div>
-        <div className="mt-3">
-          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-            <span>השלמת השבוע</span>
-            <span className="font-bold text-foreground">{pct}%</span>
-          </div>
-          <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
         </div>
       </div>
 
@@ -284,7 +280,12 @@ function PlannerPage() {
             בחר איך להתחיל — Viora לא תעתיק את השבוע הקודם לבד.
           </p>
           <div className="flex gap-2">
-            <Button size="sm" className="flex-1" onClick={() => clearWeek.mutate()} disabled={clearWeek.isPending}>
+            <Button
+              size="sm"
+              className="flex-1"
+              onClick={() => clearWeek.mutate()}
+              disabled={clearWeek.isPending}
+            >
               <Plus className="ml-1 h-4 w-4" /> צור שבוע חדש
             </Button>
             <Button size="sm" variant="outline" className="flex-1" onClick={keepWeek}>
@@ -362,6 +363,7 @@ function PlannerPage() {
             markWeekInitialized();
             setWeekReady(true);
             qc.invalidateQueries({ queryKey: ["weekly-plan"] });
+            qc.invalidateQueries({ queryKey: ["workout_instances"] });
           }}
         />
       )}

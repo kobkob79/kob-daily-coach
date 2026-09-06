@@ -484,36 +484,6 @@ export type Database = {
         }
         Relationships: []
       }
-      community_posts: {
-        Row: {
-          author_display_name: string
-          body: string
-          created_at: string
-          id: string
-          photo_path: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          author_display_name: string
-          body?: string
-          created_at?: string
-          id?: string
-          photo_path?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          author_display_name?: string
-          body?: string
-          created_at?: string
-          id?: string
-          photo_path?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       daily_events: {
         Row: {
           amount: number | null
