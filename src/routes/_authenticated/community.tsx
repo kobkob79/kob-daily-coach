@@ -14,7 +14,16 @@ import { useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { he } from "date-fns/locale";
 import { toast } from "sonner";
-import { ChevronLeft, ImagePlus, Loader2, Send, Trash2, Users, X } from "lucide-react";
+import {
+  ChevronLeft,
+  ImagePlus,
+  Loader2,
+  MessageCircle,
+  Send,
+  Trash2,
+  Users,
+  X,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PremiumCard, SectionHeader, EmptyState } from "@/components/ui-kit/Section";
 import { Button } from "@/components/ui/button";
@@ -362,6 +371,17 @@ function PostCard({
             {formatDistanceToNow(new Date(post.created_at), { locale: he, addSuffix: true })}
           </p>
         </div>
+        {!isOwn && (
+          <Link
+            to="/messages/$userId"
+            params={{ userId: post.user_id }}
+            search={{ name: post.author_display_name }}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
+            aria-label={`שלח הודעה ל${post.author_display_name}`}
+          >
+            <MessageCircle className="h-4 w-4" />
+          </Link>
+        )}
         {isOwn && (
           <button
             type="button"
