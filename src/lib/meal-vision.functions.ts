@@ -6,16 +6,8 @@
  * throws an error carrying a VISION_NOT_CONNECTED marker so the UI can tell
  * the user explicitly.
  */
-import OpenAI from "openai";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { createOpenAIClient } from "@/lib/advisor-core/server/openai-client.server";
-import { VIORA_ADVISOR_MODEL } from "@/lib/advisor-core/server/config.server";
-import {
-  classifyOpenAIAPIError,
-  extractResponseText,
-  type OpenAITextResponse,
-} from "@/lib/advisor-core/server/providers/openai-provider.server";
 
 export interface ServerMealIngredient {
   name: string;
