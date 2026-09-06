@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { Row } from "@/types/database";
+import { WearableConnectionsSection } from "@/components/health/WearableConnectionsSection";
 
 export const Route = createFileRoute("/_authenticated/health")({
   component: HealthPage,
@@ -43,6 +44,7 @@ function HealthPage() {
   return (
     <div className="space-y-5">
       <HealthHero />
+      <WearableConnectionsSection />
       <MedicalIssuesSection />
       <SymptomsSection />
       <MedicalDisclaimer />

@@ -321,8 +321,11 @@ Track markers over time with AI interpretation.
 Could Have · P2 · L · Deps: HEALTH-004 · Backlog · AI
 
 **HEALTH-007 — Wearable / Health import**
-Import sleep, HR and steps from external providers.
-Future · P3 · XL · Deps: CORE-005 · Idea · Platform
+Import sleep, HR and steps from external providers (Google Health Connect,
+Garmin Connect). Data model and manual entry exist via CORE-005; automatic
+import needs a native Android wrapper (Health Connect) or an OAuth
+integration (Garmin) — neither built yet.
+Future · P3 · XL · Deps: CORE-005 · Blocked (needs native shell or Garmin OAuth build-out) · Platform
 
 ### 3.7 STATS — Statistics & Progress
 
@@ -491,8 +494,16 @@ Installable app, service worker, background-safe timers and notifications.
 Should Have · P1 · L · Deps: SETTINGS-004 · Backlog · Platform
 
 **CORE-005 — External integration layer**
-Generic connector layer for wearables/providers.
-Future · P3 · XL · Deps: CORE-001 · Idea · Platform
+Generic connector layer for wearables/providers. MVP shipped: provider-agnostic
+`health_connections` / `health_metrics` schema (RLS'd) plus a manual-entry
+path in the Health Center (`src/lib/health-metrics.ts`,
+`src/components/health/WearableConnectionsSection.tsx`). Google Health
+Connect and Garmin rows are visible but intentionally inert — Health Connect
+is an on-device Android API with no cloud endpoint (needs a native
+Capacitor-style wrapper to read it) and Garmin needs a per-user OAuth grant;
+neither is wired up. Unblocks HEALTH-007 once either integration lands on
+top of this schema.
+Future · P3 · XL · Deps: CORE-001 · In Progress (schema + manual entry done; native/OAuth sync pending) · Platform
 
 **CORE-006 — Role & sharing authorization model**
 Separate roles table + policies enabling coach/household access.
