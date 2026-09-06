@@ -360,8 +360,7 @@ export function buildAdvisorContextSnapshot(input: AdvisorContextInput): Advisor
         conflicting("labResults"),
       ),
       healthMetrics: fact(
-        input.healthMetrics &&
-          Object.values(input.healthMetrics).some((sample) => sample !== null)
+        input.healthMetrics && Object.values(input.healthMetrics).some((sample) => sample !== null)
           ? input.healthMetrics
           : null,
         [

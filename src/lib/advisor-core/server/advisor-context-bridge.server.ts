@@ -253,6 +253,7 @@ export function createSupabaseAdvisorContextDataSource(
           .limit(40),
         // vision_captures / health_metrics predate the generated Database
         // types, same as elsewhere in the app (see capture.tsx / health-metrics.ts).
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase as unknown as { from: (table: string) => any })
           .from("vision_captures")
           .select("extracted,notes,created_at")
@@ -261,6 +262,7 @@ export function createSupabaseAdvisorContextDataSource(
           .gte("created_at", labResultsSinceIso)
           .order("created_at", { ascending: false })
           .limit(20),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase as unknown as { from: (table: string) => any })
           .from("health_metrics")
           .select("metric_type,value,unit,recorded_at")
@@ -388,7 +390,9 @@ export function createSupabaseAdvisorContextDataSource(
       }>;
       const latestMetric = (type: string) => {
         const row = healthMetricRows.find((r) => r.metric_type === type);
-        return row ? { value: Number(row.value), unit: row.unit, recordedAt: row.recorded_at } : null;
+        return row
+          ? { value: Number(row.value), unit: row.unit, recordedAt: row.recorded_at }
+          : null;
       };
       const healthMetrics: SafeHealthMetricsSummary = {
         restingHeartRate: latestMetric("heart_rate_resting"),
