@@ -652,39 +652,6 @@ export type Database = {
         }
         Relationships: []
       }
-      health_connections: {
-        Row: {
-          connected_at: string
-          created_at: string
-          disconnected_at: string | null
-          last_synced_at: string | null
-          provider: string
-          status: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          connected_at?: string
-          created_at?: string
-          disconnected_at?: string | null
-          last_synced_at?: string | null
-          provider: string
-          status?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          connected_at?: string
-          created_at?: string
-          disconnected_at?: string | null
-          last_synced_at?: string | null
-          provider?: string
-          status?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       health_logs: {
         Row: {
           area: Database["public"]["Enums"]["body_area"]
@@ -718,45 +685,6 @@ export type Database = {
           notes?: string | null
           pain_level?: number | null
           user_id?: string
-        }
-        Relationships: []
-      }
-      health_metrics: {
-        Row: {
-          biological_day: string
-          created_at: string
-          id: string
-          metric_type: string
-          raw: Json | null
-          recorded_at: string
-          source: string
-          unit: string
-          user_id: string
-          value: number
-        }
-        Insert: {
-          biological_day: string
-          created_at?: string
-          id?: string
-          metric_type: string
-          raw?: Json | null
-          recorded_at: string
-          source: string
-          unit: string
-          user_id: string
-          value: number
-        }
-        Update: {
-          biological_day?: string
-          created_at?: string
-          id?: string
-          metric_type?: string
-          raw?: Json | null
-          recorded_at?: string
-          source?: string
-          unit?: string
-          user_id?: string
-          value?: number
         }
         Relationships: []
       }
