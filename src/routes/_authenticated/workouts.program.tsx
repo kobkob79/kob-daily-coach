@@ -248,30 +248,13 @@ function PlannerPage() {
           שבוע {formatWeekRange()}
         </p>
         <h2 className="mt-1 text-2xl font-extrabold">סיכום השבוע</h2>
-        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+        <div className="mt-3 grid grid-cols-2 gap-2 text-center">
           <Stat icon={<Dumbbell className="h-3.5 w-3.5" />} value={`${plannedCount}`} label="מתוכננים" />
-          <Stat
-            icon={<CheckCircle2 className="h-3.5 w-3.5" />}
-            value={`${completedCount}`}
-            label="הושלמו"
-          />
           <Stat
             icon={<Timer className="h-3.5 w-3.5" />}
             value={formatMinutes(totalMinutes)}
             label="זמן משוער"
           />
-        </div>
-        <div className="mt-3">
-          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-            <span>השלמת השבוע</span>
-            <span className="font-bold text-foreground">{pct}%</span>
-          </div>
-          <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
         </div>
       </div>
 
