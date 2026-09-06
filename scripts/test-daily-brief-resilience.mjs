@@ -42,7 +42,7 @@ const context = {
 
 try {
   const { generateDailyBriefResult } = await server.ssrLoadModule(
-    "/src/lib/daily-brief.functions.ts",
+    "/src/lib/daily-brief.server.ts",
   );
 
   let missingKeyCalls = 0;
