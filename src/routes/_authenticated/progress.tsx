@@ -29,6 +29,7 @@ import { subDays, format, eachDayOfInterval, startOfWeek, eachWeekOfInterval } f
 import { supabase } from "@/integrations/supabase/client";
 import { listSessions } from "@/lib/workout-session";
 import { t } from "@/lib/i18n";
+import { normalizeMuscleGroup, MUSCLE_GROUPS } from "@/lib/muscle-groups";
 
 export const Route = createFileRoute("/_authenticated/progress")({
   component: ProgressPage,
@@ -42,6 +43,20 @@ const AREA_COLOR: Record<(typeof AREAS)[number], string> = {
   general: "var(--color-muted-foreground)",
 };
 
+const MUSCLE_COLORS = [
+  "var(--color-chart-1)",
+  "var(--color-chart-2)",
+  "var(--color-chart-3)",
+  "var(--color-chart-4)",
+  "var(--color-chart-5)",
+  "var(--color-primary)",
+  "var(--color-accent)",
+  "var(--color-destructive)",
+  "var(--color-success)",
+  "var(--color-warning)",
+  "var(--color-muted-foreground)",
+];
+
 function ProgressPage() {
   const start = subDays(new Date(), 29);
   const startIso = format(start, "yyyy-MM-dd");
@@ -50,6 +65,37 @@ function ProgressPage() {
   const sessionsQ = useQuery({
     queryKey: ["progress", "sessions"],
     queryFn: () => listSessions(200),
+  });
+
+  const setsQ = useQuery({
+    queryKey: [
+      "progress",
+      "sets",
+      format(startOfWeek(subDays(new Date(), 55), { weekStartsOn: 0 }), "yyyy-MM-dd"),
+    ],
+    queryFn: async () => {
+      const wStart = startOfWeek(subDays(new Date(), 55), { weekStartsOn: 0 });
+      const { data, error } = await supabase
+        .from("workout_sets")
+        .select(
+          `
+          weight_kg,
+          reps,
+          workout_sessions!inner(started_at, status),
+          exercises(muscle_group)
+        `,
+        )
+        .not("completed_at", "is", null)
+        .eq("workout_sessions.status", "completed")
+        .gte("workout_sessions.started_at", format(wStart, "yyyy-MM-dd"));
+      if (error) throw error;
+      return data as unknown as {
+        weight_kg: number | null;
+        reps: number | null;
+        workout_sessions: { started_at: string; status: string };
+        exercises: { muscle_group: string | null } | null;
+      }[];
+    },
   });
 
   const nutritionQ = useQuery({
@@ -93,6 +139,32 @@ function ProgressPage() {
     }).length;
     return { week: format(wStart, "d/M"), sessions: count };
   });
+
+  // Volume per muscle group, last 8 weeks.
+  const allSets = setsQ.data ?? [];
+  const activeMuscles = new Set<string>();
+
+  const muscleVolumeData = weeks.map((wStart) => {
+    const wEnd = new Date(wStart);
+    wEnd.setDate(wEnd.getDate() + 7);
+    const weekSets = allSets.filter((s) => {
+      const d = new Date(s.workout_sessions.started_at);
+      return d >= wStart && d < wEnd;
+    });
+
+    const row: Record<string, string | number> = { week: format(wStart, "d/M") };
+    for (const set of weekSets) {
+      const muscle = normalizeMuscleGroup(set.exercises?.muscle_group);
+      const vol = (set.weight_kg ?? 0) * (set.reps ?? 0);
+      if (vol > 0) {
+        row[muscle] = ((row[muscle] as number) ?? 0) + vol;
+        activeMuscles.add(muscle);
+      }
+    }
+    return row;
+  });
+
+  const visibleMuscles = MUSCLE_GROUPS.filter((m) => activeMuscles.has(m));
 
   // Training volume per day, last 30 days.
   const volumeData = days.map((d) => ({
@@ -175,6 +247,31 @@ function ProgressPage() {
           </LineChart>
         </ResponsiveContainer>
       </ChartCard>
+
+      {visibleMuscles.length > 0 && (
+        <ChartCard title="נפח לפי קבוצת שריר">
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={muscleVolumeData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+              <XAxis
+                dataKey="week"
+                tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+              />
+              <YAxis tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }} width={36} />
+              <Tooltip contentStyle={tipStyle} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              {visibleMuscles.map((muscle, i) => (
+                <Bar
+                  key={muscle}
+                  dataKey={muscle}
+                  stackId="a"
+                  fill={MUSCLE_COLORS[i % MUSCLE_COLORS.length]}
+                />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      )}
 
       <ChartCard title={t("progress.chart.nutrition")}>
         <ResponsiveContainer width="100%" height={180}>
