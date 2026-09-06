@@ -1,37 +1,327 @@
 /**
- * Community ("הקהילה") — placeholder for Viora's planned public feed
- * (posts, photos, shared workouts and meals, under a username). The real
- * feature is still being designed; this reserves its place in the bottom
- * nav so the surface exists from day one.
+ * Community ("הקהילה") v1 — a public-within-app feed: text/photo posts from
+ * every signed-in user, newest first. No likes/comments/shared-workout
+ * attachments yet - see supabase/migrations/20260906120000_community_posts.sql
+ * for what's deliberately deferred and why.
+ *
+ * Reads/writes go straight through the Supabase client with RLS (same shape
+ * as hydration.tsx/meals.tsx) - no server function needed since every rule
+ * here (public read, own-row write) is expressible as a plain RLS policy.
  */
-import { createFileRoute } from "@tanstack/react-router";
-import { Users } from "lucide-react";
-import { PremiumCard } from "@/components/ui-kit/Section";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { formatDistanceToNow } from "date-fns";
+import { he } from "date-fns/locale";
+import { toast } from "sonner";
+import { ChevronLeft, ImagePlus, Loader2, Send, Trash2, Users, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { PremiumCard, SectionHeader, EmptyState } from "@/components/ui-kit/Section";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  COMMUNITY_POST_MAX_BODY_LENGTH,
+  communityAuthorInitials,
+  validatePostDraft,
+} from "@/lib/community-posts";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/community")({
   component: CommunityPage,
 });
 
+const PHOTO_BUCKET = "community-post-photos";
+const FEED_LIMIT = 50;
+
+type CommunityPost = {
+  id: string;
+  user_id: string;
+  author_display_name: string;
+  body: string;
+  photo_path: string | null;
+  created_at: string;
+};
+
 function CommunityPage() {
+  const qc = useQueryClient();
+  const [body, setBody] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const userQ = useQuery({
+    queryKey: ["auth-user-id"],
+    queryFn: async () => (await supabase.auth.getUser()).data.user?.id ?? null,
+  });
+
+  const profileQ = useQuery({
+    queryKey: ["profile", "community-display-name"],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("display_name").maybeSingle();
+      return data?.display_name ?? null;
+    },
+  });
+
+  const postsQ = useQuery({
+    queryKey: ["community-posts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("community_posts")
+        .select("id,user_id,author_display_name,body,photo_path,created_at")
+        .order("created_at", { ascending: false })
+        .limit(FEED_LIMIT);
+      if (error) throw error;
+      return (data ?? []) as CommunityPost[];
+    },
+  });
+
+  const photoPaths = (postsQ.data ?? [])
+    .map((p) => p.photo_path)
+    .filter((p): p is string => Boolean(p));
+
+  const photoUrlsQ = useQuery({
+    queryKey: ["community-post-photo-urls", photoPaths],
+    queryFn: async () => {
+      if (photoPaths.length === 0) return new Map<string, string>();
+      const { data, error } = await supabase.storage
+        .from(PHOTO_BUCKET)
+        .createSignedUrls(photoPaths, 3600);
+      if (error) throw error;
+      const map = new Map<string, string>();
+      for (const row of data ?? []) {
+        if (row.signedUrl && !row.error) map.set(row.path ?? "", row.signedUrl);
+      }
+      return map;
+    },
+    enabled: photoPaths.length > 0,
+  });
+
+  const clearComposer = () => {
+    setBody("");
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const createPost = useMutation({
+    mutationFn: async () => {
+      const validation = validatePostDraft({ body, hasPhoto: Boolean(photoFile) });
+      if (!validation.ok) throw new Error(validation.error);
+
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) throw new Error("יש להתחבר מחדש");
+
+      let photoPath: string | null = null;
+      if (photoFile) {
+        const ext = photoFile.name.split(".").pop() || "jpg";
+        const path = `${u.user.id}/${crypto.randomUUID()}.${ext}`;
+        const { error } = await supabase.storage.from(PHOTO_BUCKET).upload(path, photoFile, {
+          contentType: photoFile.type,
+          upsert: false,
+        });
+        if (error) throw error;
+        photoPath = path;
+      }
+
+      const { error } = await supabase.from("community_posts").insert({
+        user_id: u.user.id,
+        author_display_name: profileQ.data?.trim() || "משתמש",
+        body: body.trim(),
+        photo_path: photoPath,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("הפוסט פורסם");
+      clearComposer();
+      qc.invalidateQueries({ queryKey: ["community-posts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deletePost = useMutation({
+    mutationFn: async (post: CommunityPost) => {
+      const { error } = await supabase.from("community_posts").delete().eq("id", post.id);
+      if (error) throw error;
+      if (post.photo_path) {
+        await supabase.storage.from(PHOTO_BUCKET).remove([post.photo_path]);
+      }
+    },
+    onSuccess: () => {
+      toast.success("הפוסט נמחק");
+      qc.invalidateQueries({ queryKey: ["community-posts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const onPickPhoto = (file: File | null) => {
+    setPhotoFile(file);
+    setPhotoPreview(file ? URL.createObjectURL(file) : null);
+  };
+
+  const posts = postsQ.data ?? [];
+
   return (
-    <div dir="rtl" className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">הקהילה</h1>
-        <p className="text-sm text-muted-foreground">
-          פיד ציבורי לשיתוף אימונים, ארוחות ורגעים — בקרוב.
-        </p>
+    <div dir="rtl" className="space-y-6">
+      <div className="flex items-center gap-2">
+        <Link
+          to="/dashboard"
+          className="grid h-9 w-9 place-items-center rounded-full border border-border/60 text-muted-foreground transition hover:text-foreground"
+          aria-label="סגור"
+        >
+          <ChevronLeft className="h-4 w-4 rotate-180" />
+        </Link>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl font-bold tracking-tight">הקהילה</h1>
+          <p className="text-xs text-muted-foreground">פיד ציבורי לשיתוף אימונים, ארוחות ורגעים</p>
+        </div>
       </div>
 
-      <PremiumCard className="flex flex-col items-center gap-3 p-10 text-center">
-        <span className="grid h-14 w-14 place-items-center rounded-2xl bg-primary/12 text-primary">
-          <Users className="h-6 w-6" strokeWidth={1.8} />
-        </span>
-        <p className="text-sm font-semibold">הקהילה בדרך</p>
-        <p className="max-w-xs text-xs text-muted-foreground">
-          כאן יופיע בקרוב פיד ציבורי שבו כל משתמש יוכל לשתף פוסטים, תמונות, אימונים וארוחות תחת שם
-          המשתמש שלו.
-        </p>
+      <PremiumCard className="space-y-3">
+        <Textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="מה קורה אצלך היום?"
+          className="min-h-[80px] resize-none text-right"
+          maxLength={COMMUNITY_POST_MAX_BODY_LENGTH}
+        />
+        {photoPreview && (
+          <div className="relative inline-block">
+            <img
+              src={photoPreview}
+              alt=""
+              className="max-h-48 rounded-2xl border border-border/60 object-cover"
+            />
+            <button
+              type="button"
+              onClick={() => onPickPhoto(null)}
+              className="absolute -top-2 -left-2 grid h-7 w-7 place-items-center rounded-full bg-background text-foreground shadow-soft"
+              aria-label="הסר תמונה"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+        <div className="flex items-center justify-between gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => onPickPhoto(e.target.files?.[0] ?? null)}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <ImagePlus className="h-4 w-4" />
+            תמונה
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            disabled={createPost.isPending || (!body.trim() && !photoFile)}
+            onClick={() => createPost.mutate()}
+          >
+            {createPost.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+            פרסם
+          </Button>
+        </div>
       </PremiumCard>
+
+      <section>
+        <SectionHeader
+          title="הפיד"
+          subtitle={posts.length ? `${posts.length} פוסטים` : undefined}
+        />
+        {postsQ.isLoading ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">טוען...</p>
+        ) : posts.length === 0 ? (
+          <PremiumCard className="p-0">
+            <EmptyState
+              icon={<Users className="h-5 w-5" />}
+              title="עוד אין פוסטים"
+              hint="היו הראשונים לשתף משהו עם הקהילה."
+            />
+          </PremiumCard>
+        ) : (
+          <div className="space-y-3">
+            {posts.map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                photoUrl={post.photo_path ? photoUrlsQ.data?.get(post.photo_path) : undefined}
+                isOwn={Boolean(userQ.data) && post.user_id === userQ.data}
+                onDelete={() => deletePost.mutate(post)}
+                deleting={deletePost.isPending && deletePost.variables?.id === post.id}
+              />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
+  );
+}
+
+function PostCard({
+  post,
+  photoUrl,
+  isOwn,
+  onDelete,
+  deleting,
+}: {
+  post: CommunityPost;
+  photoUrl: string | undefined;
+  isOwn: boolean;
+  onDelete: () => void;
+  deleting: boolean;
+}) {
+  return (
+    <PremiumCard className={cn("space-y-3", deleting && "opacity-50")}>
+      <div className="flex items-start gap-3">
+        <Avatar className="h-9 w-9 shrink-0">
+          <AvatarFallback className="text-xs font-semibold">
+            {communityAuthorInitials(post.author_display_name)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold">{post.author_display_name}</p>
+          <p className="text-[11px] text-muted-foreground">
+            {formatDistanceToNow(new Date(post.created_at), { locale: he, addSuffix: true })}
+          </p>
+        </div>
+        {isOwn && (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={deleting}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-destructive hover:bg-destructive/10 disabled:opacity-50"
+            aria-label="מחק פוסט"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+      {post.body && <p className="whitespace-pre-wrap text-sm">{post.body}</p>}
+      {post.photo_path &&
+        (photoUrl ? (
+          <img
+            src={photoUrl}
+            alt=""
+            className="max-h-80 w-full rounded-2xl border border-border/60 object-cover"
+          />
+        ) : (
+          <div className="flex h-32 items-center justify-center rounded-2xl border border-border/60 bg-muted/30 text-xs text-muted-foreground">
+            טוען תמונה...
+          </div>
+        ))}
+    </PremiumCard>
   );
 }
