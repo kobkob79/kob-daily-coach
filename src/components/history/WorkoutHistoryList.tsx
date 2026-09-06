@@ -47,19 +47,10 @@ function HistoryCard({ s }: { s: SessionRow }) {
             {s.total_volume_kg ? ` · ${s.total_volume_kg} ק״ג` : ""}
           </p>
         </div>
-        {s.status === "completed" ? (
-          <span className="rounded-full bg-success/20 px-2 py-0.5 text-[10px] text-success">
-            הושלם
-          </span>
-        ) : s.status === "discarded" ? (
-          <span className="rounded-full bg-muted/40 px-2 py-0.5 text-[10px] text-muted-foreground">
-            נזרק
-          </span>
-        ) : (
-          <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] text-primary">
-            בתהליך
-          </span>
-        )}
+        {/* Only completed sessions reach this list, so there is exactly one chip. */}
+        <span className="rounded-full bg-success/20 px-2 py-0.5 text-[10px] text-success">
+          הושלם
+        </span>
         <ChevronLeft className="mr-2 h-4 w-4 text-muted-foreground rtl:rotate-180" />
       </div>
     </Link>
