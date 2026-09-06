@@ -38,8 +38,9 @@ export interface ExerciseStats {
   progression: {
     at: string;
     volumeKg: number;
-    e1rmKg: number;
-    topWeightKg: number;
+    /** null when no set in that session had both a weight and reps to estimate from — a data gap, not a real zero. */
+    e1rmKg: number | null;
+    topWeightKg: number | null;
   }[];
 }
 
@@ -132,8 +133,8 @@ export function computeExerciseStats(sets: StatSet[]): ExerciseStats {
   const progression = sessions.slice(-20).map((s) => ({
     at: s.at!,
     volumeKg: round(s.volume, 1) ?? 0,
-    e1rmKg: round(s.maxE1rm, 1) ?? 0,
-    topWeightKg: round(s.maxWeight, 1) ?? 0,
+    e1rmKg: s.maxE1rm > 0 ? round(s.maxE1rm, 1) : null,
+    topWeightKg: s.maxWeight > 0 ? round(s.maxWeight, 1) : null,
   }));
 
   return {

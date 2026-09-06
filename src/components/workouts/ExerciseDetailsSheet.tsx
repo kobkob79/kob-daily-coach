@@ -7,7 +7,7 @@
  * without touching the rest of the layout. Info/coaching blocks are separate
  * sections so AI tips, common mistakes and safety notes can be appended.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -253,6 +253,18 @@ function PersonalIntel({
           ? `${last.weightKg} ק״ג`
           : `${last.reps} חזרות`
       : "—";
+  const progressionChartData = useMemo(
+    () =>
+      stats.progression.map((p) => ({
+        ...p,
+        dateLabel: new Date(p.at).toLocaleDateString("he-IL", {
+          day: "numeric",
+          month: "numeric",
+          year: "2-digit",
+        }),
+      })),
+    [stats.progression],
+  );
 
   return (
     <div className="space-y-3">
@@ -362,13 +374,7 @@ function PersonalIntel({
               <div className="h-[200px] w-full pt-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
-                    data={stats.progression.map((p) => ({
-                      ...p,
-                      dateLabel: new Date(p.at).toLocaleDateString("he-IL", {
-                        day: "numeric",
-                        month: "numeric",
-                      }),
-                    }))}
+                    data={progressionChartData}
                     margin={{ top: 5, right: 0, left: -20, bottom: 0 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
