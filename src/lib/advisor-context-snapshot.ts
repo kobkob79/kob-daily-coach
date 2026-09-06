@@ -74,6 +74,15 @@ export interface AdvisorContextProfileInput {
   currentWeightKg?: number | null;
 }
 
+/** Aggregated resting-heart-rate signal from health_metrics, over the same
+ *  lookback window as the timeline - a single reading, not per-sample rows
+ *  (those stay out of Advisor context; the aggregate is what recovery needs). */
+export interface AdvisorContextWearableRecovery {
+  restingHeartRateBpm: number | null;
+  observedAt: string | null;
+  source: string;
+}
+
 export interface AdvisorContextInput {
   userId: string;
   now: Date;
@@ -83,6 +92,7 @@ export interface AdvisorContextInput {
   shift?: { kind: string; source: string; observedAt?: string | null } | null;
   medical?: SafeMedicalIssue[];
   progress?: SafeProgressSummary | null;
+  wearableRecovery?: AdvisorContextWearableRecovery | null;
   timeline: UnifiedTimelineItem[];
   conflicts?: AdvisorContextKey[];
 }
@@ -281,11 +291,25 @@ export function buildAdvisorContextSnapshot(input: AdvisorContextInput): Advisor
         conflicting("sleep"),
       ),
       recovery: fact(
-        sleep.length
-          ? { sleepHours: numericTotal(sleep, "hours") || null, workoutCount: workouts.length }
+        sleep.length || input.wearableRecovery?.restingHeartRateBpm != null
+          ? {
+              sleepHours: numericTotal(sleep, "hours") || null,
+              workoutCount: workouts.length,
+              restingHeartRateBpm: input.wearableRecovery?.restingHeartRateBpm ?? null,
+            }
           : null,
-        latest([...sleep, ...workouts]),
-        sourceNames([...sleep, ...workouts]),
+        [latest([...sleep, ...workouts]), input.wearableRecovery?.observedAt ?? null]
+          .filter((value): value is string => Boolean(value))
+          .sort()
+          .at(-1) ?? null,
+        [
+          ...new Set([
+            ...sourceNames([...sleep, ...workouts]),
+            ...(input.wearableRecovery?.restingHeartRateBpm != null
+              ? [input.wearableRecovery.source]
+              : []),
+          ]),
+        ],
         "inferred",
         input.now,
         conflicting("recovery"),
