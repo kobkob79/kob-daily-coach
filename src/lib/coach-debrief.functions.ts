@@ -104,7 +104,16 @@ export const generateCoachDebrief = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ({ ctx: (input ?? {}) as CoachDebriefContext }))
   .handler(async ({ data }): Promise<CoachDebrief> => {
-    let client: OpenAI;
+    const [{ default: OpenAI }, { createOpenAIClient }, { VIORA_ADVISOR_MODEL }, provider] =
+      await Promise.all([
+        import("openai"),
+        import("@/lib/advisor-core/server/openai-client.server"),
+        import("@/lib/advisor-core/server/config.server"),
+        import("@/lib/advisor-core/server/providers/openai-provider.server"),
+      ]);
+    const { classifyOpenAIAPIError, extractResponseText } = provider;
+
+    let client: InstanceType<typeof OpenAI>;
     try {
       client = createOpenAIClient();
     } catch (e) {
