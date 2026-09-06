@@ -109,6 +109,14 @@ export async function generateDailyBriefResult(
   ctx: DailyBriefContext,
   options: { apiKey?: string; fetchImpl?: typeof fetch } = {},
 ): Promise<DailyBriefResult> {
+  const [{ default: OpenAIClient }, { createOpenAIClient }, { extractResponseText }, { VIORA_ADVISOR_MODEL }] =
+    await Promise.all([
+      import("openai"),
+      import("@/lib/advisor-core/server/openai-client.server"),
+      import("@/lib/advisor-core/server/providers/openai-provider.server"),
+      import("@/lib/advisor-core/server/config.server"),
+    ]);
+
   if (!options.apiKey) {
     logUnavailable("daily_brief_unavailable");
     return { status: "unavailable", reason: "not_configured" };
@@ -119,7 +127,7 @@ export async function generateDailyBriefResult(
   let client: OpenAI;
   try {
     if (options.apiKey !== process.env.OPENAI_API_KEY || options.fetchImpl) {
-      client = new OpenAI({ apiKey: options.apiKey, fetch: options.fetchImpl });
+      client = new OpenAIClient({ apiKey: options.apiKey, fetch: options.fetchImpl });
     } else {
       client = createOpenAIClient();
     }
