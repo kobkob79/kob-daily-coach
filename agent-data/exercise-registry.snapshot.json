@@ -5,20 +5,20 @@
   "summary": {
     "totalExercises": 156,
     "completedExercises": 12,
-    "partialExercises": 4,
-    "notStartedExercises": 140,
+    "partialExercises": 5,
+    "notStartedExercises": 139,
     "coversComplete": 12,
     "infographicsComplete": 12,
-    "thumbnailsComplete": 16,
-    "demosComplete": 4,
+    "thumbnailsComplete": 17,
+    "demosComplete": 5,
     "overallProgressPercent": 7.6923076923076925
   },
   "nextRecommendedExercise": {
-    "exerciseId": "34440569-9867-4735-953f-867763ed8491",
-    "exerciseNumber": 48,
-    "canonicalHebrewName": "משיכת חבל לפנים",
-    "englishName": "Face Pull",
-    "muscleGroup": "shoulders",
+    "exerciseId": "247189d8-d72e-4dcf-a6c7-f4b3b6ff8488",
+    "exerciseNumber": 3,
+    "canonicalHebrewName": "לחיצת חזה במכונה",
+    "englishName": "Machine Chest Press",
+    "muscleGroup": "chest",
     "status": "PARTIAL",
     "media": {
       "hasCover": false,
@@ -30,7 +30,7 @@
       "cover",
       "infographic"
     ],
-    "lastUpdated": "2026-09-03T06:19:39.324Z"
+    "lastUpdated": "2026-09-06T19:47:15.734Z"
   },
   "exercises": [
     {
@@ -77,19 +77,18 @@
       "canonicalHebrewName": "לחיצת חזה במכונה",
       "englishName": "Machine Chest Press",
       "muscleGroup": "chest",
-      "status": "NOT_STARTED",
+      "status": "PARTIAL",
       "media": {
         "hasCover": false,
         "hasInfographic": false,
-        "hasThumbnail": false,
-        "hasDemo": false
+        "hasThumbnail": true,
+        "hasDemo": true
       },
       "missingAssets": [
         "cover",
-        "infographic",
-        "thumbnail",
-        "demo"
-      ]
+        "infographic"
+      ],
+      "lastUpdated": "2026-09-06T19:47:15.734Z"
     },
     {
       "exerciseId": "6e1f561b-b4c8-463f-9437-b4bb2eb849de",
