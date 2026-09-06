@@ -100,7 +100,10 @@ function CommunityPage() {
   const clearComposer = () => {
     setBody("");
     setPhotoFile(null);
-    setPhotoPreview(null);
+    setPhotoPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -114,7 +117,8 @@ function CommunityPage() {
 
       let photoPath: string | null = null;
       if (photoFile) {
-        const ext = photoFile.name.split(".").pop() || "jpg";
+        const dot = photoFile.name.lastIndexOf(".");
+        const ext = dot > 0 ? photoFile.name.slice(dot + 1) : "jpg";
         const path = `${u.user.id}/${crypto.randomUUID()}.${ext}`;
         const { error } = await supabase.storage.from(PHOTO_BUCKET).upload(path, photoFile, {
           contentType: photoFile.type,
@@ -145,7 +149,14 @@ function CommunityPage() {
       const { error } = await supabase.from("community_posts").delete().eq("id", post.id);
       if (error) throw error;
       if (post.photo_path) {
-        await supabase.storage.from(PHOTO_BUCKET).remove([post.photo_path]);
+        const { error: storageError } = await supabase.storage
+          .from(PHOTO_BUCKET)
+          .remove([post.photo_path]);
+        // The post row is already gone at this point; a failed photo cleanup
+        // shouldn't block that or re-surface as "delete failed" to the user,
+        // but it must not be silently lost either — it leaves an orphaned
+        // object in the bucket that needs a look.
+        if (storageError) console.error("community post photo cleanup failed", storageError);
       }
     },
     onSuccess: () => {
@@ -157,7 +168,10 @@ function CommunityPage() {
 
   const onPickPhoto = (file: File | null) => {
     setPhotoFile(file);
-    setPhotoPreview(file ? URL.createObjectURL(file) : null);
+    setPhotoPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return file ? URL.createObjectURL(file) : null;
+    });
   };
 
   const posts = postsQ.data ?? [];

@@ -21,7 +21,11 @@ export function validatePostDraft(input: PostDraftInput): PostDraftValidation {
   if (!trimmed && !input.hasPhoto) {
     return { ok: false, error: "כתבו משהו או צרפו תמונה" };
   }
-  if (input.body.length > COMMUNITY_POST_MAX_BODY_LENGTH) {
+  // Count Unicode code points, not UTF-16 units — `body.length` counts surrogate
+  // pairs (emoji, astral-plane characters) as 2, while Postgres' char_length
+  // (the actual DB constraint) counts them as 1; matching it avoids rejecting
+  // emoji-heavy posts the database would have accepted.
+  if ([...input.body].length > COMMUNITY_POST_MAX_BODY_LENGTH) {
     return {
       ok: false,
       error: `הפוסט ארוך מדי (עד ${COMMUNITY_POST_MAX_BODY_LENGTH} תווים)`,

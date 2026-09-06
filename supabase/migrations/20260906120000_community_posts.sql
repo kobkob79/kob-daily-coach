@@ -38,16 +38,27 @@ create policy "Authenticated users read all community posts"
   to authenticated
   using (true);
 
+-- photo_path is trusted client input (there's no FK to storage.objects), so the
+-- insert/update checks also require it to sit in the caller's own upload folder
+-- (same "<uid>/..." convention the storage policies below enforce) - otherwise
+-- a user could point their own post at another user's already-public photo path
+-- and have it display as if they were the one who posted it.
 create policy "Users create own community posts"
   on public.community_posts for insert
   to authenticated
-  with check ((select auth.uid()) = user_id);
+  with check (
+    (select auth.uid()) = user_id
+    and (photo_path is null or photo_path like ((select auth.uid())::text || '/%'))
+  );
 
 create policy "Users update own community posts"
   on public.community_posts for update
   to authenticated
   using ((select auth.uid()) = user_id)
-  with check ((select auth.uid()) = user_id);
+  with check (
+    (select auth.uid()) = user_id
+    and (photo_path is null or photo_path like ((select auth.uid())::text || '/%'))
+  );
 
 create policy "Users delete own community posts"
   on public.community_posts for delete
