@@ -159,14 +159,17 @@ describe("selectAdvisorContext — advisor coverage and filtering", () => {
     }
   });
 
-  test("advisor-specific filtering is preserved (each advisor gets only its own keys)", () => {
+  test("every advisor gets the full-day context snapshot, not a domain slice", () => {
+    // "One brain" (VIORA-ADVISOR-CONTEXT-CLEAN-ROOM-RECOVERY-001 follow-up):
+    // every advisor now receives every fact, so Adam sees nutrition/goals
+    // and Shiran sees recovery/sleep — no advisor is missing a domain.
     const adam = Object.keys(selectAdvisorContext(snapshot, "adam").facts).sort();
     const shiran = Object.keys(selectAdvisorContext(snapshot, "shiran").facts).sort();
-    assert.deepEqual(adam, ["bioDay", "profile", "recovery", "shift", "sleep"]);
-    assert.deepEqual(shiran, ["bioDay", "goals", "hydration", "nutrition", "profile", "progress"]);
-    // Adam is a sleep/recovery advisor — he must not receive nutrition or goals.
-    assert.equal("nutrition" in selectAdvisorContext(snapshot, "adam").facts, false);
-    assert.equal("goals" in selectAdvisorContext(snapshot, "adam").facts, false);
+    assert.deepEqual(adam, shiran, "every advisor receives the identical full key set");
+    assert.ok(adam.includes("nutrition"), "Adam now also receives nutrition");
+    assert.ok(adam.includes("goals"), "Adam now also receives goals");
+    assert.ok(shiran.includes("recovery"), "Shiran now also receives recovery");
+    assert.ok(shiran.includes("sleep"), "Shiran now also receives sleep");
   });
 });
 

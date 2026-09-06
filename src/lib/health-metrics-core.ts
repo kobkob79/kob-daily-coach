@@ -4,12 +4,15 @@
  */
 
 export type HealthProvider = "health_connect" | "garmin" | "apple_health" | "manual";
-export type HealthMetricType =
-  | "heart_rate_resting"
-  | "sleep_minutes"
-  | "steps"
-  | "calories_burned"
-  | "workout_minutes";
+
+export const HEALTH_METRIC_TYPES = [
+  "heart_rate_resting",
+  "sleep_minutes",
+  "steps",
+  "calories_burned",
+  "workout_minutes",
+] as const;
+export type HealthMetricType = (typeof HEALTH_METRIC_TYPES)[number];
 
 export const PROVIDER_LABEL: Record<HealthProvider, string> = {
   health_connect: "Google Health Connect",
@@ -52,7 +55,9 @@ export interface HealthMetric {
 }
 
 /** Latest sample per metric type, for a compact "today" summary card. */
-export function latestByType(metrics: HealthMetric[]): Partial<Record<HealthMetricType, HealthMetric>> {
+export function latestByType(
+  metrics: HealthMetric[],
+): Partial<Record<HealthMetricType, HealthMetric>> {
   const out: Partial<Record<HealthMetricType, HealthMetric>> = {};
   for (const m of metrics) {
     if (!out[m.metric_type]) out[m.metric_type] = m;

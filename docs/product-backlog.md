@@ -343,7 +343,7 @@ Must Have · P0 · M · Deps: STATS-002 · **Shipped** · Dev
 
 **STATS-004 — Training load & volume by muscle**
 Weekly tonnage and set counts per muscle group.
-Should Have · P1 · M · Deps: LIBRARY-002, STATS-002 · Ready · Dev
+Should Have · P1 · M · Deps: LIBRARY-002, STATS-002 · **Shipped** · Dev
 
 **STATS-005 — Body progress gallery**
 Chronological body photos with comparison view.

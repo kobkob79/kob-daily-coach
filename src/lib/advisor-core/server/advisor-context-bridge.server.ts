@@ -6,6 +6,8 @@ import {
   type AdvisorContextInput,
   type AdvisorContextKey,
   type ContextAdvisorId,
+  type SafeHealthMetricsSummary,
+  type SafeLabResult,
   type SafeMedicalIssue,
   type SafeProgressSummary,
 } from "../../advisor-context-snapshot.ts";
@@ -20,6 +22,8 @@ export interface AdvisorContextSourceData {
   shift: AdvisorContextInput["shift"];
   medical: SafeMedicalIssue[];
   progress: SafeProgressSummary | null;
+  labResults: SafeLabResult[];
+  healthMetrics: SafeHealthMetricsSummary | null;
   timelineInput: UnifiedTimelineInput;
   conflicts: AdvisorContextKey[];
 }
@@ -81,6 +85,8 @@ export async function buildAdvisorContextForUser(
     shift: data.shift,
     medical: data.medical,
     progress: data.progress,
+    labResults: data.labResults,
+    healthMetrics: data.healthMetrics,
     timeline,
     conflicts: data.conflicts,
   });
@@ -142,6 +148,9 @@ export function createSupabaseAdvisorContextDataSource(
       const sinceIso = since.toISOString();
       const sinceDate = sinceIso.slice(0, 10);
       const nowIso = now.toISOString();
+      // Lab results aren't logged daily, so look back further than the
+      // 7-day window used for day-to-day facts.
+      const labResultsSinceIso = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000).toISOString();
       const [
         profileResult,
         goalsResult,
@@ -157,6 +166,8 @@ export function createSupabaseAdvisorContextDataSource(
         medicalResult,
         weightsResult,
         measurementsResult,
+        labResultsResult,
+        healthMetricsResult,
       ] = await Promise.all([
         supabase
           .from("profiles")
@@ -240,6 +251,24 @@ export function createSupabaseAdvisorContextDataSource(
           .eq("user_id", userId)
           .order("measured_on", { ascending: false })
           .limit(40),
+        // vision_captures / health_metrics predate the generated Database
+        // types, same as elsewhere in the app (see capture.tsx / health-metrics.ts).
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase as unknown as { from: (table: string) => any })
+          .from("vision_captures")
+          .select("extracted,notes,created_at")
+          .eq("user_id", userId)
+          .eq("capture_type", "blood_test")
+          .gte("created_at", labResultsSinceIso)
+          .order("created_at", { ascending: false })
+          .limit(20),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase as unknown as { from: (table: string) => any })
+          .from("health_metrics")
+          .select("metric_type,value,unit,recorded_at")
+          .eq("user_id", userId)
+          .gte("recorded_at", sinceIso)
+          .order("recorded_at", { ascending: false }),
       ]);
       const results = [
         profileResult,
@@ -256,6 +285,8 @@ export function createSupabaseAdvisorContextDataSource(
         medicalResult,
         weightsResult,
         measurementsResult,
+        labResultsResult,
+        healthMetricsResult,
       ];
       if (results.some((result) => result.error)) throw new Error("ADVISOR_CONTEXT_UNAVAILABLE");
 
@@ -330,6 +361,46 @@ export function createSupabaseAdvisorContextDataSource(
         height_cm: number | null;
         current_weight_kg: number | null;
       } | null;
+      const labResults: SafeLabResult[] = (
+        (labResultsResult.data ?? []) as Array<{
+          extracted: Record<string, unknown> | null;
+          notes: string | null;
+          created_at: string;
+        }>
+      ).map((row) => {
+        const extracted = row.extracted ?? {};
+        const testDate = (extracted.test_date as string) ?? row.created_at;
+        return {
+          lab: (extracted.lab as string) ?? null,
+          marker: (extracted.marker as string) ?? null,
+          value: (extracted.value as string) ?? null,
+          summary: (extracted.summary as string) ?? row.notes ?? null,
+          testDate,
+          freshness:
+            Date.parse(testDate) >= freshnessCutoff.getTime()
+              ? ("current" as const)
+              : ("stale" as const),
+        };
+      });
+      const healthMetricRows = (healthMetricsResult.data ?? []) as Array<{
+        metric_type: string;
+        value: number;
+        unit: string;
+        recorded_at: string;
+      }>;
+      const latestMetric = (type: string) => {
+        const row = healthMetricRows.find((r) => r.metric_type === type);
+        return row
+          ? { value: Number(row.value), unit: row.unit, recordedAt: row.recorded_at }
+          : null;
+      };
+      const healthMetrics: SafeHealthMetricsSummary = {
+        restingHeartRate: latestMetric("heart_rate_resting"),
+        sleepMinutes: latestMetric("sleep_minutes"),
+        steps: latestMetric("steps"),
+        caloriesBurned: latestMetric("calories_burned"),
+        workoutMinutes: latestMetric("workout_minutes"),
+      };
       return {
         // birth_date is read here only to derive an integer age; it is never
         // placed on the returned profile, so it cannot reach the snapshot,
@@ -376,6 +447,8 @@ export function createSupabaseAdvisorContextDataSource(
           : null,
         medical,
         progress,
+        labResults,
+        healthMetrics,
         timelineInput: {
           timezone: bio?.timezone ?? "UTC",
           bioDayAssignments: assignments,
