@@ -8,14 +8,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { createOpenAIClient } from "@/lib/advisor-core/server/openai-client.server";
-import {
-  classifyOpenAIAPIError,
-  extractResponseText,
-} from "@/lib/advisor-core/server/providers/openai-provider.server";
-import { AdvisorCoreError } from "@/lib/advisor-core/response";
-import { VIORA_ADVISOR_MODEL } from "@/lib/advisor-core/server/config.server";
-import OpenAI from "openai";
+import type OpenAI from "openai";
 
 export interface DailyBriefContext {
   now: string;
