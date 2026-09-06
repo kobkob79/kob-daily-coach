@@ -19,7 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PremiumCard, SectionHeader, EmptyState } from "@/components/ui-kit/Section";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   COMMUNITY_POST_MAX_BODY_LENGTH,
   communityAuthorInitials,
@@ -38,6 +38,7 @@ export const Route = createFileRoute("/_authenticated/community")({
 const db = supabase as unknown as { from: (table: string) => any };
 
 const PHOTO_BUCKET = "community-post-photos";
+const PROFILE_PHOTO_BUCKET = "profile-photos";
 const FEED_LIMIT = 50;
 
 type CommunityPost = {
@@ -46,6 +47,7 @@ type CommunityPost = {
   author_display_name: string;
   body: string;
   photo_path: string | null;
+  author_avatar_path: string | null;
   created_at: string;
 };
 
@@ -62,10 +64,13 @@ function CommunityPage() {
   });
 
   const profileQ = useQuery({
-    queryKey: ["profile", "community-display-name"],
+    queryKey: ["profile", "community-author"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("display_name").maybeSingle();
-      return data?.display_name ?? null;
+      const { data } = await supabase
+        .from("profiles")
+        .select("display_name,avatar_url")
+        .maybeSingle();
+      return { displayName: data?.display_name ?? null, avatarPath: data?.avatar_url ?? null };
     },
   });
 
@@ -74,7 +79,7 @@ function CommunityPage() {
     queryFn: async () => {
       const { data, error } = await db
         .from("community_posts")
-        .select("id,user_id,author_display_name,body,photo_path,created_at")
+        .select("id,user_id,author_display_name,body,photo_path,author_avatar_path,created_at")
         .order("created_at", { ascending: false })
         .limit(FEED_LIMIT);
       if (error) throw error;
@@ -83,7 +88,7 @@ function CommunityPage() {
   });
 
   const photoPaths = (postsQ.data ?? [])
-    .map((p) => p.photo_path)
+    .flatMap((p) => [p.photo_path, p.author_avatar_path])
     .filter((p): p is string => Boolean(p));
 
   const photoUrlsQ = useQuery({
@@ -134,11 +139,40 @@ function CommunityPage() {
         photoPath = path;
       }
 
+      // Snapshot the current profile photo into the already-public post-photos
+      // bucket, since profile-photos itself is owner-scoped (no other user
+      // could resolve a signed URL for it). Best-effort: a failed copy posts
+      // without an avatar rather than blocking the whole post.
+      let authorAvatarPath: string | null = null;
+      const profileAvatarPath = profileQ.data?.avatarPath;
+      if (profileAvatarPath) {
+        try {
+          const { data: avatarBlob, error: downloadError } = await supabase.storage
+            .from(PROFILE_PHOTO_BUCKET)
+            .download(profileAvatarPath);
+          if (downloadError || !avatarBlob) throw downloadError ?? new Error("empty avatar blob");
+          const dot = profileAvatarPath.lastIndexOf(".");
+          const ext = dot > 0 ? profileAvatarPath.slice(dot + 1) : "jpg";
+          const avatarPath = `${u.user.id}/avatar-${crypto.randomUUID()}.${ext}`;
+          const { error: uploadError } = await supabase.storage
+            .from(PHOTO_BUCKET)
+            .upload(avatarPath, avatarBlob, {
+              contentType: avatarBlob.type || "image/jpeg",
+              upsert: false,
+            });
+          if (uploadError) throw uploadError;
+          authorAvatarPath = avatarPath;
+        } catch (avatarError) {
+          console.error("community post avatar snapshot failed", avatarError);
+        }
+      }
+
       const { error } = await db.from("community_posts").insert({
         user_id: u.user.id,
-        author_display_name: profileQ.data?.trim() || "משתמש",
+        author_display_name: profileQ.data?.displayName?.trim() || "משתמש",
         body: body.trim(),
         photo_path: photoPath,
+        author_avatar_path: authorAvatarPath,
       });
       if (error) throw error;
     },
@@ -154,10 +188,13 @@ function CommunityPage() {
     mutationFn: async (post: CommunityPost) => {
       const { error } = await db.from("community_posts").delete().eq("id", post.id);
       if (error) throw error;
-      if (post.photo_path) {
+      const objectsToRemove = [post.photo_path, post.author_avatar_path].filter((p): p is string =>
+        Boolean(p),
+      );
+      if (objectsToRemove.length > 0) {
         const { error: storageError } = await supabase.storage
           .from(PHOTO_BUCKET)
-          .remove([post.photo_path]);
+          .remove(objectsToRemove);
         // The post row is already gone at this point; a failed photo cleanup
         // shouldn't block that or re-surface as "delete failed" to the user,
         // but it must not be silently lost either — it leaves an orphaned
@@ -278,6 +315,11 @@ function CommunityPage() {
                 key={post.id}
                 post={post}
                 photoUrl={post.photo_path ? photoUrlsQ.data?.get(post.photo_path) : undefined}
+                avatarUrl={
+                  post.author_avatar_path
+                    ? photoUrlsQ.data?.get(post.author_avatar_path)
+                    : undefined
+                }
                 isOwn={Boolean(userQ.data) && post.user_id === userQ.data}
                 onDelete={() => deletePost.mutate(post)}
                 deleting={deletePost.isPending && deletePost.variables?.id === post.id}
@@ -293,12 +335,14 @@ function CommunityPage() {
 function PostCard({
   post,
   photoUrl,
+  avatarUrl,
   isOwn,
   onDelete,
   deleting,
 }: {
   post: CommunityPost;
   photoUrl: string | undefined;
+  avatarUrl: string | undefined;
   isOwn: boolean;
   onDelete: () => void;
   deleting: boolean;
@@ -307,6 +351,7 @@ function PostCard({
     <PremiumCard className={cn("space-y-3", deleting && "opacity-50")}>
       <div className="flex items-start gap-3">
         <Avatar className="h-9 w-9 shrink-0">
+          {avatarUrl && <AvatarImage src={avatarUrl} alt="" />}
           <AvatarFallback className="text-xs font-semibold">
             {communityAuthorInitials(post.author_display_name)}
           </AvatarFallback>
