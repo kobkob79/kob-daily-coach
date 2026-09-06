@@ -76,6 +76,8 @@ export interface SessionSet {
   position: number | null;
   reps: number | null;
   weight_kg: number | null;
+  /** Excluded from PRs, volume totals and progression stats — still logged, just not counted as work. */
+  is_warmup: boolean;
   /** Time-based sets (cardio/core/stretch), in place of reps/weight_kg. */
   duration_seconds: number | null;
   /** Cardio only. */
@@ -344,7 +346,7 @@ export async function finalizeSession(
   const durationSec = Math.max(0, Math.round((Date.now() - startedMs) / 1000));
   const sets = await getSessionSets(id);
   const volume = sets.reduce(
-    (acc, s) => acc + (s.completed_at ? (s.weight_kg ?? 0) * (s.reps ?? 0) : 0),
+    (acc, s) => acc + (s.completed_at && !s.is_warmup ? (s.weight_kg ?? 0) * (s.reps ?? 0) : 0),
     0,
   );
   await updateSession(id, {
@@ -731,6 +733,7 @@ export async function getExercisePR(exerciseId: string): Promise<number> {
     .select("weight_kg")
     .eq("user_id", u.user.id)
     .eq("exercise_id", exerciseId)
+    .eq("is_warmup", false)
     .not("completed_at", "is", null)
     .order("weight_kg", { ascending: false })
     .limit(1);
@@ -782,6 +785,7 @@ export async function getExercisePRStats(
     .select("weight_kg, reps, duration_seconds")
     .eq("user_id", u.user.id)
     .eq("exercise_id", exerciseId)
+    .eq("is_warmup", false)
     .not("completed_at", "is", null);
   if (excludeSessionId) q = q.neq("session_id", excludeSessionId);
   const { data } = await q;
