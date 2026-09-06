@@ -1,7 +1,8 @@
 /**
  * Server-only implementation of the Viora daily AI brief.
  * Imported dynamically from daily-brief.functions.ts inside the
- * createServerFn handler so it never enters the client bundle.
+ * createServerFn handler so server-only modules never enter the
+ * client bundle.
  */
 import type { DailyBriefContext, DailyBriefResult } from "./daily-brief.functions";
 
@@ -56,17 +57,13 @@ export async function generateDailyBriefResult(
   ctx: DailyBriefContext,
   options: { apiKey?: string; fetchImpl?: typeof fetch } = {},
 ): Promise<DailyBriefResult> {
-  const [
-    { default: OpenAIClient },
-    { createOpenAIClient },
-    { extractResponseText },
-    { VIORA_ADVISOR_MODEL },
-  ] = await Promise.all([
-    import("openai"),
-    import("@/lib/advisor-core/server/openai-client.server"),
-    import("@/lib/advisor-core/server/providers/openai-provider.server"),
-    import("@/lib/advisor-core/server/config.server"),
-  ]);
+  const [{ default: OpenAIClient }, { createOpenAIClient }, { extractResponseText }, { VIORA_ADVISOR_MODEL }] =
+    await Promise.all([
+      import("openai"),
+      import("@/lib/advisor-core/server/openai-client.server"),
+      import("@/lib/advisor-core/server/providers/openai-provider.server"),
+      import("@/lib/advisor-core/server/config.server"),
+    ]);
 
   if (!options.apiKey) {
     logUnavailable("daily_brief_unavailable");
