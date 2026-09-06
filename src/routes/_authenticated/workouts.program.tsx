@@ -21,6 +21,7 @@ import {
   dateKey,
   ensureWeekInstances,
   startOfWeek as instanceWeekStart,
+  syncSlotPlanning,
 } from "@/lib/workout-instance";
 import {
   metaMinutes,
@@ -167,9 +168,13 @@ function PlannerPage() {
       const b = planQ.data?.find((p) => p.weekday === to) ?? null;
       await setPlanSlot(to, a?.template_id ?? null, a?.display_name ?? null);
       await setPlanSlot(from, b?.template_id ?? null, b?.display_name ?? null);
+      // Keep the dated instances aligned with the new recurring intent.
+      await syncSlotPlanning(to, a?.template_id ?? null, a?.display_name ?? null);
+      await syncSlotPlanning(from, b?.template_id ?? null, b?.display_name ?? null);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["weekly-plan"] });
+      qc.invalidateQueries({ queryKey: ["workout_instances"] });
       toast.success("האימון הועבר");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -212,13 +217,17 @@ function PlannerPage() {
   const clearWeek = useMutation({
     mutationFn: async () => {
       for (const p of planQ.data ?? []) {
-        if (p.template_id || p.display_name) await setPlanSlot(p.weekday, null, null);
+        if (p.template_id || p.display_name) {
+          await setPlanSlot(p.weekday, null, null);
+          await syncSlotPlanning(p.weekday, null, null);
+        }
       }
     },
     onSuccess: () => {
       markWeekInitialized();
       setWeekReady(true);
       qc.invalidateQueries({ queryKey: ["weekly-plan"] });
+      qc.invalidateQueries({ queryKey: ["workout_instances"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -228,7 +237,7 @@ function PlannerPage() {
     setWeekReady(true);
   };
 
-  const loading = planQ.isPending || templatesQ.isPending;
+  const loading = planQ.isPending || templatesQ.isPending || instancesQ.isPending;
 
   return (
     <div dir="rtl" className="mx-auto max-w-md space-y-4 pb-24 pt-2">
@@ -344,6 +353,7 @@ function PlannerPage() {
             markWeekInitialized();
             setWeekReady(true);
             qc.invalidateQueries({ queryKey: ["weekly-plan"] });
+            qc.invalidateQueries({ queryKey: ["workout_instances"] });
           }}
         />
       )}
