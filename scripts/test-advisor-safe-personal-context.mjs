@@ -122,10 +122,13 @@ const bridgeSource = await readFile(
   new URL("../src/lib/advisor-core/server/advisor-context-bridge.server.ts", import.meta.url),
   "utf8",
 );
-assert.doesNotMatch(
-  bridgeSource,
-  /from\("vision_captures"|from\("body_photos"|image_path|storage_path|signedUrl/i,
-);
+// vision_captures may be queried for blood_test lab markers only (structured
+// fields the user typed, not the scanned document) - never raw photos or
+// storage references.
+assert.doesNotMatch(bridgeSource, /from\("body_photos"|image_path|storage_path|signedUrl/i);
+assert.match(bridgeSource, /from\("vision_captures"\)/);
+assert.match(bridgeSource, /eq\("capture_type",\s*"blood_test"\)/);
+assert.doesNotMatch(bridgeSource, /vision_captures[\s\S]{0,200}image_path/i);
 assert.doesNotMatch(bridgeSource, /medical_issues"\)\s*\.select\([^)]*summary/i);
 assert.doesNotMatch(bridgeSource, /weights_history"\)\s*\.select\([^)]*notes/i);
 assert.doesNotMatch(bridgeSource, /body_measurements"\)\s*\.select\([^)]*notes/i);

@@ -14,7 +14,9 @@ export type AdvisorContextKey =
   | "recovery"
   | "limitations"
   | "medical"
-  | "progress";
+  | "progress"
+  | "labResults"
+  | "healthMetrics";
 
 export interface SafeMedicalIssue {
   conditionLabel: string;
@@ -27,6 +29,29 @@ export interface SafeMedicalIssue {
   safetyGuidance: string | null;
   effectiveDate: string | null;
   freshness: "current" | "stale";
+}
+
+/** A single blood/lab marker the user logged, extracted from their own typed
+ *  fields — never the scanned document or an image path (see ADR 003). */
+export interface SafeLabResult {
+  lab: string | null;
+  marker: string | null;
+  value: string | null;
+  summary: string | null;
+  testDate: string | null;
+  /** A blood test stays clinically relevant far longer than the generic
+   *  36h fact staleness window, so freshness is judged on its own terms
+   *  (same 180-day cutoff as medical issues), not by the outer fact state. */
+  freshness: "current" | "stale";
+}
+
+/** Latest sample per wearable/manual metric type, for a compact readiness view. */
+export interface SafeHealthMetricsSummary {
+  restingHeartRate: { value: number; unit: string; recordedAt: string } | null;
+  sleepMinutes: { value: number; unit: string; recordedAt: string } | null;
+  steps: { value: number; unit: string; recordedAt: string } | null;
+  caloriesBurned: { value: number; unit: string; recordedAt: string } | null;
+  workoutMinutes: { value: number; unit: string; recordedAt: string } | null;
 }
 
 export interface SafeProgressSummary {
@@ -83,6 +108,8 @@ export interface AdvisorContextInput {
   shift?: { kind: string; source: string; observedAt?: string | null } | null;
   medical?: SafeMedicalIssue[];
   progress?: SafeProgressSummary | null;
+  labResults?: SafeLabResult[];
+  healthMetrics?: SafeHealthMetricsSummary | null;
   timeline: UnifiedTimelineItem[];
   conflicts?: AdvisorContextKey[];
 }
@@ -320,6 +347,38 @@ export function buildAdvisorContextSnapshot(input: AdvisorContextInput): Advisor
         input.now,
         conflicting("progress"),
       ),
+      labResults: fact(
+        input.labResults?.length ? input.labResults : null,
+        input.labResults
+          ?.map((result) => result.testDate)
+          .filter(Boolean)
+          .sort()
+          .at(-1) ?? null,
+        ["vision_captures"],
+        "reported",
+        input.now,
+        conflicting("labResults"),
+      ),
+      healthMetrics: fact(
+        input.healthMetrics &&
+          Object.values(input.healthMetrics).some((sample) => sample !== null)
+          ? input.healthMetrics
+          : null,
+        [
+          input.healthMetrics?.restingHeartRate?.recordedAt,
+          input.healthMetrics?.sleepMinutes?.recordedAt,
+          input.healthMetrics?.steps?.recordedAt,
+          input.healthMetrics?.caloriesBurned?.recordedAt,
+          input.healthMetrics?.workoutMinutes?.recordedAt,
+        ]
+          .filter((value): value is string => Boolean(value))
+          .sort()
+          .at(-1) ?? null,
+        ["health_metrics"],
+        "measured",
+        input.now,
+        conflicting("healthMetrics"),
+      ),
     },
   };
 }
@@ -341,6 +400,8 @@ const ALL_CONTEXT_KEYS: readonly AdvisorContextKey[] = [
   "limitations",
   "medical",
   "progress",
+  "labResults",
+  "healthMetrics",
 ];
 
 const SELECTOR_KEYS = {

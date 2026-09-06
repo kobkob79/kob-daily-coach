@@ -50,6 +50,8 @@ const ALL_KEYS = [
   "limitations",
   "medical",
   "progress",
+  "labResults",
+  "healthMetrics",
 ];
 
 const metadata = [];
