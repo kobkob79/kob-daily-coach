@@ -102,7 +102,16 @@ export function formatMinutes(min: number): string {
 
 /* ------------------------- status ------------------------- */
 
-export type DayStatus = "completed" | "today" | "planned" | "missed" | "rest" | "empty";
+export type DayStatus =
+  | "completed"
+  | "today"
+  | "planned"
+  | "missed"
+  | "overdue"
+  | "active"
+  | "scheduled"
+  | "rest"
+  | "empty";
 
 export const STATUS_META: Record<DayStatus, { label: string; dot: string; chip: string }> = {
   completed: {
@@ -115,15 +124,30 @@ export const STATUS_META: Record<DayStatus, { label: string; dot: string; chip: 
     dot: "bg-sky-400",
     chip: "bg-sky-500/15 text-sky-300 border-sky-500/30",
   },
+  active: {
+    label: "בביצוע",
+    dot: "bg-sky-400",
+    chip: "bg-sky-500/15 text-sky-300 border-sky-500/30",
+  },
   planned: {
     label: "מתוכנן",
     dot: "bg-amber-400",
     chip: "bg-amber-500/15 text-amber-300 border-amber-500/30",
   },
+  scheduled: {
+    label: "משובץ",
+    dot: "bg-muted-foreground",
+    chip: "bg-muted/60 text-muted-foreground border-border",
+  },
   missed: {
     label: "לא בוצע",
     dot: "bg-rose-400",
     chip: "bg-rose-500/15 text-rose-300 border-rose-500/30",
+  },
+  overdue: {
+    label: "באיחור",
+    dot: "bg-amber-400",
+    chip: "bg-amber-500/15 text-amber-300 border-amber-500/30",
   },
   rest: {
     label: "יום מנוחה",
