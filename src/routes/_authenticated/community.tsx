@@ -31,6 +31,12 @@ export const Route = createFileRoute("/_authenticated/community")({
   component: CommunityPage,
 });
 
+// The generated Database types do not yet include `community_posts`
+// (provisioned by migration 20260906120000_community_posts.sql), so these
+// queries go through a loosely typed handle until the types are regenerated.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as unknown as { from: (table: string) => any };
+
 const PHOTO_BUCKET = "community-post-photos";
 const FEED_LIMIT = 50;
 
@@ -66,13 +72,13 @@ function CommunityPage() {
   const postsQ = useQuery({
     queryKey: ["community-posts"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("community_posts")
         .select("id,user_id,author_display_name,body,photo_path,created_at")
         .order("created_at", { ascending: false })
         .limit(FEED_LIMIT);
       if (error) throw error;
-      return (data ?? []) as CommunityPost[];
+      return (data ?? []) as unknown as CommunityPost[];
     },
   });
 
@@ -128,7 +134,7 @@ function CommunityPage() {
         photoPath = path;
       }
 
-      const { error } = await supabase.from("community_posts").insert({
+      const { error } = await db.from("community_posts").insert({
         user_id: u.user.id,
         author_display_name: profileQ.data?.trim() || "משתמש",
         body: body.trim(),
@@ -146,7 +152,7 @@ function CommunityPage() {
 
   const deletePost = useMutation({
     mutationFn: async (post: CommunityPost) => {
-      const { error } = await supabase.from("community_posts").delete().eq("id", post.id);
+      const { error } = await db.from("community_posts").delete().eq("id", post.id);
       if (error) throw error;
       if (post.photo_path) {
         const { error: storageError } = await supabase.storage
