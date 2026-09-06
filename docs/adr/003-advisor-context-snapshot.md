@@ -4,14 +4,24 @@
 
 Advisor context is a deterministic snapshot built from the same sourced records as the Unified Timeline. Facts carry state (`known`, `missing`, `stale`, `conflicting`), source names, observation time and confidence. A safe debug projection exposes only structure, state, freshness and source names.
 
-Selectors minimize disclosure:
+**Update (2026-09-06):** Every advisor now receives the full-day snapshot (all
+fact keys), not a domain-minimized slice. Viora's advisors are one brain
+distributed across domains — Shiran (nutrition) needs to know you trained
+today, Daniel (training) needs to know what you ate — so each can reason about
+the whole day before answering. Domain focus is enforced in the *response*
+(the `domainBoundaries` in `instructions.ts` / `configs.ts` — e.g. Shiran still
+never gives medical or training-programming advice), not by hiding facts from
+the model. The per-advisor selector minimization described below is
+superseded.
 
-- Adam: sleep, recovery, shift and lifestyle.
-- Daniel: planned/current/recent training, load and relevant limitations.
-- Maya: movement, pain, mobility and recovery.
-- Shiran: meals, macros, hydration and nutrition goals.
+~~Selectors minimize disclosure:~~
 
-Full medical documents, notes, Storage paths, signed URLs, service-role data and Admin metadata are excluded. User identity is obtained from authenticated server context; Admin status does not permit selecting another user.
+- ~~Adam: sleep, recovery, shift and lifestyle.~~
+- ~~Daniel: planned/current/recent training, load and relevant limitations.~~
+- ~~Maya: movement, pain, mobility and recovery.~~
+- ~~Shiran: meals, macros, hydration and nutrition goals.~~
+
+Full medical documents, notes, Storage paths, signed URLs, service-role data and Admin metadata are still excluded regardless of advisor. User identity is obtained from authenticated server context; Admin status does not permit selecting another user.
 
 ## Rejected alternatives
 
