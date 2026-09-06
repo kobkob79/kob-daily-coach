@@ -14,7 +14,18 @@ import { useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { he } from "date-fns/locale";
 import { toast } from "sonner";
-import { ChevronLeft, Heart, ImagePlus, Loader2, Send, Trash2, Users, X } from "lucide-react";
+import {
+  ChevronLeft,
+  Heart,
+  ImagePlus,
+  Loader2,
+  Send,
+  Trash2,
+  UserCheck,
+  UserPlus,
+  Users,
+  X,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PremiumCard, SectionHeader, EmptyState } from "@/components/ui-kit/Section";
 import { Button } from "@/components/ui/button";
@@ -25,6 +36,7 @@ import {
   communityAuthorInitials,
   validatePostDraft,
 } from "@/lib/community-posts";
+import { followingSet, type FollowRow } from "@/lib/community-follows";
 import {
   getPostLikeState,
   summarizeLikes,
@@ -91,6 +103,51 @@ function CommunityPage() {
       if (error) throw error;
       return (data ?? []) as unknown as CommunityPost[];
     },
+  });
+
+  const authorIds = [...new Set((postsQ.data ?? []).map((p) => p.user_id))].filter(
+    (id) => id !== userQ.data,
+  );
+
+  const followsQ = useQuery({
+    queryKey: ["community-follows", userQ.data, authorIds],
+    queryFn: async () => {
+      if (!userQ.data || authorIds.length === 0) return [] as FollowRow[];
+      const { data, error } = await db
+        .from("user_follows")
+        .select("followed_id")
+        .eq("follower_id", userQ.data)
+        .in("followed_id", authorIds);
+      if (error) throw error;
+      return (data ?? []) as FollowRow[];
+    },
+    enabled: Boolean(userQ.data) && authorIds.length > 0,
+  });
+
+  const followingIds = followingSet(followsQ.data ?? []);
+
+  const toggleFollow = useMutation({
+    mutationFn: async (authorId: string) => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) throw new Error("יש להתחבר מחדש");
+      if (followingIds.has(authorId)) {
+        const { error } = await db
+          .from("user_follows")
+          .delete()
+          .eq("follower_id", u.user.id)
+          .eq("followed_id", authorId);
+        if (error) throw error;
+      } else {
+        const { error } = await db
+          .from("user_follows")
+          .insert({ follower_id: u.user.id, followed_id: authorId });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["community-follows"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const postIds = (postsQ.data ?? []).map((p) => p.id);
@@ -372,6 +429,9 @@ function CommunityPage() {
                 isOwn={Boolean(userQ.data) && post.user_id === userQ.data}
                 onDelete={() => deletePost.mutate(post)}
                 deleting={deletePost.isPending && deletePost.variables?.id === post.id}
+                isFollowing={followingIds.has(post.user_id)}
+                onToggleFollow={() => toggleFollow.mutate(post.user_id)}
+                followToggling={toggleFollow.isPending && toggleFollow.variables === post.user_id}
                 likeState={getPostLikeState(likeSummary, post.id)}
                 onToggleLike={() => toggleLike.mutate(post)}
                 likeToggling={toggleLike.isPending && toggleLike.variables?.id === post.id}
@@ -391,6 +451,9 @@ function PostCard({
   isOwn,
   onDelete,
   deleting,
+  isFollowing,
+  onToggleFollow,
+  followToggling,
   likeState,
   onToggleLike,
   likeToggling,
@@ -401,6 +464,9 @@ function PostCard({
   isOwn: boolean;
   onDelete: () => void;
   deleting: boolean;
+  isFollowing: boolean;
+  onToggleFollow: () => void;
+  followToggling: boolean;
   likeState: PostLikeState;
   onToggleLike: () => void;
   likeToggling: boolean;
@@ -420,6 +486,23 @@ function PostCard({
             {formatDistanceToNow(new Date(post.created_at), { locale: he, addSuffix: true })}
           </p>
         </div>
+        {!isOwn && (
+          <Button
+            type="button"
+            variant={isFollowing ? "outline" : "default"}
+            size="sm"
+            onClick={onToggleFollow}
+            disabled={followToggling}
+            className="shrink-0 gap-1.5"
+          >
+            {isFollowing ? (
+              <UserCheck className="h-3.5 w-3.5" />
+            ) : (
+              <UserPlus className="h-3.5 w-3.5" />
+            )}
+            {isFollowing ? "עוקב" : "עקוב"}
+          </Button>
+        )}
         {isOwn && (
           <button
             type="button"
