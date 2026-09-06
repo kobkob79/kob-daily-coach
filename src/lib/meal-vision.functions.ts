@@ -122,6 +122,15 @@ export const analyzeMealServer = createServerFn({ method: "POST" })
       throw new VisionNotConnectedError("OPENAI_API_KEY חסר — AI Vision לא מוגדר בשרת.");
     }
 
+    const [{ default: OpenAI }, { createOpenAIClient }, { VIORA_ADVISOR_MODEL }, provider] =
+      await Promise.all([
+        import("openai"),
+        import("@/lib/advisor-core/server/openai-client.server"),
+        import("@/lib/advisor-core/server/config.server"),
+        import("@/lib/advisor-core/server/providers/openai-provider.server"),
+      ]);
+    const { classifyOpenAIAPIError, extractResponseText } = provider;
+
     const correctionsHint =
       data.corrections.length > 0
         ? `\n\nזיכרון תיקונים אישי של המשתמש (העדף שמות אלה כשמתאים לתמונה):\n${data.corrections
@@ -131,7 +140,7 @@ export const analyzeMealServer = createServerFn({ method: "POST" })
 
     const client = createOpenAIClient();
     const started = Date.now();
-    let response: OpenAITextResponse;
+    let response: Parameters<typeof extractResponseText>[0];
     try {
       response = (await client.responses.create({
         model: VIORA_ADVISOR_MODEL,
@@ -148,7 +157,7 @@ export const analyzeMealServer = createServerFn({ method: "POST" })
             ],
           },
         ],
-      })) as unknown as OpenAITextResponse;
+      })) as unknown as Parameters<typeof extractResponseText>[0];
     } catch (e) {
       if (e instanceof OpenAI.APIConnectionError) {
         throw new VisionNotConnectedError(`לא ניתן להגיע אל ספק ה-Vision: ${e.message}`);
