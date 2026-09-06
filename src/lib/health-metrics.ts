@@ -21,6 +21,12 @@ import { METRIC_UNIT, type HealthConnection, type HealthMetric, type HealthMetri
 
 export * from "@/lib/health-metrics-core";
 
+// The generated Database types do not yet include the health_connections /
+// health_metrics tables (provisioned by migration 20260906000000_*), so these
+// queries go through a loosely typed handle until the types are regenerated.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as unknown as { from: (table: string) => any };
+
 export async function fetchConnections(): Promise<HealthConnection[]> {
   const { data, error } = await supabase
     .from("health_connections")
