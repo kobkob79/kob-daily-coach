@@ -56,21 +56,22 @@ assert.deepEqual(absent.context.facts, {});
 assert.deepEqual(absent.contextFlags, [{ key: "contextSharing", state: "disabled" }]);
 assert.equal(loads, 0);
 
-// Consent granted and advisor-specific least privilege.
+// Consent granted: every advisor is one brain, so each gets the full-day
+// snapshot (domain focus is enforced in the response, not by hiding facts).
 consent = true;
 const daniel = await buildAdvisorContextForUser("owner-1", "daniel", source, now, () => {});
 assert.equal(loads, 1);
 assert.ok("medical" in daniel.context.facts);
-assert.ok(!("progress" in daniel.context.facts));
+assert.ok("progress" in daniel.context.facts);
 const maya = await buildAdvisorContextForUser("owner-1", "maya", source, now, () => {});
 assert.ok("medical" in maya.context.facts);
 assert.ok("progress" in maya.context.facts);
 const shiran = await buildAdvisorContextForUser("owner-1", "shiran", source, now, () => {});
-assert.ok(!("medical" in shiran.context.facts));
+assert.ok("medical" in shiran.context.facts);
 assert.ok("progress" in shiran.context.facts);
 const adam = await buildAdvisorContextForUser("owner-1", "adam", source, now, () => {});
-assert.ok(!("medical" in adam.context.facts));
-assert.ok(!("progress" in adam.context.facts));
+assert.ok("medical" in adam.context.facts);
+assert.ok("progress" in adam.context.facts);
 
 // Revocation takes effect on the next build.
 consent = false;
@@ -144,5 +145,5 @@ assert.doesNotMatch(conversationFunctions, /contextFlags:\s*\[\]/);
 assert.match(conversationFunctions, /buildAdvisorContextForUser/);
 
 console.log(
-  "Safe personal context regression: PASS (consent, ownership, allowlists, projections, revocation, budgeting, complete turns, reload flags)",
+  "Safe personal context regression: PASS (consent, ownership, full-context sharing, projections, revocation, budgeting, complete turns, reload flags)",
 );

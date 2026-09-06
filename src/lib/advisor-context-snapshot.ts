@@ -233,6 +233,7 @@ export function buildAdvisorContextSnapshot(input: AdvisorContextInput): Advisor
         meals.length
           ? {
               meals: meals.length,
+              mealNames: meals.map((entry) => entry.title).filter(Boolean),
               calories: numericTotal(meals, "calories"),
               proteinG: numericTotal(meals, "proteinG"),
               carbsG: numericTotal(meals, "carbsG"),
@@ -263,6 +264,7 @@ export function buildAdvisorContextSnapshot(input: AdvisorContextInput): Advisor
           ? {
               planned: workouts.filter((entry) => entry.classification === "planned").length,
               completed: workouts.filter((entry) => entry.classification === "completed").length,
+              names: workouts.map((entry) => entry.title).filter(Boolean),
               volumeKg: numericTotal(workouts, "volumeKg"),
             }
           : null,
@@ -322,11 +324,30 @@ export function buildAdvisorContextSnapshot(input: AdvisorContextInput): Advisor
   };
 }
 
+// Every advisor is one brain shared across domains: each gets the user's full
+// day (nutrition, workouts, sleep, medical, etc.), not just its own slice, so
+// it can reason about the whole picture before answering within its own
+// domain boundaries (see instructions.ts / configs.ts domainBoundaries).
+const ALL_CONTEXT_KEYS: readonly AdvisorContextKey[] = [
+  "profile",
+  "goals",
+  "bioDay",
+  "shift",
+  "nutrition",
+  "hydration",
+  "workouts",
+  "sleep",
+  "recovery",
+  "limitations",
+  "medical",
+  "progress",
+];
+
 const SELECTOR_KEYS = {
-  adam: ["profile", "bioDay", "shift", "sleep", "recovery"],
-  daniel: ["profile", "bioDay", "workouts", "limitations", "medical"],
-  maya: ["profile", "bioDay", "recovery", "limitations", "medical", "progress"],
-  shiran: ["profile", "bioDay", "goals", "nutrition", "hydration", "progress"],
+  adam: ALL_CONTEXT_KEYS,
+  daniel: ALL_CONTEXT_KEYS,
+  maya: ALL_CONTEXT_KEYS,
+  shiran: ALL_CONTEXT_KEYS,
 } as const satisfies Record<string, readonly AdvisorContextKey[]>;
 
 export type ContextAdvisorId = keyof typeof SELECTOR_KEYS;

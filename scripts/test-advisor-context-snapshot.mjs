@@ -70,37 +70,26 @@ const snapshot = buildAdvisorContextSnapshot({
 
 // 13 conflicts remain explicit.
 assert.equal(snapshot.facts.nutrition.state, "conflicting");
-// 15-18 strict advisor-specific minimum projections.
-assert.deepEqual(Object.keys(selectAdvisorContext(snapshot, "adam").facts), [
+// 15-18 every advisor is one brain: each gets the full-day snapshot, not a
+// domain-minimized slice (domain focus is enforced in the response, via
+// domainBoundaries in instructions.ts, not by hiding facts).
+const ALL_KEYS = [
   "profile",
+  "goals",
   "bioDay",
   "shift",
-  "sleep",
-  "recovery",
-]);
-assert.deepEqual(Object.keys(selectAdvisorContext(snapshot, "daniel").facts), [
-  "profile",
-  "bioDay",
-  "workouts",
-  "limitations",
-  "medical",
-]);
-assert.deepEqual(Object.keys(selectAdvisorContext(snapshot, "maya").facts), [
-  "profile",
-  "bioDay",
-  "recovery",
-  "limitations",
-  "medical",
-  "progress",
-]);
-assert.deepEqual(Object.keys(selectAdvisorContext(snapshot, "shiran").facts), [
-  "profile",
-  "bioDay",
-  "goals",
   "nutrition",
   "hydration",
+  "workouts",
+  "sleep",
+  "recovery",
+  "limitations",
+  "medical",
   "progress",
-]);
+];
+for (const advisorId of ["adam", "daniel", "maya", "shiran"]) {
+  assert.deepEqual(Object.keys(selectAdvisorContext(snapshot, advisorId).facts), ALL_KEYS);
+}
 assert.ok(!JSON.stringify(snapshot).includes("secret detail"));
 const debug = toSafeAdvisorContextDebug(snapshot);
 assert.ok(!JSON.stringify(debug).includes("Test"));
