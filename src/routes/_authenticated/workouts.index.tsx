@@ -84,6 +84,16 @@ function workoutLetter(name: string): "A" | "B" | "C" | null {
   return match ? (match[1]!.toUpperCase() as "A" | "B" | "C") : null;
 }
 
+/** The instance the active session already owns (never offered again). */
+function activeInstanceId(
+  active: SessionRow | null,
+  instances: WorkoutInstance[],
+): string | null {
+  if (!active) return null;
+  const linked = instances.find((i) => i.session_id === active.id);
+  return linked?.id ?? active.instance_id ?? null;
+}
+
 function WorkoutHub() {
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -118,90 +128,62 @@ function WorkoutHub() {
     refetchOnWindowFocus: true,
     refetchInterval: 30_000,
   });
-  const metaQ = useQuery({
-    queryKey: ["template_meta"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("workout_template_exercises")
-        .select("template_id, target_sets, exercises(muscle_group,category)");
-      const map = new Map<string, TemplateMeta>();
-      const groupsByTemplate = new Map<string, Map<string, number>>();
-      for (const row of (data ?? []) as unknown as {
-        template_id: string;
-        target_sets: number | null;
-        exercises: { muscle_group: string | null; category: string | null } | null;
-      }[]) {
-        const cur = map.get(row.template_id) ?? { exercises: 0, sets: 0, focus: null };
-        cur.exercises += 1;
-        cur.sets += row.target_sets ?? 3;
-        map.set(row.template_id, cur);
+  /** One shared template-meta query — same numbers as the Weekly Planner. */
+  const metaQ = useQuery(templateMetaQuery());
 
-        const group = row.exercises?.muscle_group ?? row.exercises?.category;
-        if (group) {
-          const groups = groupsByTemplate.get(row.template_id) ?? new Map<string, number>();
-          groups.set(group, (groups.get(group) ?? 0) + 1);
-          groupsByTemplate.set(row.template_id, groups);
-        }
-      }
-      for (const [templateId, groups] of groupsByTemplate) {
-        const meta = map.get(templateId);
-        if (!meta) continue;
-        const top = [...groups.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2);
-        meta.focus = top.length ? top.map(([group]) => group).join(" · ") : null;
-      }
-      return map;
-    },
+  /** Dated planning state: persisted instances, materialised for this week. */
+  const instancesQ = useQuery({
+    queryKey: ["workout_instances", "hub"],
+    enabled: !!planQ.data,
+    queryFn: () =>
+      ensureWeekInstances(
+        (planQ.data ?? []).map((p) => ({
+          weekday: p.weekday,
+          template_id: p.template_id,
+          display_name: p.display_name,
+        })),
+      ),
   });
 
-  const today = new Date().getDay();
-  const bySlot = useMemo(() => {
-    const map = new Map<number, PlanSlot>();
-    for (const s of planQ.data ?? []) map.set(s.weekday, s);
-    return map;
-  }, [planQ.data]);
-
-  const weekStart = startOfWeek();
   const active = activeQ.data ?? null;
+  const todayKey = dateKey();
 
-  const match = useMemo(() => {
-    const sessions = [...(sessionsQ.data ?? [])];
-    if (active && !sessions.some((s) => s.id === active.id)) sessions.unshift(active);
-    return matchSessionsToSlots(planQ.data ?? [], sessions, weekStart);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planQ.data, sessionsQ.data, active, weekStart.getTime()]);
-
-  /** Upcoming = planned days from today forward, skipping done/active ones. */
+  /**
+   * "What now?" order: active session (handled separately) → overdue instance
+   * → today's instance → the next dated planned instance. An overdue workout
+   * is never dropped, so the Hub can no longer jump into next week.
+   */
   const upcoming: Upcoming[] = useMemo(() => {
-    const out: Upcoming[] = [];
-    for (let offset = 0; offset < 7; offset++) {
-      const weekday = (today + offset) % 7;
-      const slot = bySlot.get(weekday);
-      if (!slot?.template_id) continue; // empty weekdays never appear
-      if (match.completedByWeekday.has(weekday)) continue; // no completed here
-      if (match.activeWeekday === weekday) continue; // shown as the resume card
-      const tpl = templatesQ.data?.find((x) => x.id === slot.template_id);
-      out.push({
-        weekday,
-        date: dateForOffset(offset),
-        slot,
-        name: slot.display_name ?? tpl?.name ?? "אימון",
-        meta: metaQ.data?.get(slot.template_id),
+    const queue = selectActionQueue(instancesQ.data ?? [], todayKey);
+    return queue
+      .filter((item) => item.instance.id !== activeInstanceId(active, instancesQ.data ?? []))
+      .map(({ kind, instance }) => {
+        const tpl = instance.template_id
+          ? templatesQ.data?.find((x) => x.id === instance.template_id)
+          : undefined;
+        const date = new Date(`${instance.scheduled_date}T00:00:00`);
+        return {
+          kind,
+          instance,
+          date,
+          weekday: instance.plan_weekday ?? date.getDay(),
+          name: instance.display_name ?? tpl?.name ?? "אימון",
+          meta: instance.template_id ? metaQ.data?.get(instance.template_id) : undefined,
+        };
       });
-    }
-    return out;
-  }, [today, bySlot, match, templatesQ.data, metaQ.data]);
+  }, [instancesQ.data, templatesQ.data, metaQ.data, todayKey, active]);
 
   const start = useMutation({
-    mutationFn: async (slot: PlanSlot) => {
-      if (!slot.template_id) throw new Error("אין תבנית ליום זה");
-      const tpl = templatesQ.data?.find((x) => x.id === slot.template_id);
-      const name = slot.display_name ?? tpl?.name ?? "אימון";
-      return startOrResumeSessionForTemplate(slot.template_id, name, slot.weekday);
+    mutationFn: async (item: Upcoming) => {
+      const templateId = item.instance.template_id;
+      if (!templateId) throw new Error("אין תבנית ליום זה");
+      return startOrResumeSessionForTemplate(templateId, item.name, item.instance.plan_weekday);
     },
-    onMutate: (slot) => setPendingWeekday(slot.weekday),
+    onMutate: (item: Upcoming) => setPendingWeekday(item.weekday),
     onSettled: () => setPendingWeekday(null),
     onSuccess: ({ sessionId }) => {
       qc.invalidateQueries({ queryKey: ["active-session"] });
+      qc.invalidateQueries({ queryKey: ["workout_instances"] });
       navigate({ to: "/workouts/session/$sessionId", params: { sessionId } });
     },
     onError: (err: unknown) => {
@@ -226,6 +208,7 @@ function WorkoutHub() {
       setRecovery(null);
       qc.invalidateQueries({ queryKey: ["active-session"] });
       qc.invalidateQueries({ queryKey: ["sessions", "recent"] });
+      qc.invalidateQueries({ queryKey: ["workout_instances"] });
     },
     onError: (error) => {
       console.error("[workouts] abandon active failed", error);
@@ -261,7 +244,8 @@ function WorkoutHub() {
 
   const primaryNext = !active ? upcoming[0] : undefined;
   const secondary = active ? upcoming : upcoming.slice(1);
-  const loading = planQ.isLoading || templatesQ.isLoading || activeQ.isLoading;
+  const loading =
+    planQ.isLoading || templatesQ.isLoading || activeQ.isLoading || instancesQ.isLoading;
 
   return (
     <div dir="rtl" className="space-y-5 pb-4">
@@ -311,7 +295,7 @@ function WorkoutHub() {
         <NextWorkoutCard
           item={primaryNext}
           pending={start.isPending && pendingWeekday === primaryNext.weekday}
-          onStart={() => start.mutate(primaryNext.slot)}
+          onStart={() => start.mutate(primaryNext)}
         />
       ) : !loading ? (
         <EmptyHub />
@@ -329,7 +313,7 @@ function WorkoutHub() {
           <div className="space-y-3">
             {secondary.map((item) => (
               <UpcomingRow
-                key={item.weekday}
+                key={item.instance.id}
                 item={item}
                 disabled={!!active}
                 pending={start.isPending && pendingWeekday === item.weekday}
@@ -339,7 +323,7 @@ function WorkoutHub() {
                     return;
                   }
                   if (start.isPending) return;
-                  start.mutate(item.slot);
+                  start.mutate(item);
                 }}
               />
             ))}
@@ -398,11 +382,12 @@ function EmptyHub() {
 }
 
 function MetaLine({ item }: { item: Upcoming }) {
-  const minutes = estimateMinutes(item.meta);
+  const minutes = metaMinutes(item.meta) || null;
   return (
     <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
       <span>
         יום {WEEKDAY_HE[item.weekday]} · {formatDate(item.date)}
+        {item.kind === "overdue" ? " · באיחור" : ""}
       </span>
       {item.meta?.exercises ? <span>· {item.meta.exercises} תרגילים</span> : null}
       {item.meta?.focus ? <span>· {item.meta.focus}</span> : null}
