@@ -44,11 +44,7 @@ import {
   WEEKDAY_HE,
   type SessionRow,
 } from "@/lib/workout-session";
-import {
-  dateKey,
-  ensureWeekInstances,
-  type WorkoutInstance,
-} from "@/lib/workout-instance";
+import { dateKey, ensureWeekInstances, type WorkoutInstance } from "@/lib/workout-instance";
 import {
   metaMinutes,
   selectActionQueue,
@@ -83,10 +79,7 @@ function workoutLetter(name: string): "A" | "B" | "C" | null {
 }
 
 /** The instance the active session already owns (never offered again). */
-function activeInstanceId(
-  active: SessionRow | null,
-  instances: WorkoutInstance[],
-): string | null {
+function activeInstanceId(active: SessionRow | null, instances: WorkoutInstance[]): string | null {
   if (!active) return null;
   const linked = instances.find((i) => i.session_id === active.id);
   return linked?.id ?? active.instance_id ?? null;
@@ -406,7 +399,9 @@ function WorkoutIdentity({ name, compact = false }: { name: string; compact?: bo
       <div className="absolute -end-4 -top-4 h-10 w-10 rounded-full bg-primary/15 blur-xl" />
       {letter ? (
         <div className="relative flex items-end gap-1">
-          <span className={`${compact ? "text-2xl" : "text-3xl"} font-black leading-none`}>{letter}</span>
+          <span className={`${compact ? "text-2xl" : "text-3xl"} font-black leading-none`}>
+            {letter}
+          </span>
           <Dumbbell className="mb-0.5 h-3.5 w-3.5 opacity-75" />
         </div>
       ) : (

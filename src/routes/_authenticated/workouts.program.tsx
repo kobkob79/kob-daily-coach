@@ -154,7 +154,8 @@ function PlannerPage() {
   const visible = mode === "planned" ? plannedDays : days;
 
   const plannedCount = plannedDays.length;
-  const totalMinutes = progress.totalMinutes || plannedDays.reduce((s, d) => s + d.estimatedMinutes, 0);
+  const totalMinutes =
+    progress.totalMinutes || plannedDays.reduce((s, d) => s + d.estimatedMinutes, 0);
 
   /* ------------------------- drag & drop ------------------------- */
 
@@ -258,7 +259,11 @@ function PlannerPage() {
         </p>
         <h2 className="mt-1 text-2xl font-extrabold">סיכום השבוע</h2>
         <div className="mt-3 grid grid-cols-2 gap-2 text-center">
-          <Stat icon={<Dumbbell className="h-3.5 w-3.5" />} value={`${plannedCount}`} label="מתוכננים" />
+          <Stat
+            icon={<Dumbbell className="h-3.5 w-3.5" />}
+            value={`${plannedCount}`}
+            label="מתוכננים"
+          />
           <Stat
             icon={<Timer className="h-3.5 w-3.5" />}
             value={formatMinutes(totalMinutes)}
@@ -275,7 +280,12 @@ function PlannerPage() {
             בחר איך להתחיל — Viora לא תעתיק את השבוע הקודם לבד.
           </p>
           <div className="flex gap-2">
-            <Button size="sm" className="flex-1" onClick={() => clearWeek.mutate()} disabled={clearWeek.isPending}>
+            <Button
+              size="sm"
+              className="flex-1"
+              onClick={() => clearWeek.mutate()}
+              disabled={clearWeek.isPending}
+            >
               <Plus className="ml-1 h-4 w-4" /> צור שבוע חדש
             </Button>
             <Button size="sm" variant="outline" className="flex-1" onClick={keepWeek}>

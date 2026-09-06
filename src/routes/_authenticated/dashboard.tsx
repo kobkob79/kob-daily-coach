@@ -331,7 +331,12 @@ function Dashboard() {
     gender: (profileQ.data?.gender as "male" | "female" | "other" | null) ?? null,
     activity:
       (profileQ.data?.activity_level as
-        "sedentary" | "light" | "moderate" | "active" | "very_active" | null) ?? null,
+        | "sedentary"
+        | "light"
+        | "moderate"
+        | "active"
+        | "very_active"
+        | null) ?? null,
     shift: shift ?? null,
     workoutMinutes: workoutTodayMinutes,
   });
