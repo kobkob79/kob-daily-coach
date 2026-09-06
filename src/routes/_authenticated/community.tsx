@@ -16,6 +16,7 @@ import { he } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   ChevronLeft,
+  Heart,
   ImagePlus,
   Loader2,
   Send,
@@ -36,6 +37,12 @@ import {
   validatePostDraft,
 } from "@/lib/community-posts";
 import { followingSet, type FollowRow } from "@/lib/community-follows";
+import {
+  getPostLikeState,
+  summarizeLikes,
+  type LikeRow,
+  type PostLikeState,
+} from "@/lib/community-likes";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/community")({
@@ -139,6 +146,49 @@ function CommunityPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["community-follows"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const postIds = (postsQ.data ?? []).map((p) => p.id);
+
+  const likesQ = useQuery({
+    queryKey: ["community-post-likes", postIds],
+    queryFn: async () => {
+      if (postIds.length === 0) return [] as LikeRow[];
+      const { data, error } = await db
+        .from("community_post_likes")
+        .select("post_id,user_id")
+        .in("post_id", postIds);
+      if (error) throw error;
+      return (data ?? []) as LikeRow[];
+    },
+    enabled: postIds.length > 0,
+  });
+
+  const likeSummary = summarizeLikes(likesQ.data ?? [], userQ.data ?? undefined);
+
+  const toggleLike = useMutation({
+    mutationFn: async (post: CommunityPost) => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) throw new Error("יש להתחבר מחדש");
+      const { likedByMe } = getPostLikeState(likeSummary, post.id);
+      if (likedByMe) {
+        const { error } = await db
+          .from("community_post_likes")
+          .delete()
+          .eq("post_id", post.id)
+          .eq("user_id", u.user.id);
+        if (error) throw error;
+      } else {
+        const { error } = await db
+          .from("community_post_likes")
+          .insert({ post_id: post.id, user_id: u.user.id });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["community-post-likes"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -382,6 +432,9 @@ function CommunityPage() {
                 isFollowing={followingIds.has(post.user_id)}
                 onToggleFollow={() => toggleFollow.mutate(post.user_id)}
                 followToggling={toggleFollow.isPending && toggleFollow.variables === post.user_id}
+                likeState={getPostLikeState(likeSummary, post.id)}
+                onToggleLike={() => toggleLike.mutate(post)}
+                likeToggling={toggleLike.isPending && toggleLike.variables?.id === post.id}
               />
             ))}
           </div>
@@ -401,6 +454,9 @@ function PostCard({
   isFollowing,
   onToggleFollow,
   followToggling,
+  likeState,
+  onToggleLike,
+  likeToggling,
 }: {
   post: CommunityPost;
   photoUrl: string | undefined;
@@ -411,6 +467,9 @@ function PostCard({
   isFollowing: boolean;
   onToggleFollow: () => void;
   followToggling: boolean;
+  likeState: PostLikeState;
+  onToggleLike: () => void;
+  likeToggling: boolean;
 }) {
   return (
     <PremiumCard className={cn("space-y-3", deleting && "opacity-50")}>
@@ -469,6 +528,24 @@ function PostCard({
             טוען תמונה...
           </div>
         ))}
+      <div className="flex items-center gap-1 border-t border-border/60 pt-2">
+        <button
+          type="button"
+          onClick={onToggleLike}
+          disabled={likeToggling}
+          className={cn(
+            "flex items-center gap-1.5 rounded-full px-2 py-1 text-sm transition disabled:opacity-50",
+            likeState.likedByMe
+              ? "text-destructive"
+              : "text-muted-foreground hover:text-destructive",
+          )}
+          aria-pressed={likeState.likedByMe}
+          aria-label={likeState.likedByMe ? "בטל לייק" : "לייק"}
+        >
+          <Heart className={cn("h-4 w-4", likeState.likedByMe && "fill-current")} />
+          {likeState.count > 0 && <span>{likeState.count}</span>}
+        </button>
+      </div>
     </PremiumCard>
   );
 }
