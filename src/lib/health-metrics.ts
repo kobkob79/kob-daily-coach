@@ -28,7 +28,7 @@ export * from "@/lib/health-metrics-core";
 const db = supabase as unknown as { from: (table: string) => any };
 
 export async function fetchConnections(): Promise<HealthConnection[]> {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("health_connections")
     .select("provider,status,connected_at,last_synced_at")
     .eq("status", "connected");
@@ -39,7 +39,7 @@ export async function fetchConnections(): Promise<HealthConnection[]> {
 export async function disconnectProvider(provider: HealthProvider): Promise<void> {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error("no user");
-  const { error } = await supabase
+  const { error } = await db
     .from("health_connections")
     .update({ status: "disconnected", disconnected_at: new Date().toISOString() })
     .eq("user_id", u.user.id)
@@ -57,7 +57,7 @@ export async function recordManualMetric(
   if (!u.user) throw new Error("no user");
   if (!Number.isFinite(value) || value <= 0) throw new Error("ערך לא תקין");
 
-  const { error: metricError } = await supabase.from("health_metrics").insert({
+  const { error: metricError } = await db.from("health_metrics").insert({
     user_id: u.user.id,
     source: "manual",
     metric_type,
@@ -68,7 +68,7 @@ export async function recordManualMetric(
   });
   if (metricError) throw metricError;
 
-  const { error: connError } = await supabase
+  const { error: connError } = await db
     .from("health_connections")
     .upsert(
       { user_id: u.user.id, provider: "manual", status: "connected", last_synced_at: new Date().toISOString() },
@@ -80,7 +80,7 @@ export async function recordManualMetric(
 export async function fetchRecentMetrics(days = 14): Promise<HealthMetric[]> {
   const since = new Date();
   since.setDate(since.getDate() - days);
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("health_metrics")
     .select("id,source,metric_type,value,unit,recorded_at,biological_day")
     .gte("biological_day", biologicalDay(since))
