@@ -35,6 +35,12 @@ export interface ExerciseStats {
   };
   completionRate: number | null;
   trend: Trend;
+  progression: {
+    at: string;
+    volumeKg: number;
+    e1rmKg: number;
+    topWeightKg: number;
+  }[];
 }
 
 const DAY = 86_400_000;
@@ -69,14 +75,22 @@ export function computeExerciseStats(sets: StatSet[]): ExerciseStats {
     .sort((a, b) => new Date(a.t).getTime() - new Date(b.t).getTime());
 
   // Group by session for volume metrics.
-  const bySession = new Map<string, { volume: number; at: string | null }>();
+  const bySession = new Map<
+    string,
+    { volume: number; at: string | null; maxE1rm: number; maxWeight: number }
+  >();
   for (const s of done) {
     const key = s.session_id ?? `single:${setTime(s) ?? Math.random()}`;
     const vol = (s.weight_kg ?? 0) * (s.reps ?? 0);
+    const weight = s.weight_kg ?? 0;
+    const rep = s.reps ?? 0;
+    const est1rm = weight > 0 && rep > 0 ? epley(weight, rep) : 0;
     const prev = bySession.get(key);
     bySession.set(key, {
       volume: (prev?.volume ?? 0) + vol,
       at: prev?.at ?? setTime(s),
+      maxE1rm: Math.max(prev?.maxE1rm ?? 0, est1rm),
+      maxWeight: Math.max(prev?.maxWeight ?? 0, weight),
     });
   }
   const sessions = [...bySession.values()]
@@ -115,6 +129,13 @@ export function computeExerciseStats(sets: StatSet[]): ExerciseStats {
     trend = "stable";
   }
 
+  const progression = sessions.slice(-20).map((s) => ({
+    at: s.at!,
+    volumeKg: round(s.volume, 1) ?? 0,
+    e1rmKg: round(s.maxE1rm, 1) ?? 0,
+    topWeightKg: round(s.maxWeight, 1) ?? 0,
+  }));
+
   return {
     timesPerformed: sessions.length,
     firstPerformedAt: firstAt,
@@ -137,6 +158,7 @@ export function computeExerciseStats(sets: StatSet[]): ExerciseStats {
     },
     completionRate,
     trend,
+    progression,
   };
 }
 
