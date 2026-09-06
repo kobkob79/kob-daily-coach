@@ -49,9 +49,9 @@ function nonBlankString(value: unknown, field: string): string {
 }
 
 function finiteNumber(value: unknown, field: string): number {
-  const n = Number(value);
-  if (!Number.isFinite(n)) throw new HealthSyncValidationError(`${field} must be a finite number`);
-  return n;
+  if (typeof value !== "number" || !Number.isFinite(value))
+    throw new HealthSyncValidationError(`${field} must be a finite number`);
+  return value;
 }
 
 function isoTimestamp(value: unknown, field: string): string {

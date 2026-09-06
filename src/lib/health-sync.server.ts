@@ -23,7 +23,9 @@ interface UpsertQuery {
   upsert(
     rows: HealthMetricInsertRow[],
     options: { onConflict: string },
-  ): Promise<{ data: { id: string }[] | null; error: QueryError | null }>;
+  ): {
+    select(columns: string): Promise<{ data: { id: string }[] | null; error: QueryError | null }>;
+  };
 }
 
 interface UpdateQuery {
@@ -88,7 +90,8 @@ export async function upsertHealthMetrics(
 ): Promise<{ upserted: number }> {
   const { data, error } = await client()
     .from("health_metrics")
-    .upsert(rows, { onConflict: "user_id,source,external_id" });
+    .upsert(rows, { onConflict: "user_id,source,external_id" })
+    .select("id");
   if (error) throw new HealthSyncUnavailableError(error.message);
   return { upserted: (data ?? []).length };
 }
