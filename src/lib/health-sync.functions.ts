@@ -48,12 +48,17 @@ export const syncHealthPayload = createServerFn({ method: "POST" })
 
     const rows = buildHealthMetricRows(userId, data.provider, data.samples);
 
+    let upserted: number;
     try {
-      const { upserted } = await upsertHealthMetrics(rows);
-      await touchHealthConnectionSynced(userId, data.provider);
-      return { received: data.samples.length, upserted };
+      ({ upserted } = await upsertHealthMetrics(rows));
     } catch (error) {
-      await recordHealthConnectionSyncError(userId, data.provider, (error as Error).message);
+      try {
+        await recordHealthConnectionSyncError(userId, data.provider, (error as Error).message);
+      } catch {
+        // Best-effort status update; the original sync failure below is what matters.
+      }
       throw error;
     }
+    await touchHealthConnectionSynced(userId, data.provider);
+    return { received: data.samples.length, upserted };
   });
