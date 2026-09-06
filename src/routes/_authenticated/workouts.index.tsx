@@ -40,7 +40,6 @@ import {
   getActiveSession,
   getSessionHealth,
   getWeeklyPlan,
-  listSessions,
   startOrResumeSessionForTemplate,
   WEEKDAY_HE,
   type SessionRow,
@@ -48,7 +47,6 @@ import {
 import {
   dateKey,
   ensureWeekInstances,
-  startOfWeek,
   type WorkoutInstance,
 } from "@/lib/workout-instance";
 import {
@@ -117,10 +115,6 @@ function WorkoutHub() {
       if (error) throw error;
       return (data ?? []) as Template[];
     },
-  });
-  const sessionsQ = useQuery({
-    queryKey: ["sessions", "recent"],
-    queryFn: () => listSessions(30),
   });
   const activeQ = useQuery({
     queryKey: ["active-session"],
