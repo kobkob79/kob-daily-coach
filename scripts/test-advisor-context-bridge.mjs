@@ -35,17 +35,30 @@ const source = {
   },
 };
 
+// Every advisor is one brain: each gets the full-day snapshot (domain focus
+// is enforced in the response, via domainBoundaries, not by hiding facts).
+const ALL_KEYS = [
+  "profile",
+  "goals",
+  "bioDay",
+  "shift",
+  "nutrition",
+  "hydration",
+  "workouts",
+  "sleep",
+  "recovery",
+  "limitations",
+  "medical",
+  "progress",
+  "labResults",
+  "healthMetrics",
+];
+
 const metadata = [];
 const daniel = await buildAdvisorContextForUser("user-1", "daniel", source, now, (value) =>
   metadata.push(value),
 );
-assert.deepEqual(Object.keys(daniel.context.facts), [
-  "profile",
-  "bioDay",
-  "workouts",
-  "limitations",
-  "medical",
-]);
+assert.deepEqual(Object.keys(daniel.context.facts), ALL_KEYS);
 assert.deepEqual(daniel.context.facts.limitations.value, { severityBands: ["high"] });
 assert.equal(JSON.stringify(daniel).includes("must never"), false);
 assert.equal(JSON.stringify(daniel).includes("private area"), false);
@@ -56,15 +69,8 @@ assert.equal(JSON.stringify(metadata).includes("user-1"), false);
 assert.equal(JSON.stringify(metadata).includes("must never"), false);
 
 const shiran = await buildAdvisorContextForUser("user-1", "shiran", source, now, () => undefined);
-assert.deepEqual(Object.keys(shiran.context.facts), [
-  "profile",
-  "bioDay",
-  "goals",
-  "nutrition",
-  "hydration",
-  "progress",
-]);
-assert.equal("limitations" in shiran.context.facts, false);
+assert.deepEqual(Object.keys(shiran.context.facts), ALL_KEYS);
+assert.deepEqual(shiran.context.facts.limitations.value, { severityBands: ["high"] });
 
 console.log(
   "Advisor context bridge regression: PASS (selector isolation, explicit state, sensitive projection)",

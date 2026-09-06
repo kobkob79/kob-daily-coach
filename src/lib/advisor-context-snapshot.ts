@@ -14,7 +14,9 @@ export type AdvisorContextKey =
   | "recovery"
   | "limitations"
   | "medical"
-  | "progress";
+  | "progress"
+  | "labResults"
+  | "healthMetrics";
 
 export interface SafeMedicalIssue {
   conditionLabel: string;
@@ -27,6 +29,29 @@ export interface SafeMedicalIssue {
   safetyGuidance: string | null;
   effectiveDate: string | null;
   freshness: "current" | "stale";
+}
+
+/** A single blood/lab marker the user logged, extracted from their own typed
+ *  fields — never the scanned document or an image path (see ADR 003). */
+export interface SafeLabResult {
+  lab: string | null;
+  marker: string | null;
+  value: string | null;
+  summary: string | null;
+  testDate: string | null;
+  /** A blood test stays clinically relevant far longer than the generic
+   *  36h fact staleness window, so freshness is judged on its own terms
+   *  (same 180-day cutoff as medical issues), not by the outer fact state. */
+  freshness: "current" | "stale";
+}
+
+/** Latest sample per wearable/manual metric type, for a compact readiness view. */
+export interface SafeHealthMetricsSummary {
+  restingHeartRate: { value: number; unit: string; recordedAt: string } | null;
+  sleepMinutes: { value: number; unit: string; recordedAt: string } | null;
+  steps: { value: number; unit: string; recordedAt: string } | null;
+  caloriesBurned: { value: number; unit: string; recordedAt: string } | null;
+  workoutMinutes: { value: number; unit: string; recordedAt: string } | null;
 }
 
 export interface SafeProgressSummary {
@@ -74,15 +99,6 @@ export interface AdvisorContextProfileInput {
   currentWeightKg?: number | null;
 }
 
-/** Aggregated resting-heart-rate signal from health_metrics, over the same
- *  lookback window as the timeline - a single reading, not per-sample rows
- *  (those stay out of Advisor context; the aggregate is what recovery needs). */
-export interface AdvisorContextWearableRecovery {
-  restingHeartRateBpm: number | null;
-  observedAt: string | null;
-  source: string;
-}
-
 export interface AdvisorContextInput {
   userId: string;
   now: Date;
@@ -92,7 +108,8 @@ export interface AdvisorContextInput {
   shift?: { kind: string; source: string; observedAt?: string | null } | null;
   medical?: SafeMedicalIssue[];
   progress?: SafeProgressSummary | null;
-  wearableRecovery?: AdvisorContextWearableRecovery | null;
+  labResults?: SafeLabResult[];
+  healthMetrics?: SafeHealthMetricsSummary | null;
   timeline: UnifiedTimelineItem[];
   conflicts?: AdvisorContextKey[];
 }
@@ -243,6 +260,7 @@ export function buildAdvisorContextSnapshot(input: AdvisorContextInput): Advisor
         meals.length
           ? {
               meals: meals.length,
+              mealNames: meals.map((entry) => entry.title).filter(Boolean),
               calories: numericTotal(meals, "calories"),
               proteinG: numericTotal(meals, "proteinG"),
               carbsG: numericTotal(meals, "carbsG"),
@@ -273,6 +291,7 @@ export function buildAdvisorContextSnapshot(input: AdvisorContextInput): Advisor
           ? {
               planned: workouts.filter((entry) => entry.classification === "planned").length,
               completed: workouts.filter((entry) => entry.classification === "completed").length,
+              names: workouts.map((entry) => entry.title).filter(Boolean),
               volumeKg: numericTotal(workouts, "volumeKg"),
             }
           : null,
@@ -291,25 +310,11 @@ export function buildAdvisorContextSnapshot(input: AdvisorContextInput): Advisor
         conflicting("sleep"),
       ),
       recovery: fact(
-        sleep.length || input.wearableRecovery?.restingHeartRateBpm != null
-          ? {
-              sleepHours: numericTotal(sleep, "hours") || null,
-              workoutCount: workouts.length,
-              restingHeartRateBpm: input.wearableRecovery?.restingHeartRateBpm ?? null,
-            }
+        sleep.length
+          ? { sleepHours: numericTotal(sleep, "hours") || null, workoutCount: workouts.length }
           : null,
-        [latest([...sleep, ...workouts]), input.wearableRecovery?.observedAt ?? null]
-          .filter((value): value is string => Boolean(value))
-          .sort()
-          .at(-1) ?? null,
-        [
-          ...new Set([
-            ...sourceNames([...sleep, ...workouts]),
-            ...(input.wearableRecovery?.restingHeartRateBpm != null
-              ? [input.wearableRecovery.source]
-              : []),
-          ]),
-        ],
+        latest([...sleep, ...workouts]),
+        sourceNames([...sleep, ...workouts]),
         "inferred",
         input.now,
         conflicting("recovery"),
@@ -342,15 +347,67 @@ export function buildAdvisorContextSnapshot(input: AdvisorContextInput): Advisor
         input.now,
         conflicting("progress"),
       ),
+      labResults: fact(
+        input.labResults?.length ? input.labResults : null,
+        input.labResults
+          ?.map((result) => result.testDate)
+          .filter(Boolean)
+          .sort()
+          .at(-1) ?? null,
+        ["vision_captures"],
+        "reported",
+        input.now,
+        conflicting("labResults"),
+      ),
+      healthMetrics: fact(
+        input.healthMetrics && Object.values(input.healthMetrics).some((sample) => sample !== null)
+          ? input.healthMetrics
+          : null,
+        [
+          input.healthMetrics?.restingHeartRate?.recordedAt,
+          input.healthMetrics?.sleepMinutes?.recordedAt,
+          input.healthMetrics?.steps?.recordedAt,
+          input.healthMetrics?.caloriesBurned?.recordedAt,
+          input.healthMetrics?.workoutMinutes?.recordedAt,
+        ]
+          .filter((value): value is string => Boolean(value))
+          .sort()
+          .at(-1) ?? null,
+        ["health_metrics"],
+        "measured",
+        input.now,
+        conflicting("healthMetrics"),
+      ),
     },
   };
 }
 
+// Every advisor is one brain shared across domains: each gets the user's full
+// day (nutrition, workouts, sleep, medical, etc.), not just its own slice, so
+// it can reason about the whole picture before answering within its own
+// domain boundaries (see instructions.ts / configs.ts domainBoundaries).
+const ALL_CONTEXT_KEYS: readonly AdvisorContextKey[] = [
+  "profile",
+  "goals",
+  "bioDay",
+  "shift",
+  "nutrition",
+  "hydration",
+  "workouts",
+  "sleep",
+  "recovery",
+  "limitations",
+  "medical",
+  "progress",
+  "labResults",
+  "healthMetrics",
+];
+
 const SELECTOR_KEYS = {
-  adam: ["profile", "bioDay", "shift", "sleep", "recovery"],
-  daniel: ["profile", "bioDay", "workouts", "limitations", "medical"],
-  maya: ["profile", "bioDay", "recovery", "limitations", "medical", "progress"],
-  shiran: ["profile", "bioDay", "goals", "nutrition", "hydration", "progress"],
+  adam: ALL_CONTEXT_KEYS,
+  daniel: ALL_CONTEXT_KEYS,
+  maya: ALL_CONTEXT_KEYS,
+  shiran: ALL_CONTEXT_KEYS,
 } as const satisfies Record<string, readonly AdvisorContextKey[]>;
 
 export type ContextAdvisorId = keyof typeof SELECTOR_KEYS;

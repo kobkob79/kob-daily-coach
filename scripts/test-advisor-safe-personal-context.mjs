@@ -56,21 +56,22 @@ assert.deepEqual(absent.context.facts, {});
 assert.deepEqual(absent.contextFlags, [{ key: "contextSharing", state: "disabled" }]);
 assert.equal(loads, 0);
 
-// Consent granted and advisor-specific least privilege.
+// Consent granted: every advisor is one brain, so each gets the full-day
+// snapshot (domain focus is enforced in the response, not by hiding facts).
 consent = true;
 const daniel = await buildAdvisorContextForUser("owner-1", "daniel", source, now, () => {});
 assert.equal(loads, 1);
 assert.ok("medical" in daniel.context.facts);
-assert.ok(!("progress" in daniel.context.facts));
+assert.ok("progress" in daniel.context.facts);
 const maya = await buildAdvisorContextForUser("owner-1", "maya", source, now, () => {});
 assert.ok("medical" in maya.context.facts);
 assert.ok("progress" in maya.context.facts);
 const shiran = await buildAdvisorContextForUser("owner-1", "shiran", source, now, () => {});
-assert.ok(!("medical" in shiran.context.facts));
+assert.ok("medical" in shiran.context.facts);
 assert.ok("progress" in shiran.context.facts);
 const adam = await buildAdvisorContextForUser("owner-1", "adam", source, now, () => {});
-assert.ok(!("medical" in adam.context.facts));
-assert.ok(!("progress" in adam.context.facts));
+assert.ok("medical" in adam.context.facts);
+assert.ok("progress" in adam.context.facts);
 
 // Revocation takes effect on the next build.
 consent = false;
@@ -121,10 +122,13 @@ const bridgeSource = await readFile(
   new URL("../src/lib/advisor-core/server/advisor-context-bridge.server.ts", import.meta.url),
   "utf8",
 );
-assert.doesNotMatch(
-  bridgeSource,
-  /from\("vision_captures"|from\("body_photos"|image_path|storage_path|signedUrl/i,
-);
+// vision_captures may be queried for blood_test lab markers only (structured
+// fields the user typed, not the scanned document) - never raw photos or
+// storage references.
+assert.doesNotMatch(bridgeSource, /from\("body_photos"|image_path|storage_path|signedUrl/i);
+assert.match(bridgeSource, /from\("vision_captures"\)/);
+assert.match(bridgeSource, /eq\("capture_type",\s*"blood_test"\)/);
+assert.doesNotMatch(bridgeSource, /vision_captures[\s\S]{0,200}image_path/i);
 assert.doesNotMatch(bridgeSource, /medical_issues"\)\s*\.select\([^)]*summary/i);
 assert.doesNotMatch(bridgeSource, /weights_history"\)\s*\.select\([^)]*notes/i);
 assert.doesNotMatch(bridgeSource, /body_measurements"\)\s*\.select\([^)]*notes/i);
@@ -144,5 +148,5 @@ assert.doesNotMatch(conversationFunctions, /contextFlags:\s*\[\]/);
 assert.match(conversationFunctions, /buildAdvisorContextForUser/);
 
 console.log(
-  "Safe personal context regression: PASS (consent, ownership, allowlists, projections, revocation, budgeting, complete turns, reload flags)",
+  "Safe personal context regression: PASS (consent, ownership, full-context sharing, projections, revocation, budgeting, complete turns, reload flags)",
 );
