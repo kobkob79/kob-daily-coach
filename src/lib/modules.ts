@@ -20,6 +20,7 @@ import {
   LayoutDashboard,
   Droplet,
   Users,
+  MessageCircle,
 } from "lucide-react";
 
 export type ModuleStatus = "live" | "beta" | "coming-soon";
@@ -38,12 +39,25 @@ export const MODULES: AppModule[] = [
   { id: "workouts", labelKey: "nav.train", route: "/workouts", icon: Dumbbell, status: "live" },
   { id: "nutrition", labelKey: "nav.fuel", route: "/nutrition", icon: Apple, status: "live" },
   { id: "community", labelKey: "nav.community", route: "/community", icon: Users, status: "live" },
+  {
+    id: "messages",
+    labelKey: "nav.messages",
+    route: "/messages",
+    icon: MessageCircle,
+    status: "live",
+  },
 
   // Health, Progress and Shift moved off the bottom nav (it was too
   // crowded) onto dedicated home-screen cards instead — reachable
   // directly via their routes, no registry entry needed for that.
   { id: "meals", labelKey: "nav.meals", route: "/meals", icon: Apple, status: "beta" },
-  { id: "hydration", labelKey: "nav.hydration", route: "/hydration", icon: Droplet, status: "beta" },
+  {
+    id: "hydration",
+    labelKey: "nav.hydration",
+    route: "/hydration",
+    icon: Droplet,
+    status: "beta",
+  },
   { id: "health", labelKey: "nav.health", route: "/health", icon: HeartPulse, status: "beta" },
   { id: "progress", labelKey: "nav.trend", route: "/progress", icon: LineChart, status: "beta" },
   { id: "shift", labelKey: "nav.shift", route: "/shift", icon: CalendarClock, status: "beta" },
@@ -51,7 +65,12 @@ export const MODULES: AppModule[] = [
   // Prepared surfaces — no routes yet, exposed via the registry so future work
   // wires them into the shell without touching call sites.
   { id: "workout-engine", labelKey: "module.workoutEngine", icon: Dumbbell, status: "coming-soon" },
-  { id: "medical-vault", labelKey: "module.medicalVault", icon: FolderHeart, status: "coming-soon" },
+  {
+    id: "medical-vault",
+    labelKey: "module.medicalVault",
+    icon: FolderHeart,
+    status: "coming-soon",
+  },
   { id: "progress-photos", labelKey: "module.progressPhotos", icon: Camera, status: "coming-soon" },
   { id: "timeline", labelKey: "module.timeline", icon: History, status: "coming-soon" },
   { id: "ai-companion", labelKey: "module.aiCompanion", icon: Sparkles, status: "coming-soon" },

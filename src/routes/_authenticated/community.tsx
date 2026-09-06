@@ -19,6 +19,7 @@ import {
   Heart,
   ImagePlus,
   Loader2,
+  MessageCircle,
   Send,
   Trash2,
   UserCheck,
@@ -486,6 +487,17 @@ function PostCard({
             {formatDistanceToNow(new Date(post.created_at), { locale: he, addSuffix: true })}
           </p>
         </div>
+        {!isOwn && (
+          <Link
+            to="/messages/$userId"
+            params={{ userId: post.user_id }}
+            search={{ name: post.author_display_name }}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
+            aria-label={`שלח הודעה ל${post.author_display_name}`}
+          >
+            <MessageCircle className="h-4 w-4" />
+          </Link>
+        )}
         {!isOwn && (
           <Button
             type="button"
