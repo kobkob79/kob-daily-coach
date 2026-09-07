@@ -1051,21 +1051,24 @@ function SetRow({
         )}
 
         <div className="flex items-center justify-end gap-1">
-          <button
-            onClick={onToggleWarmup}
-            disabled={locked}
-            className={
-              set.is_warmup
-                ? "flex h-7 items-center gap-1 rounded-full bg-warning/15 px-2 text-[10px] font-medium text-warning transition disabled:opacity-60"
-                : "grid h-7 w-7 place-items-center rounded-full text-muted-foreground/30 transition hover:text-muted-foreground disabled:opacity-60"
-            }
-            aria-pressed={set.is_warmup}
-            aria-label={set.is_warmup ? "סט חימום — לחץ לביטול" : "סמן כסט חימום"}
-            title={set.is_warmup ? "סט חימום — לחץ לביטול" : "סמן כסט חימום"}
-          >
-            <Flame className="h-3.5 w-3.5" />
-            {set.is_warmup && "חימום"}
-          </button>
+          {/* Warm-up only makes sense before working sets start, so the toggle is only offered on set 1. */}
+          {set.set_number === 1 && (
+            <button
+              onClick={onToggleWarmup}
+              disabled={locked}
+              className={
+                set.is_warmup
+                  ? "flex h-7 items-center gap-1 rounded-full bg-warning/15 px-2 text-[10px] font-medium text-warning transition disabled:opacity-60"
+                  : "grid h-7 w-7 place-items-center rounded-full text-muted-foreground/30 transition hover:text-muted-foreground disabled:opacity-60"
+              }
+              aria-pressed={set.is_warmup}
+              aria-label={set.is_warmup ? "סט חימום — לחץ לביטול" : "סמן כסט חימום"}
+              title={set.is_warmup ? "סט חימום — לחץ לביטול" : "סמן כסט חימום"}
+            >
+              <Flame className="h-3.5 w-3.5" />
+              {set.is_warmup && "חימום"}
+            </button>
+          )}
           {done ? (
             <button
               onClick={onUncomplete}
