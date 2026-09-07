@@ -312,6 +312,16 @@ function ExerciseDetailPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["session_sets", sessionId] }),
   });
 
+  const toggleWarmupMut = useMutation({
+    mutationFn: async (s: SessionSet) => updateSet(s.id, { is_warmup: !s.is_warmup }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["session_sets", sessionId] });
+      qc.invalidateQueries({ queryKey: ["active-session-current"] });
+      qc.invalidateQueries({ queryKey: ["exercise_pr_stats", exerciseId, sessionId] });
+      qc.invalidateQueries({ queryKey: ["session_summary", sessionId] });
+    },
+  });
+
   const patchMut = useMutation({
     mutationFn: async ({
       id,
@@ -655,6 +665,7 @@ function ExerciseDetailPage() {
             onComplete={() => completeMut.mutate(s)}
             onUncomplete={() => uncompleteMut.mutate(s)}
             onDelete={() => removeMut.mutate(s.id)}
+            onToggleWarmup={() => toggleWarmupMut.mutate(s)}
             onChange={(field, value) =>
               patchMut.mutate({
                 id: s.id,
@@ -789,6 +800,7 @@ function SetRow({
   onUncomplete,
   onDelete,
   onChange,
+  onToggleWarmup,
 }: {
   containerRef?: React.RefObject<HTMLDivElement | null>;
   set: SessionSet;
@@ -806,6 +818,7 @@ function SetRow({
   onUncomplete: () => void;
   onDelete: () => void;
   onChange: (field: EditableSetField, value: number | string | null) => void;
+  onToggleWarmup: () => void;
 }) {
   const done = !!set.completed_at;
   const disabled = locked || restActive;
@@ -1038,6 +1051,20 @@ function SetRow({
         )}
 
         <div className="flex items-center justify-end gap-1">
+          <button
+            onClick={onToggleWarmup}
+            disabled={locked}
+            className={`h-7 rounded-full px-2 text-[10px] font-medium transition disabled:opacity-60 ${
+              set.is_warmup
+                ? "bg-muted text-muted-foreground"
+                : "text-muted-foreground/50 hover:text-muted-foreground"
+            }`}
+            aria-pressed={set.is_warmup}
+            aria-label={set.is_warmup ? "בטל סימון חימום" : "סמן כסט חימום"}
+            title={set.is_warmup ? "סט חימום — לחץ לביטול" : "סמן כסט חימום"}
+          >
+            חימום
+          </button>
           {done ? (
             <button
               onClick={onUncomplete}

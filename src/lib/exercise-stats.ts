@@ -11,6 +11,7 @@ export interface StatSet {
   session_id: string | null;
   /** Session start time, used when a set has no completion timestamp. */
   session_at: string | null;
+  is_warmup: boolean;
 }
 
 export type Trend = "improving" | "stable" | "declining" | "unknown";
@@ -65,7 +66,8 @@ function round(n: number | null, digits = 1): number | null {
   return Math.round(n * f) / f;
 }
 
-export function computeExerciseStats(sets: StatSet[]): ExerciseStats {
+export function computeExerciseStats(allSets: StatSet[]): ExerciseStats {
+  const sets = allSets.filter((s) => !s.is_warmup);
   const done = sets.filter((s) => s.completed_at != null || s.reps != null || s.weight_kg != null);
   const completed = sets.filter((s) => s.completed_at != null);
   const completionRate = sets.length ? completed.length / sets.length : null;

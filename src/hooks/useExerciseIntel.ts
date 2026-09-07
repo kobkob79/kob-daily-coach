@@ -17,7 +17,7 @@ async function fetchIntel(exerciseId: string): Promise<ExerciseIntel> {
     supabase
       .from("workout_sets")
       .select(
-        "reps, weight_kg, completed_at, actual_rest_seconds, session_id, workout_sessions(started_at, status)",
+        "reps, weight_kg, completed_at, actual_rest_seconds, session_id, is_warmup, workout_sessions(started_at, status)",
       )
       .eq("exercise_id", exerciseId),
     supabase
@@ -39,6 +39,7 @@ async function fetchIntel(exerciseId: string): Promise<ExerciseIntel> {
       actual_rest_seconds: row.actual_rest_seconds,
       session_id: row.session_id,
       session_at: session?.started_at ?? null,
+      is_warmup: Boolean(row.is_warmup),
     };
   });
 

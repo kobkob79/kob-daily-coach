@@ -81,6 +81,7 @@ function ProgressPage() {
           `
           weight_kg,
           reps,
+          is_warmup,
           workout_sessions!inner(started_at, status),
           exercises(muscle_group)
         `,
@@ -92,6 +93,7 @@ function ProgressPage() {
       return data as unknown as {
         weight_kg: number | null;
         reps: number | null;
+        is_warmup: boolean;
         workout_sessions: { started_at: string; status: string };
         exercises: { muscle_group: string | null } | null;
       }[];
@@ -141,7 +143,7 @@ function ProgressPage() {
   });
 
   // Volume per muscle group, last 8 weeks.
-  const allSets = setsQ.data ?? [];
+  const allSets = (setsQ.data ?? []).filter((s) => !s.is_warmup);
   const activeMuscles = new Set<string>();
 
   const muscleVolumeData = weeks.map((wStart) => {
