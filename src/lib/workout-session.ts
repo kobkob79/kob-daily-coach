@@ -76,7 +76,7 @@ export interface SessionSet {
   position: number | null;
   reps: number | null;
   weight_kg: number | null;
-  /** Excluded from PRs, volume totals and progression stats — still logged, just not counted as work. */
+  /** Excluded from PRs and per-exercise/per-muscle-group stats (not a genuine working set); still counted toward total session volume and duration. */
   is_warmup: boolean;
   /** Time-based sets (cardio/core/stretch), in place of reps/weight_kg. */
   duration_seconds: number | null;
@@ -345,8 +345,12 @@ export async function finalizeSession(
   const startedMs = started ? new Date(started).getTime() : Date.now();
   const durationSec = Math.max(0, Math.round((Date.now() - startedMs) / 1000));
   const sets = await getSessionSets(id);
+  // Warm-up sets count toward total session volume/duration (real effort
+  // was still spent) — they're only excluded from PRs and the per-exercise/
+  // per-muscle-group charts, where they'd distort what a genuine working
+  // set looks like.
   const volume = sets.reduce(
-    (acc, s) => acc + (s.completed_at && !s.is_warmup ? (s.weight_kg ?? 0) * (s.reps ?? 0) : 0),
+    (acc, s) => acc + (s.completed_at ? (s.weight_kg ?? 0) * (s.reps ?? 0) : 0),
     0,
   );
   await updateSession(id, {
