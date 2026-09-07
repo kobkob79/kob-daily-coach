@@ -640,10 +640,11 @@ function ExerciseDetailPage() {
             <span />
           </div>
         ) : (
-          <div className="grid grid-cols-[2rem_1fr_1fr_3rem] items-center gap-2 px-2 text-[9px] uppercase tracking-wider text-muted-foreground">
+          <div className="grid grid-cols-[2rem_1fr_1fr_1fr_3rem] items-center gap-2 px-2 text-[9px] uppercase tracking-wider text-muted-foreground">
             <span>#</span>
             <span>משקל (ק״ג)</span>
             <span>חזרות</span>
+            <span>RPE</span>
             <span />
           </div>
         )}
