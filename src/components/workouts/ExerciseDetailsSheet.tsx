@@ -7,11 +7,21 @@
  * without touching the rest of the layout. Info/coaching blocks are separate
  * sections so AI tips, common mistakes and safety notes can be appended.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dumbbell, Maximize2, Play, Plus, Sparkles, Star, Trophy, X } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+  CartesianGrid,
+} from "recharts";
 import { normalizeMuscleGroup } from "@/lib/muscle-groups";
 import {
   difficultyOf,
@@ -33,7 +43,6 @@ import { useExerciseIntel } from "@/hooks/useExerciseIntel";
 import { ExerciseMediaView } from "./ExerciseMediaView";
 import { cn } from "@/lib/utils";
 
-
 interface Props {
   exercise: PickerExercise | null;
   open: boolean;
@@ -47,16 +56,22 @@ interface Props {
 }
 
 export function ExerciseDetailsSheet({
-  exercise, open, onClose, onAdd, library, onOpenExercise,
+  exercise,
+  open,
+  onClose,
+  onAdd,
+  library,
+  onOpenExercise,
 }: Props) {
   const [favorites, setFavorites] = useState<string[]>([]);
   useEffect(() => setFavorites(readFavorites()), [open]);
   const [guideOpen, setGuideOpen] = useState(false);
-  useEffect(() => { if (!open) setGuideOpen(false); }, [open]);
+  useEffect(() => {
+    if (!open) setGuideOpen(false);
+  }, [open]);
   const intel = useExerciseIntel(exercise?.id, open);
 
   if (!exercise) return null;
-
 
   const ex = exercise;
   const primary = normalizeMuscleGroup(ex.muscle_group);
@@ -117,7 +132,10 @@ export function ExerciseDetailsSheet({
               {/* Metadata grid */}
               <div className="grid grid-cols-2 gap-2">
                 <MetaCell label="שריר עיקרי" value={primary} />
-                <MetaCell label="שרירים משניים" value={secondary.length ? secondary.join(", ") : "—"} />
+                <MetaCell
+                  label="שרירים משניים"
+                  value={secondary.length ? secondary.join(", ") : "—"}
+                />
                 <MetaCell label="ציוד" value={equipmentLabel(ex.equipment)} />
                 <MetaCell label="רמת קושי" value={diff.label} />
                 <MetaCell label="קטגוריה" value={ex.category?.trim() || primary} />
@@ -154,8 +172,6 @@ export function ExerciseDetailsSheet({
                   תובנות אישיות, טעויות נפוצות והמלצות אימון יופיעו כאן בקרוב.
                 </p>
               </section>
-
-
 
               {/* Related */}
               {related.length > 0 && (
@@ -237,6 +253,18 @@ function PersonalIntel({
           ? `${last.weightKg} ק״ג`
           : `${last.reps} חזרות`
       : "—";
+  const progressionChartData = useMemo(
+    () =>
+      stats.progression.map((p) => ({
+        ...p,
+        dateLabel: new Date(p.at).toLocaleDateString("he-IL", {
+          day: "numeric",
+          month: "numeric",
+          year: "2-digit",
+        }),
+      })),
+    [stats.progression],
+  );
 
   return (
     <div className="space-y-3">
@@ -325,22 +353,87 @@ function PersonalIntel({
               <MetaCell
                 label="נפח ממוצע"
                 value={
-                  stats.averages.sessionVolume != null
-                    ? `${stats.averages.sessionVolume} ק״ג`
-                    : "—"
+                  stats.averages.sessionVolume != null ? `${stats.averages.sessionVolume} ק״ג` : "—"
                 }
               />
               <MetaCell label="מנוחה ממוצעת" value={formatRest(stats.averages.restSeconds)} />
               <MetaCell
                 label="אחוז השלמה"
                 value={
-                  stats.completionRate != null
-                    ? `${Math.round(stats.completionRate * 100)}%`
-                    : "—"
+                  stats.completionRate != null ? `${Math.round(stats.completionRate * 100)}%` : "—"
                 }
               />
             </div>
           </section>
+
+          {stats.progression.length >= 2 && (
+            <section className="surface-card space-y-2 rounded-2xl border border-border/60 p-3.5">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                התקדמות לאורך זמן
+              </p>
+              <div className="h-[200px] w-full pt-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={progressionChartData}
+                    margin={{ top: 5, right: 0, left: -20, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                    <XAxis
+                      dataKey="dateLabel"
+                      tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                    />
+                    <YAxis
+                      yAxisId="weight"
+                      tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                      width={30}
+                    />
+                    <YAxis
+                      yAxisId="volume"
+                      orientation="right"
+                      tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                      width={36}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: "var(--color-popover)",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: 8,
+                        fontSize: 12,
+                      }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Line
+                      yAxisId="volume"
+                      type="monotone"
+                      dataKey="volumeKg"
+                      name='נפח (ק"ג)'
+                      stroke="var(--color-primary)"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      yAxisId="weight"
+                      type="monotone"
+                      dataKey="e1rmKg"
+                      name='1RM משוער (ק"ג)'
+                      stroke="var(--color-accent)"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      yAxisId="weight"
+                      type="monotone"
+                      dataKey="topWeightKg"
+                      name='משקל שיא (ק"ג)'
+                      stroke="var(--color-destructive)"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+          )}
         </>
       )}
 
@@ -362,15 +455,8 @@ function PersonalIntel({
   );
 }
 
-
 /** Reserved 16:9 media area — premium placeholder until assets exist. */
-function HeroMedia({
-  exercise,
-  onShowMore,
-}: {
-  exercise: PickerExercise;
-  onShowMore: () => void;
-}) {
+function HeroMedia({ exercise, onShowMore }: { exercise: PickerExercise; onShowMore: () => void }) {
   return (
     <div className="relative aspect-[4/3] w-full overflow-hidden bg-gradient-to-br from-muted/40 via-card/60 to-muted/20">
       <ExerciseMediaView

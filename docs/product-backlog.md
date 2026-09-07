@@ -359,7 +359,7 @@ Should Have · P2 · S · Deps: CORE-001 · **Shipped** · Dev
 
 **STATS-008 — Per-exercise progression chart**
 Load/volume/e1RM trend for a single exercise.
-Should Have · P1 · M · Deps: STATS-003 · Backlog · Dev
+Should Have · P1 · M · Deps: STATS-003 · **Shipped** · Dev
 
 **STATS-009 — Muscle heat map**
 Visual body map of weekly stimulus and neglected areas.
