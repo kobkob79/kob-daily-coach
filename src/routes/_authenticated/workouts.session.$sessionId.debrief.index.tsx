@@ -6,7 +6,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
-import { Loader2, Share2, Sparkles, Droplets, Apple, Moon, Target } from "lucide-react";
+import { Loader2, Share2, Sparkles, Droplets, Apple, Moon, Target, Users } from "lucide-react";
 import { buildDebriefContext } from "@/lib/coach-debrief";
 import { generateCoachDebrief } from "@/lib/coach-debrief.functions";
 import { fetchLifeProfile } from "@/lib/life-profile";
@@ -91,12 +91,27 @@ function DebriefPage() {
           ממתין לתחקיר המאמן…
         </Button>
       ) : (
-        <Button asChild size="lg" variant="outline" className="h-12 w-full text-base">
-          <Link to="/workouts/session/$sessionId/debrief/export" params={{ sessionId }}>
-            <Share2 className="ml-2 h-4 w-4" />
-            ייצוא אימון כטקסט
-          </Link>
-        </Button>
+        <div className="flex gap-2 w-full">
+          {d && (
+            <Button asChild size="lg" variant="outline" className="h-12 flex-1 text-base">
+              <Link
+                to="/community"
+                search={{
+                  draft: [d.greeting, "", ...d.highlights.slice(0, 2)].join("\n").trim(),
+                }}
+              >
+                <Users className="ml-2 h-4 w-4" />
+                שתף בקהילה
+              </Link>
+            </Button>
+          )}
+          <Button asChild size="lg" variant="outline" className="h-12 flex-1 text-base">
+            <Link to="/workouts/session/$sessionId/debrief/export" params={{ sessionId }}>
+              <Share2 className="ml-2 h-4 w-4" />
+              ייצוא אימון כטקסט
+            </Link>
+          </Button>
+        </div>
       )}
 
       <Button asChild size="lg" className="h-14 w-full text-lg">

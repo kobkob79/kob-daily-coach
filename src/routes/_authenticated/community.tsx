@@ -8,7 +8,7 @@
  * as hydration.tsx/meals.tsx) - no server function needed since every rule
  * here (public read, own-row write) is expressible as a plain RLS policy.
  */
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
@@ -34,6 +34,9 @@ import {
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/community")({
+  validateSearch: (search: Record<string, unknown>): { draft?: string } => ({
+    draft: typeof search.draft === "string" ? search.draft : undefined,
+  }),
   component: CommunityPage,
 });
 
@@ -59,7 +62,9 @@ type CommunityPost = {
 
 function CommunityPage() {
   const qc = useQueryClient();
-  const [body, setBody] = useState("");
+  const navigate = useNavigate({ from: "/community" });
+  const search = Route.useSearch();
+  const [body, setBody] = useState(() => search.draft ?? "");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -228,6 +233,12 @@ function CommunityPage() {
     onSuccess: () => {
       toast.success("הפוסט פורסם");
       clearComposer();
+      // Drop ?draft= from the URL so remounting this page (refresh, back/
+      // forward) doesn't re-populate the composer with the text that was
+      // just posted and invite an accidental duplicate.
+      if (search.draft !== undefined) {
+        navigate({ search: {}, replace: true });
+      }
       qc.invalidateQueries({ queryKey: ["community-posts"] });
     },
     onError: (e: Error) => toast.error(e.message),
