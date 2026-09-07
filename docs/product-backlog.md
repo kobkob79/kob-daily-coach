@@ -123,7 +123,7 @@ Should Have · P2 · M · Deps: LIBRARY-002, AI-003 · Backlog · Dev
 
 **WORKOUT-012 — RPE / RIR capture**
 Optional one-tap effort rating per set feeding load recommendations.
-Should Have · P2 · S · Deps: WORKOUT-002, AI-005 · Backlog · Dev
+Should Have · P2 · S · Deps: WORKOUT-002 · Shipped · Dev
 
 **WORKOUT-013 — Plate calculator**
 Bar-loading breakdown for the target weight.
