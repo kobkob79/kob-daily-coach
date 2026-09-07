@@ -92,20 +92,19 @@ function DebriefPage() {
         </Button>
       ) : (
         <div className="flex gap-2 w-full">
-          <Button asChild size="lg" variant="outline" className="h-12 flex-1 text-base">
-            <Link
-              to="/community"
-              search={{
-                draft: [d?.greeting, "", ...(d?.highlights || []).slice(0, 2)]
-                  .filter((s) => s !== undefined)
-                  .join("\n")
-                  .trim(),
-              }}
-            >
-              <Users className="ml-2 h-4 w-4" />
-              שתף בקהילה
-            </Link>
-          </Button>
+          {d && (
+            <Button asChild size="lg" variant="outline" className="h-12 flex-1 text-base">
+              <Link
+                to="/community"
+                search={{
+                  draft: [d.greeting, "", ...d.highlights.slice(0, 2)].join("\n").trim(),
+                }}
+              >
+                <Users className="ml-2 h-4 w-4" />
+                שתף בקהילה
+              </Link>
+            </Button>
+          )}
           <Button asChild size="lg" variant="outline" className="h-12 flex-1 text-base">
             <Link to="/workouts/session/$sessionId/debrief/export" params={{ sessionId }}>
               <Share2 className="ml-2 h-4 w-4" />
