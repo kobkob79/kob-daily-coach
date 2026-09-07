@@ -1,20 +1,45 @@
 /**
  * Run with: node --test src/routes/_authenticated/workout-templates.regression.test.ts
  *
- * VIORA-P0-MOBILE-RUNTIME-RECOVERY-CLAUDE-001 — Incident A (routine editor
- * freeze on "אימון A אינטל" after ~6 exercises).
+ * VIORA-P0-MOBILE-RUNTIME-RECOVERY-CLAUDE-001 / -REVIEW-FIXES-001 — Incident A
+ * (routine editor freeze on "אימון A אינטל" after ~6 exercises).
  *
- * Root cause (see PR description / handoff for the full investigation): the
- * editor Dialog's `max-height` was pinned to a static `vh` unit while the
- * app never opts into `interactive-widget=resizes-content`, so on modern
- * Android/Chrome the on-screen keyboard overlays the layout viewport instead
- * of resizing it — once there are enough rows to need scrolling (~6+), the
- * bottom of the dialog (later rows, Add Exercise, Close) sits behind the
- * keyboard and is unreachable. It reproduces on every reopen because it's a
- * deterministic function of persisted row count, not corrupted JS state (no
- * infinite render loop, no draft persistence, no crash was found).
+ * IMPORTANT — confidence level (updated after review): root cause is NOT
+ * conclusively proven. The original theory (static `vh` max-height + the
+ * on-screen keyboard overlaying an un-resized layout viewport) was reviewed
+ * and rejected as unproven: the user reproduced the frozen screen after
+ * reopening the app, and the screenshot of the frozen state does not show
+ * an open keyboard — 85vh and 85dvh are equivalent while the keyboard is
+ * closed, so that theory alone cannot explain a keyboard-closed freeze.
  *
- * This file has two kinds of tests:
+ * A follow-up source audit (see PR description for the full investigation)
+ * found a second, independently real and keyboard-INDEPENDENT gap: no
+ * Supabase call anywhere in this editor ever had a request timeout, and
+ * every actionable button (Add Exercise, delete, reorder) is gated by its
+ * mutation's `isPending`. A hung request on a flaky mobile connection —
+ * a well-documented real-world failure mode, especially across an app
+ * background/foreground cycle — would leave `isPending` stuck `true`
+ * forever: every gated button permanently disabled, no visual glitch, no
+ * keyboard required. This is the best-supported, most concretely
+ * provable-from-code explanation found so far, and is now fixed here
+ * (REQUEST_TIMEOUT_MS / AbortSignal.timeout on every mutation's Supabase
+ * calls, see the "network calls never hang forever" suite below).
+ *
+ * The viewport/dialog-sizing hardening (interactive-widget=resizes-content,
+ * the vh/dvh fallback) is KEPT as a real, independently-justified fix — it
+ * is what this exact file's own history (PR #15's ee0d07d/5d65546 commits)
+ * shows was needed for an earlier, proven version of this same symptom, and
+ * it is a low-risk, standard best practice for any bottom-composer/sheet UI
+ * (see the audit note in the PR description covering AppShell, the advisor
+ * and community composers, ExercisePicker, meal capture, and iOS, where
+ * Safari simply ignores the unsupported meta value). It is NOT claimed here
+ * to be the proven fix for the specific frozen-after-reopen report.
+ *
+ * PHYSICAL ANDROID QA IS STILL PENDING. Kobi has not yet verified on the
+ * real device that "אימון A אינטל" opens and stays interactive. Do not
+ * treat Incident A as closed until that verification happens.
+ *
+ * This file has three kinds of tests:
  *  1. Pure-logic tests against real, exported functions (fieldSetForExercise,
  *     normalizeMuscleGroup) and against small local simulations of the
  *     editor's list algorithms (row keying, position-swap arithmetic) —
@@ -24,6 +49,8 @@
  *     that pin the exact fixes in place, since this repo has no
  *     DOM/component-render test harness (no jsdom/testing-library/vitest)
  *     to mount <TemplateEditor/> directly.
+ *  3. A source-pattern guard that every mutation's Supabase call chain
+ *     carries an abort timeout, so `isPending` can never get stuck forever.
  */
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -329,8 +356,18 @@ describe("routine editor dialog — max-height stays reachable regardless of row
   });
 });
 
-describe("routine editor mutations — a failed write surfaces an error instead of looking frozen", () => {
-  for (const mutation of ["addExercise", "patchRow", "removeRow", "swap"]) {
+describe("routine editor mutations — a failed write surfaces a SAFE error instead of looking frozen", () => {
+  // A raw Supabase/PostgREST error message can name tables, columns, RLS
+  // policies or query shape. None of that may reach a user-facing toast —
+  // see VIORA-P0-MOBILE-RUNTIME-RECOVERY-REVIEW-FIXES-001 blocker 1.
+  const SAFE_MESSAGE_BY_MUTATION: Record<string, string> = {
+    addExercise: "לא הצלחנו להוסיף את התרגיל. נסה שוב.",
+    patchRow: "לא הצלחנו לשמור את השינוי. נסה שוב.",
+    removeRow: "לא הצלחנו להסיר את התרגיל. נסה שוב.",
+    swap: "לא הצלחנו לשנות את סדר התרגילים. נסה שוב.",
+  };
+
+  for (const [mutation, safeMessage] of Object.entries(SAFE_MESSAGE_BY_MUTATION)) {
     test(`${mutation} has an onError handler`, () => {
       const marker = `const ${mutation} = useMutation({`;
       const start = templatesSource.indexOf(marker);
@@ -340,17 +377,104 @@ describe("routine editor mutations — a failed write surfaces an error instead 
       const block = templatesSource.slice(start, nextMutation === -1 ? start + 2000 : nextMutation);
       assert.match(
         block,
-        /onError:\s*\(e: Error\) => toast\.error\(e\.message\)/,
+        /onError:\s*\(e: Error\) => \{/,
         `${mutation} must report a failed write instead of silently leaving the UI on stale data`,
       );
     });
+
+    test(`${mutation} shows a fixed, safe Hebrew message — never the raw error text`, () => {
+      const marker = `const ${mutation} = useMutation({`;
+      const start = templatesSource.indexOf(marker);
+      const nextMutation = templatesSource.indexOf("useMutation({", start + marker.length);
+      const block = templatesSource.slice(start, nextMutation === -1 ? start + 2000 : nextMutation);
+
+      assert.doesNotMatch(
+        block,
+        /toast\.error\(\s*e\.message\s*\)/,
+        `${mutation} must never pass a raw Supabase/PostgREST error message straight to the UI`,
+      );
+      assert.doesNotMatch(
+        block,
+        /toast\.error\([^)]*\be\b[^)]*\)/,
+        `${mutation}'s toast.error call must not reference the caught error at all`,
+      );
+      assert.match(
+        block,
+        new RegExp(`toast\\.error\\("${safeMessage.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"\\)`),
+        `${mutation} must show its fixed safe message: "${safeMessage}"`,
+      );
+    });
+
+    test(`${mutation}'s failure log never includes the error message, only its name`, () => {
+      const marker = `const ${mutation} = useMutation({`;
+      const start = templatesSource.indexOf(marker);
+      const nextMutation = templatesSource.indexOf("useMutation({", start + marker.length);
+      const block = templatesSource.slice(start, nextMutation === -1 ? start + 2000 : nextMutation);
+
+      assert.match(
+        block,
+        new RegExp(`logMutationFailure\\("${mutation}",\\s*e\\)`),
+        `${mutation} routes its failure through the sanitizing logger`,
+      );
+      assert.doesNotMatch(
+        block,
+        /console\.(error|warn|log)\([^)]*\be\.message\b/,
+        `${mutation} must never log the raw error message either`,
+      );
+    });
   }
+
+  test("the sanitizing logger itself never touches error.message/.details/.hint", () => {
+    const start = templatesSource.indexOf("function logMutationFailure(");
+    assert.notEqual(start, -1, "logMutationFailure is defined");
+    const end = templatesSource.indexOf("\n}", start);
+    const body = templatesSource.slice(start, end);
+    assert.doesNotMatch(
+      body,
+      /\.message|\.details|\.hint/,
+      "only error.name may be read, never the message body",
+    );
+    assert.match(body, /error\.name/);
+  });
 });
 
 describe("routine editor rows are keyed by the stable row id, not array index", () => {
   test("the row list maps with key={r.id}", () => {
     assert.match(templatesSource, /rowsQ\.data\?\.map\(\(r, idx\) => \(\s*<div key=\{r\.id\}/);
   });
+});
+
+describe("network calls never hang forever — isPending must always eventually resolve", () => {
+  // The best-supported keyboard-independent explanation found for the
+  // reported freeze: every Add Exercise / delete / reorder button is gated
+  // by its mutation's `isPending`, and no Supabase call anywhere in this
+  // editor had a request timeout — a hung request left those buttons
+  // permanently disabled. Every mutation's Supabase call chain must end in
+  // an abort timeout so `isPending` can never get stuck true forever.
+  test("REQUEST_TIMEOUT_MS is defined", () => {
+    assert.match(templatesSource, /const REQUEST_TIMEOUT_MS = 15_000;/);
+  });
+
+  for (const mutation of ["addExercise", "patchRow", "removeRow", "swap"]) {
+    test(`${mutation}: every Supabase call in its mutationFn carries an abort timeout`, () => {
+      const marker = `const ${mutation} = useMutation({`;
+      const start = templatesSource.indexOf(marker);
+      assert.notEqual(start, -1, `${mutation} mutation is defined`);
+      const nextMutation = templatesSource.indexOf("useMutation({", start + marker.length);
+      const block = templatesSource.slice(start, nextMutation === -1 ? start + 2500 : nextMutation);
+
+      const fromCalls = [...block.matchAll(/\.from\(/g)].length;
+      const timeoutCalls = [
+        ...block.matchAll(/\.abortSignal\(AbortSignal\.timeout\(REQUEST_TIMEOUT_MS\)\)/g),
+      ].length;
+      assert.ok(fromCalls > 0, `${mutation} makes at least one Supabase call`);
+      assert.equal(
+        timeoutCalls,
+        fromCalls,
+        `${mutation} has ${fromCalls} Supabase call(s) but only ${timeoutCalls} carry an abort timeout — every one must, or isPending can still get stuck`,
+      );
+    });
+  }
 });
 
 describe("per-field inputs stay debounced — no per-keystroke mutate/invalidate loop", () => {

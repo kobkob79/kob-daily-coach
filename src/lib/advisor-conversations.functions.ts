@@ -144,27 +144,17 @@ export const getAdvisorConversationMessagesServer = createServerFn({ method: "GE
             state: value.allowed ? ("available" as const) : ("exhausted" as const),
             resetsAt: value.resets_at,
           }));
-      const { buildAdvisorContextForUser, createSupabaseAdvisorContextDataSource } =
+      const { safeConversationContextFlags, createSupabaseAdvisorContextDataSource } =
         await import("@/lib/advisor-core/server/advisor-context-bridge.server");
       // Personal context is an enrichment, not a precondition: conversation
       // history must load even when building it fails for an unrelated
-      // reason. Keep this failure isolated from the store reads above so it
-      // can never turn into "couldn't load conversations".
-      let contextFlags: Awaited<ReturnType<typeof buildAdvisorContextForUser>>["contextFlags"];
-      try {
-        const contextResult = await buildAdvisorContextForUser(
-          userId,
-          conversation.advisor_id,
-          createSupabaseAdvisorContextDataSource(context.supabase),
-        );
-        contextFlags = contextResult.contextFlags;
-      } catch (error) {
-        console.error(
-          "[Viora Advisor Context] context build failed while loading a conversation; degrading to no context instead of failing the load",
-          error,
-        );
-        contextFlags = [{ key: "contextSharing", state: "limited" }];
-      }
+      // reason. safeConversationContextFlags never throws, so this can
+      // never turn into "couldn't load conversations".
+      const contextFlags = await safeConversationContextFlags(
+        userId,
+        conversation.advisor_id,
+        createSupabaseAdvisorContextDataSource(context.supabase),
+      );
       return {
         status: "success",
         data: {

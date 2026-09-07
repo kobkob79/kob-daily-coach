@@ -26,8 +26,10 @@ import assert from "node:assert/strict";
 import {
   buildAdvisorContextForUser,
   createSupabaseAdvisorContextDataSource,
+  safeConversationContextFlags,
 } from "./advisor-context-bridge.server.ts";
 import type { ContextAdvisorId } from "../../advisor-context-snapshot.ts";
+import type { AdvisorContextDataSource } from "./advisor-context-bridge.server.ts";
 
 type FakeResult = { data: unknown; error: { message: string; code?: string } | null };
 
@@ -133,6 +135,37 @@ describe("hasConsent — fail closed instead of throwing", () => {
     await assert.doesNotReject(async () => {
       assert.equal(await source.hasConsent("user-1"), false);
     });
+  });
+
+  test("consent check failure logs only a sanitized error code, never the raw PostgREST message", async () => {
+    const originalWarn = console.warn;
+    const warnCalls: unknown[][] = [];
+    console.warn = (...args: unknown[]) => {
+      warnCalls.push(args);
+    };
+    try {
+      const sensitiveMessage = 'password authentication failed for user "supabase_admin"';
+      const responses = {
+        ...baselineResponses(),
+        advisor_context_preferences: fail(sensitiveMessage, "28P01"),
+      };
+      const { client } = fakeSupabase(responses);
+      const source = createSupabaseAdvisorContextDataSource(client as never);
+      await source.hasConsent("user-1");
+
+      const relevant = warnCalls.filter(
+        (args) => typeof args[0] === "string" && args[0].includes("consent check failed"),
+      );
+      assert.equal(relevant.length, 1);
+      const [, details] = relevant[0]!;
+      assert.deepEqual(details, { errorCode: "28P01" });
+      assert.doesNotMatch(
+        JSON.stringify(warnCalls),
+        /password authentication failed|supabase_admin/,
+      );
+    } finally {
+      console.warn = originalWarn;
+    }
   });
 });
 
@@ -276,6 +309,149 @@ describe("buildAdvisorContextForUser — all four advisors load, even with a bro
       });
     });
   }
+});
+
+describe('partial degradation must say contextSharing:"limited" — never look like full sharing', () => {
+  // VIORA-P0-MOBILE-RUNTIME-RECOVERY-REVIEW-FIXES-001 blocker: a source that
+  // silently failed must not be indistinguishable from a source that simply
+  // had no data. The UI must be told sharing is limited, not "active/full".
+  test("one failing source: contextFlags explicitly includes contextSharing:limited", async () => {
+    const responses = { ...baselineResponses(), health_metrics: fail("relation does not exist") };
+    const { client } = fakeSupabase(responses);
+    const source = createSupabaseAdvisorContextDataSource(client as never);
+    const result = await buildAdvisorContextForUser("user-1", "adam", source);
+    assert.ok(
+      result.contextFlags.some((f) => f.key === "contextSharing" && f.state === "limited"),
+      "a failed optional source must surface an explicit contextSharing:limited flag",
+    );
+  });
+
+  test("multiple failing sources: still exactly one contextSharing:limited flag (not one per failure)", async () => {
+    const responses = {
+      ...baselineResponses(),
+      health_metrics: fail("relation does not exist"),
+      vision_captures: fail("timeout"),
+    };
+    const { client } = fakeSupabase(responses);
+    const source = createSupabaseAdvisorContextDataSource(client as never);
+    const result = await buildAdvisorContextForUser("user-1", "adam", source);
+    const sharingFlags = result.contextFlags.filter((f) => f.key === "contextSharing");
+    assert.deepEqual(sharingFlags, [{ key: "contextSharing", state: "limited" }]);
+  });
+
+  test("every source succeeds: NO contextSharing flag at all — sharing is genuinely full, not limited", async () => {
+    const { client } = fakeSupabase(baselineResponses());
+    const source = createSupabaseAdvisorContextDataSource(client as never);
+    const result = await buildAdvisorContextForUser("user-1", "adam", source);
+    assert.ok(
+      !result.contextFlags.some((f) => f.key === "contextSharing"),
+      "a clean load must never claim sharing is limited",
+    );
+  });
+
+  test('consent off is still reported as "disabled", distinct from a partial-failure "limited"', async () => {
+    const responses = {
+      ...baselineResponses(),
+      advisor_context_preferences: ok({ context_sharing_enabled: false }),
+    };
+    const { client } = fakeSupabase(responses);
+    const source = createSupabaseAdvisorContextDataSource(client as never);
+    const result = await buildAdvisorContextForUser("user-1", "adam", source);
+    assert.deepEqual(result.contextFlags, [{ key: "contextSharing", state: "disabled" }]);
+  });
+
+  test("all four advisors: a failing source produces contextSharing:limited for every one of them", async () => {
+    const responses = { ...baselineResponses(), health_metrics: fail("relation does not exist") };
+    for (const advisorId of ACTIVE_ADVISORS) {
+      const { client } = fakeSupabase(responses);
+      const source = createSupabaseAdvisorContextDataSource(client as never);
+      const result = await buildAdvisorContextForUser("user-1", advisorId, source);
+      assert.ok(
+        result.contextFlags.some((f) => f.key === "contextSharing" && f.state === "limited"),
+      );
+    }
+  });
+});
+
+describe("safeConversationContextFlags — the exact helper the real conversation-load handler calls", () => {
+  test("consent on, everything succeeds: resolves with no contextSharing flag, never throws", async () => {
+    const { client } = fakeSupabase(baselineResponses());
+    const source = createSupabaseAdvisorContextDataSource(client as never);
+    const flags = await safeConversationContextFlags("user-1", "adam", source);
+    assert.ok(!flags.some((f) => f.key === "contextSharing"));
+  });
+
+  test("a source fails: resolves including contextSharing:limited, still never throws", async () => {
+    const responses = { ...baselineResponses(), health_metrics: fail("relation does not exist") };
+    const { client } = fakeSupabase(responses);
+    const source = createSupabaseAdvisorContextDataSource(client as never);
+    const flags = await safeConversationContextFlags("user-1", "adam", source);
+    assert.ok(
+      flags.some((f) => f.key === "contextSharing" && f.state === "limited"),
+      "a degraded-but-not-thrown load still surfaces the limited flag alongside the per-fact missing flags",
+    );
+  });
+
+  test("the underlying source itself throws (not just a per-query error): still resolves, never rejects", async () => {
+    const throwingSource: AdvisorContextDataSource = {
+      hasConsent: async () => true,
+      load: async () => {
+        throw new Error("ADVISOR_CONTEXT_UNAVAILABLE — completely unexpected failure");
+      },
+    };
+    await assert.doesNotReject(async () => {
+      const flags = await safeConversationContextFlags("user-1", "adam", throwingSource);
+      assert.deepEqual(flags, [{ key: "contextSharing", state: "limited" }]);
+    });
+  });
+
+  test("consent off: resolves with contextSharing:disabled (not limited — this is a real, known state)", async () => {
+    const disabledSource: AdvisorContextDataSource = {
+      hasConsent: async () => false,
+      load: async () => {
+        throw new Error("must never be called when consent is off");
+      },
+    };
+    const flags = await safeConversationContextFlags("user-1", "adam", disabledSource);
+    assert.deepEqual(flags, [{ key: "contextSharing", state: "disabled" }]);
+  });
+
+  test("a thrown failure is logged with a sanitized operation + error-class only — never the raw error", async () => {
+    const throwingSource: AdvisorContextDataSource = {
+      hasConsent: async () => true,
+      load: async () => {
+        throw new Error('relation "health_metrics" does not exist — password foo bar');
+      },
+    };
+    const loggedCalls: Array<[string, string]> = [];
+    const flags = await safeConversationContextFlags(
+      "user-1",
+      "adam",
+      throwingSource,
+      (operation, errorName) => {
+        loggedCalls.push([operation, errorName]);
+      },
+    );
+    assert.deepEqual(flags, [{ key: "contextSharing", state: "limited" }]);
+    assert.deepEqual(loggedCalls, [["conversation_context_build", "Error"]]);
+    assert.doesNotMatch(JSON.stringify(loggedCalls), /health_metrics|password/);
+  });
+
+  test("all four advisors resolve without throwing, whether context succeeds or fails", async () => {
+    for (const advisorId of ACTIVE_ADVISORS) {
+      const okSource = createSupabaseAdvisorContextDataSource(
+        fakeSupabase(baselineResponses()).client as never,
+      );
+      await assert.doesNotReject(() => safeConversationContextFlags("user-1", advisorId, okSource));
+
+      const brokenSource = createSupabaseAdvisorContextDataSource(
+        fakeSupabase({ ...baselineResponses(), health_metrics: fail("boom") }).client as never,
+      );
+      await assert.doesNotReject(() =>
+        safeConversationContextFlags("user-1", advisorId, brokenSource),
+      );
+    }
+  });
 });
 
 describe("no raw database/provider content reaches the returned context or flags", () => {

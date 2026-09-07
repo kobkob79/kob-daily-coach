@@ -26,6 +26,12 @@ export interface AdvisorContextSourceData {
   healthMetrics: SafeHealthMetricsSummary | null;
   timelineInput: UnifiedTimelineInput;
   conflicts: AdvisorContextKey[];
+  /** Names of sources that failed to load and were silently degraded to
+   *  "not known" rather than aborting the whole load. Empty/absent means
+   *  every source loaded cleanly. See buildAdvisorContextForUser, which
+   *  turns a non-empty list into an explicit contextSharing:"limited" flag
+   *  so the UI never claims full sharing while data is actually missing. */
+  failedSources?: readonly string[];
 }
 
 export interface AdvisorContextDataSource {
@@ -99,7 +105,43 @@ export async function buildAdvisorContextForUser(
     sourceCount: new Set(Object.values(context.facts).flatMap((value) => value?.sources ?? []))
       .size,
   });
-  return { context, contextFlags: safeFlags(context) };
+  const flags = safeFlags(context);
+  // A source that failed to load is not the same as a user with no data:
+  // the sharing state must say "limited", not silently look like full,
+  // successful sharing, whenever one or more sources were degraded.
+  const contextFlags =
+    data.failedSources && data.failedSources.length > 0
+      ? [...flags, { key: "contextSharing" as const, state: "limited" as const }]
+      : flags;
+  return { context, contextFlags };
+}
+
+/**
+ * The one place that decides what a conversation load shows for context
+ * when building it goes wrong. Personal context is an enrichment, never a
+ * precondition: this always resolves (never throws), so a caller can use
+ * its result unconditionally instead of needing its own try/catch around
+ * buildAdvisorContextForUser.
+ *
+ * Used by both the conversation-load path (getAdvisorConversationMessagesServer)
+ * and directly by this module's own tests, so the two can never drift apart.
+ */
+export async function safeConversationContextFlags(
+  userId: string,
+  advisorId: ContextAdvisorId,
+  source: AdvisorContextDataSource,
+  logError: (operation: string, errorName: string) => void = (operation, errorName) =>
+    console.error(`[Viora Advisor Context] ${operation} failed`, { operation, errorName }),
+): Promise<readonly AdvisorContextFlag[]> {
+  try {
+    const result = await buildAdvisorContextForUser(userId, advisorId, source);
+    return result.contextFlags;
+  } catch (error) {
+    // Never log the raw error (it may be a raw Supabase/PostgREST error
+    // carrying table/column/query detail) — only its generic class name.
+    logError("conversation_context_build", error instanceof Error ? error.name : "UnknownError");
+    return [{ key: "contextSharing", state: "limited" }];
+  }
 }
 
 function trend(values: Array<{ value: number; date: string }>) {
@@ -141,8 +183,10 @@ export function createSupabaseAdvisorContextDataSource(
       if (result.error) {
         // Fail closed: if we can't confirm consent, treat it as not granted
         // rather than throwing and blocking conversation/message loading.
+        // Log a sanitized error category only — never the raw PostgREST
+        // message, which can describe tables, columns or policies.
         console.warn("[Viora Advisor Context] consent check failed; treating as not granted", {
-          message: result.error.message,
+          errorCode: result.error.code ?? "unknown",
         });
         return false;
       }
@@ -538,6 +582,7 @@ export function createSupabaseAdvisorContextDataSource(
           })),
         },
         conflicts: [],
+        failedSources,
       };
     },
   };
