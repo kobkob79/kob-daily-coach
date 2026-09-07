@@ -5,12 +5,12 @@
   "summary": {
     "totalExercises": 156,
     "completedExercises": 12,
-    "partialExercises": 5,
-    "notStartedExercises": 139,
+    "partialExercises": 7,
+    "notStartedExercises": 137,
     "coversComplete": 12,
     "infographicsComplete": 12,
-    "thumbnailsComplete": 17,
-    "demosComplete": 5,
+    "thumbnailsComplete": 19,
+    "demosComplete": 7,
     "overallProgressPercent": 7.6923076923076925
   },
   "nextRecommendedExercise": {
@@ -116,19 +116,18 @@
       "canonicalHebrewName": "לחיצת חזה בשיפוע חיובי עם משקולות יד",
       "englishName": "Incline Dumbbell Bench Press",
       "muscleGroup": "chest",
-      "status": "NOT_STARTED",
+      "status": "PARTIAL",
       "media": {
         "hasCover": false,
         "hasInfographic": false,
-        "hasThumbnail": false,
-        "hasDemo": false
+        "hasThumbnail": true,
+        "hasDemo": true
       },
       "missingAssets": [
         "cover",
-        "infographic",
-        "thumbnail",
-        "demo"
-      ]
+        "infographic"
+      ],
+      "lastUpdated": "2026-09-07T08:03:41.883Z"
     },
     {
       "exerciseId": "5779ce39-a184-4192-bad5-ec2c7ee1fd62",
@@ -3030,19 +3029,18 @@
       "canonicalHebrewName": "אופני כושר",
       "englishName": "Stationary Bike",
       "muscleGroup": "cardio",
-      "status": "NOT_STARTED",
+      "status": "PARTIAL",
       "media": {
         "hasCover": false,
         "hasInfographic": false,
-        "hasThumbnail": false,
-        "hasDemo": false
+        "hasThumbnail": true,
+        "hasDemo": true
       },
       "missingAssets": [
         "cover",
-        "infographic",
-        "thumbnail",
-        "demo"
-      ]
+        "infographic"
+      ],
+      "lastUpdated": "2026-09-07T06:28:30.333Z"
     },
     {
       "exerciseId": "eea3ea0e-8c74-4c5f-b1b7-e3805ec03b5c",

@@ -52,6 +52,7 @@ import { Route as AuthenticatedDevCharactersRouteImport } from './routes/_authen
 import { Route as AuthenticatedDevMediaRouteImport } from './routes/_authenticated/dev.media'
 import { Route as AuthenticatedMessagesIndexRouteImport } from './routes/_authenticated/messages.index'
 import { Route as AuthenticatedMessagesUserIdRouteImport } from './routes/_authenticated/messages.$userId'
+import { Route as AuthenticatedUUserIdRouteImport } from './routes/_authenticated/u.$userId'
 import { Route as AuthenticatedWorkoutSessionWorkoutIdRouteImport } from './routes/_authenticated/workout-session.$workoutId'
 import { Route as AuthenticatedWorkoutsIndexRouteImport } from './routes/_authenticated/workouts.index'
 import { Route as AuthenticatedWorkoutsProgramRouteImport } from './routes/_authenticated/workouts.program'
@@ -290,6 +291,11 @@ const AuthenticatedMessagesUserIdRoute =
     path: '/$userId',
     getParentRoute: () => AuthenticatedMessagesRoute,
   } as any)
+const AuthenticatedUUserIdRoute = AuthenticatedUUserIdRouteImport.update({
+  id: '/u/$userId',
+  path: '/u/$userId',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedWorkoutSessionWorkoutIdRoute =
   AuthenticatedWorkoutSessionWorkoutIdRouteImport.update({
     id: '/workout-session/$workoutId',
@@ -414,6 +420,7 @@ export interface FileRoutesByFullPath {
   '/dev/characters': typeof AuthenticatedDevCharactersRoute
   '/dev/media': typeof AuthenticatedDevMediaRoute
   '/messages/$userId': typeof AuthenticatedMessagesUserIdRoute
+  '/u/$userId': typeof AuthenticatedUUserIdRoute
   '/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
   '/workouts/program': typeof AuthenticatedWorkoutsProgramRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -467,6 +474,7 @@ export interface FileRoutesByTo {
   '/dev/characters': typeof AuthenticatedDevCharactersRoute
   '/dev/media': typeof AuthenticatedDevMediaRoute
   '/messages/$userId': typeof AuthenticatedMessagesUserIdRoute
+  '/u/$userId': typeof AuthenticatedUUserIdRoute
   '/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
   '/workouts/program': typeof AuthenticatedWorkoutsProgramRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -526,6 +534,7 @@ export interface FileRoutesById {
   '/_authenticated/dev/characters': typeof AuthenticatedDevCharactersRoute
   '/_authenticated/dev/media': typeof AuthenticatedDevMediaRoute
   '/_authenticated/messages/$userId': typeof AuthenticatedMessagesUserIdRoute
+  '/_authenticated/u/$userId': typeof AuthenticatedUUserIdRoute
   '/_authenticated/workout-session/$workoutId': typeof AuthenticatedWorkoutSessionWorkoutIdRoute
   '/_authenticated/workouts/program': typeof AuthenticatedWorkoutsProgramRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -586,6 +595,7 @@ export interface FileRouteTypes {
     | '/dev/characters'
     | '/dev/media'
     | '/messages/$userId'
+    | '/u/$userId'
     | '/workout-session/$workoutId'
     | '/workouts/program'
     | '/admin/'
@@ -639,6 +649,7 @@ export interface FileRouteTypes {
     | '/dev/characters'
     | '/dev/media'
     | '/messages/$userId'
+    | '/u/$userId'
     | '/workout-session/$workoutId'
     | '/workouts/program'
     | '/admin'
@@ -697,6 +708,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dev/characters'
     | '/_authenticated/dev/media'
     | '/_authenticated/messages/$userId'
+    | '/_authenticated/u/$userId'
     | '/_authenticated/workout-session/$workoutId'
     | '/_authenticated/workouts/program'
     | '/_authenticated/admin/'
@@ -1034,6 +1046,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMessagesUserIdRouteImport
       parentRoute: typeof AuthenticatedMessagesRoute
     }
+    '/_authenticated/u/$userId': {
+      id: '/_authenticated/u/$userId'
+      path: '/u/$userId'
+      fullPath: '/u/$userId'
+      preLoaderRoute: typeof AuthenticatedUUserIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/workout-session/$workoutId': {
       id: '/_authenticated/workout-session/$workoutId'
       path: '/workout-session/$workoutId'
@@ -1275,6 +1294,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedShiftRoute: typeof AuthenticatedShiftRoute
   AuthenticatedWorkoutTemplatesRoute: typeof AuthenticatedWorkoutTemplatesRoute
   AuthenticatedWorkoutsRoute: typeof AuthenticatedWorkoutsRouteWithChildren
+  AuthenticatedUUserIdRoute: typeof AuthenticatedUUserIdRoute
   AuthenticatedWorkoutSessionWorkoutIdRoute: typeof AuthenticatedWorkoutSessionWorkoutIdRoute
 }
 
@@ -1301,6 +1321,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedShiftRoute: AuthenticatedShiftRoute,
   AuthenticatedWorkoutTemplatesRoute: AuthenticatedWorkoutTemplatesRoute,
   AuthenticatedWorkoutsRoute: AuthenticatedWorkoutsRouteWithChildren,
+  AuthenticatedUUserIdRoute: AuthenticatedUUserIdRoute,
   AuthenticatedWorkoutSessionWorkoutIdRoute:
     AuthenticatedWorkoutSessionWorkoutIdRoute,
 }
