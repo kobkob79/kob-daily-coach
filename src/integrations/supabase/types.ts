@@ -1557,6 +1557,7 @@ export type Database = {
           exercise_id: string
           id: string
           incline_pct: number | null
+          is_warmup: boolean
           max_heart_rate: number | null
           notes: string | null
           overtime_seconds: number | null
@@ -1587,6 +1588,7 @@ export type Database = {
           exercise_id: string
           id?: string
           incline_pct?: number | null
+          is_warmup?: boolean
           max_heart_rate?: number | null
           notes?: string | null
           overtime_seconds?: number | null
@@ -1617,6 +1619,7 @@ export type Database = {
           exercise_id?: string
           id?: string
           incline_pct?: number | null
+          is_warmup?: boolean
           max_heart_rate?: number | null
           notes?: string | null
           overtime_seconds?: number | null
