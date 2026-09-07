@@ -321,6 +321,7 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workout_template_exercises", templateId] }),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const patchRow = useMutation({
@@ -334,6 +335,7 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workout_template_exercises", templateId] }),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const removeRow = useMutation({
@@ -342,6 +344,7 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workout_template_exercises", templateId] }),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const swap = useMutation({
@@ -355,13 +358,14 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
       if (e2) throw e2;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workout_template_exercises", templateId] }),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const [pickerVisible, setPickerVisible] = useState<boolean>(false);
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-lg overflow-y-auto dialog-max-height-safe">
         <DialogHeader>
           <DialogTitle>{tplQ.data?.name ?? "…"}</DialogTitle>
         </DialogHeader>

@@ -138,7 +138,14 @@ export function createSupabaseAdvisorContextDataSource(
         .select("context_sharing_enabled")
         .eq("user_id", userId)
         .maybeSingle();
-      if (result.error) throw new Error("ADVISOR_CONTEXT_CONSENT_UNAVAILABLE");
+      if (result.error) {
+        // Fail closed: if we can't confirm consent, treat it as not granted
+        // rather than throwing and blocking conversation/message loading.
+        console.warn("[Viora Advisor Context] consent check failed; treating as not granted", {
+          message: result.error.message,
+        });
+        return false;
+      }
       return Boolean(
         (result.data as { context_sharing_enabled?: boolean } | null)?.context_sharing_enabled,
       );
@@ -270,25 +277,40 @@ export function createSupabaseAdvisorContextDataSource(
           .gte("recorded_at", sinceIso)
           .order("recorded_at", { ascending: false }),
       ]);
-      const results = [
-        profileResult,
-        goalsResult,
-        bioDayResult,
-        shiftResult,
-        assignmentsResult,
-        nutritionResult,
-        eventsResult,
-        instancesResult,
-        sessionsResult,
-        workoutsResult,
-        healthResult,
-        medicalResult,
-        weightsResult,
-        measurementsResult,
-        labResultsResult,
-        healthMetricsResult,
+      // Each source below is optional context, not a load-bearing dependency:
+      // every consumer already treats a null/missing result the same as "not
+      // known" (see the `?? []` / `? … : null` handling throughout this
+      // function and the null-safe `fact()` helper in advisor-context-snapshot.ts).
+      // A single source erroring (e.g. a table that doesn't exist yet on this
+      // environment) must not block the rest of the conversation from
+      // loading, so we log and degrade per-source instead of throwing.
+      const namedResults: ReadonlyArray<
+        readonly [string, { data: unknown; error: { message?: string } | null }]
+      > = [
+        ["profile", profileResult],
+        ["goals", goalsResult],
+        ["bioDay", bioDayResult],
+        ["shift", shiftResult],
+        ["bioDayAssignments", assignmentsResult],
+        ["nutritionEntries", nutritionResult],
+        ["dailyEvents", eventsResult],
+        ["workoutInstances", instancesResult],
+        ["workoutSessions", sessionsResult],
+        ["legacyWorkouts", workoutsResult],
+        ["healthLogs", healthResult],
+        ["medicalIssues", medicalResult],
+        ["weightsHistory", weightsResult],
+        ["bodyMeasurements", measurementsResult],
+        ["labResults", labResultsResult],
+        ["healthMetrics", healthMetricsResult],
       ];
-      if (results.some((result) => result.error)) throw new Error("ADVISOR_CONTEXT_UNAVAILABLE");
+      const failedSources = namedResults.filter(([, result]) => result.error).map(([key]) => key);
+      if (failedSources.length > 0) {
+        console.warn(
+          "[Viora Advisor Context] one or more optional context sources failed to load; degrading gracefully instead of blocking the conversation",
+          { failedSources },
+        );
+      }
 
       const bio = bioDayResult.data;
       const freshnessCutoff = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
