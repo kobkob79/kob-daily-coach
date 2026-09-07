@@ -1054,16 +1054,17 @@ function SetRow({
           <button
             onClick={onToggleWarmup}
             disabled={locked}
-            className={`h-7 rounded-full px-2 text-[10px] font-medium transition disabled:opacity-60 ${
+            className={
               set.is_warmup
-                ? "bg-muted text-muted-foreground"
-                : "text-muted-foreground/50 hover:text-muted-foreground"
-            }`}
+                ? "flex h-7 items-center gap-1 rounded-full bg-warning/15 px-2 text-[10px] font-medium text-warning transition disabled:opacity-60"
+                : "grid h-7 w-7 place-items-center rounded-full text-muted-foreground/30 transition hover:text-muted-foreground disabled:opacity-60"
+            }
             aria-pressed={set.is_warmup}
-            aria-label={set.is_warmup ? "בטל סימון חימום" : "סמן כסט חימום"}
+            aria-label={set.is_warmup ? "סט חימום — לחץ לביטול" : "סמן כסט חימום"}
             title={set.is_warmup ? "סט חימום — לחץ לביטול" : "סמן כסט חימום"}
           >
-            חימום
+            <Flame className="h-3.5 w-3.5" />
+            {set.is_warmup && "חימום"}
           </button>
           {done ? (
             <button
