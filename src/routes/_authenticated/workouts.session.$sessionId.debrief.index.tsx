@@ -48,9 +48,16 @@ function DebriefPage() {
         )}
 
         {q.isError && (
-          <p className="py-3 text-sm text-muted-foreground">
-            לא הצלחתי להפיק תחקיר כרגע. הנתונים של האימון נשמרו במלואם.
-          </p>
+          <div className="space-y-1 py-3">
+            <p className="text-sm text-muted-foreground">
+              לא הצלחתי להפיק תחקיר כרגע. הנתונים של האימון נשמרו במלואם.
+            </p>
+            {q.error instanceof Error && q.error.message && (
+              <p dir="ltr" className="text-left text-xs text-muted-foreground/70">
+                {q.error.message}
+              </p>
+            )}
+          </div>
         )}
 
         {d && (
