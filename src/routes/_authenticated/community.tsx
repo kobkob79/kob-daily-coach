@@ -34,6 +34,9 @@ import {
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/community")({
+  validateSearch: (search: Record<string, unknown>): { draft?: string } => ({
+    draft: typeof search.draft === "string" ? search.draft : undefined,
+  }),
   component: CommunityPage,
 });
 
@@ -59,7 +62,8 @@ type CommunityPost = {
 
 function CommunityPage() {
   const qc = useQueryClient();
-  const [body, setBody] = useState("");
+  const search = Route.useSearch();
+  const [body, setBody] = useState(() => search.draft ?? "");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
