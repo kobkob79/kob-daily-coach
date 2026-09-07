@@ -515,6 +515,7 @@ export type Database = {
       }
       community_posts: {
         Row: {
+          author_avatar_path: string | null
           author_display_name: string
           body: string
           created_at: string
@@ -524,6 +525,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          author_avatar_path?: string | null
           author_display_name: string
           body?: string
           created_at?: string
@@ -533,6 +535,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          author_avatar_path?: string | null
           author_display_name?: string
           body?: string
           created_at?: string
