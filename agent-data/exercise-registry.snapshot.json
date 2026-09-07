@@ -5,12 +5,12 @@
   "summary": {
     "totalExercises": 156,
     "completedExercises": 12,
-    "partialExercises": 7,
-    "notStartedExercises": 137,
+    "partialExercises": 8,
+    "notStartedExercises": 136,
     "coversComplete": 12,
     "infographicsComplete": 12,
-    "thumbnailsComplete": 19,
-    "demosComplete": 7,
+    "thumbnailsComplete": 20,
+    "demosComplete": 8,
     "overallProgressPercent": 7.6923076923076925
   },
   "nextRecommendedExercise": {
@@ -745,19 +745,18 @@
       "canonicalHebrewName": "לחיצת כתפיים במכונה",
       "englishName": "Machine Shoulder Press",
       "muscleGroup": "shoulders",
-      "status": "NOT_STARTED",
+      "status": "PARTIAL",
       "media": {
         "hasCover": false,
         "hasInfographic": false,
-        "hasThumbnail": false,
-        "hasDemo": false
+        "hasThumbnail": true,
+        "hasDemo": true
       },
       "missingAssets": [
         "cover",
-        "infographic",
-        "thumbnail",
-        "demo"
-      ]
+        "infographic"
+      ],
+      "lastUpdated": "2026-09-07T18:14:14.536Z"
     },
     {
       "exerciseId": "656ad319-2f09-4df6-b00c-8b11b7d39e33",
