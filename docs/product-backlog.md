@@ -114,7 +114,7 @@ Group exercises so rest and advancement follow the group, not the single set.
 Should Have · P2 · L · Deps: WORKOUT-002, PLANNER-002 · Backlog · Dev
 
 **WORKOUT-010 — Warm-up set type**
-Mark sets as warm-up; excluded from volume, PRs and AI progression.
+Mark sets as warm-up; excluded from PRs and per-exercise/per-muscle-group stats, still counted toward total session volume.
 Should Have · P2 · S · Deps: WORKOUT-002, STATS-003 · **Shipped** · Dev
 
 **WORKOUT-011 — In-session exercise swap**
