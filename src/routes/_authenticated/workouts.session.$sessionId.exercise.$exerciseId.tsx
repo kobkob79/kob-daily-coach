@@ -87,7 +87,8 @@ type EditableSetField =
   | "calories"
   | "cadence"
   | "side"
-  | "pain_level";
+  | "pain_level"
+  | "rpe";
 
 /**
  * Per-set readings (heart rate, calories, cadence...) and mobility side
@@ -102,6 +103,7 @@ const NON_PROPAGATABLE_FIELDS = new Set<EditableSetField>([
   "cadence",
   "side",
   "pain_level",
+  "rpe",
 ]);
 
 export const Route = createFileRoute(
@@ -131,7 +133,6 @@ function ExerciseDetailPage() {
     setFloatingHeight(el.offsetHeight);
     return () => ro.disconnect();
   }, []);
-
 
   const sessionQ = useQuery({
     queryKey: ["session", sessionId],
@@ -372,7 +373,6 @@ function ExerciseDetailPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-
   const addMut = useMutation({
     mutationFn: async () => {
       const last = sets[sets.length - 1];
@@ -555,10 +555,8 @@ function ExerciseDetailPage() {
           </span>
         </p>
       )}
-
     </div>
   );
-
 
   return (
     <div
@@ -566,7 +564,6 @@ function ExerciseDetailPage() {
       className="mx-auto max-w-md space-y-2.5 pt-1"
       style={{ paddingBottom: floatingHeight + 16 }}
     >
-
       <PRCelebration data={pr} onDismiss={() => setPr(null)} />
 
       {/* Header */}
@@ -643,10 +640,11 @@ function ExerciseDetailPage() {
             <span />
           </div>
         ) : (
-          <div className="grid grid-cols-[2rem_1fr_1fr_3rem] items-center gap-2 px-2 text-[9px] uppercase tracking-wider text-muted-foreground">
+          <div className="grid grid-cols-[2rem_1fr_1fr_1fr_3rem] items-center gap-2 px-2 text-[9px] uppercase tracking-wider text-muted-foreground">
             <span>#</span>
             <span>משקל (ק״ג)</span>
             <span>חזרות</span>
+            <span>RPE</span>
             <span />
           </div>
         )}
@@ -679,7 +677,6 @@ function ExerciseDetailPage() {
             }
           />
         ))}
-
 
         <button
           onClick={() => addMut.mutate()}
@@ -735,15 +732,12 @@ function ExerciseDetailPage() {
         </div>
       )}
 
-
       {/* Floating stack: finish exercise → workout clock */}
       <div
         ref={floatingRef}
         className="fixed inset-x-0 z-30 mx-auto max-w-md space-y-2 px-4"
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
       >
-
-
         {doneCount > 0 && activeSet && (
           <button
             onClick={handleFinishExercise}
@@ -762,16 +756,13 @@ function ExerciseDetailPage() {
             {formatTotalTime(total.elapsedSec)}
           </span>
         </div>
-
       </div>
 
       <AlertDialog open={finishOpen} onOpenChange={setFinishOpen}>
         <AlertDialogContent dir="rtl">
           <AlertDialogHeader>
             <AlertDialogTitle>נותרו {remaining} סטים בתרגיל</AlertDialogTitle>
-            <AlertDialogDescription>
-              הסטים שלא בוצעו לא ייספרו כבוצעו.
-            </AlertDialogDescription>
+            <AlertDialogDescription>הסטים שלא בוצעו לא ייספרו כבוצעו.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
             <AlertDialogCancel>חזור לתרגיל</AlertDialogCancel>
@@ -831,6 +822,7 @@ function SetRow({
   const [speed, setSpeed] = useState<string>(set.avg_speed_kmh?.toString() ?? "");
   const [side, setSide] = useState<string>(set.side ?? "");
   const [painLevel, setPainLevel] = useState<string>(set.pain_level ?? "");
+  const [rpe, setRpe] = useState<string>(set.rpe?.toString() ?? "");
   const initial = useRef({
     w: set.weight_kg,
     r: set.reps,
@@ -848,6 +840,7 @@ function SetRow({
     setSpeed(set.avg_speed_kmh?.toString() ?? "");
     setSide(set.side ?? "");
     setPainLevel(set.pain_level ?? "");
+    setRpe(set.rpe?.toString() ?? "");
     initial.current = {
       w: set.weight_kg,
       r: set.reps,
@@ -861,6 +854,7 @@ function SetRow({
     set.avg_speed_kmh,
     set.side,
     set.pain_level,
+    set.rpe,
     set.id,
   ]);
 
@@ -910,9 +904,13 @@ function SetRow({
         ? restActive
           ? "grid-cols-[2.75rem_1fr_1fr_1fr_3rem]"
           : "grid-cols-[2rem_1fr_1fr_1fr_3rem]"
-        : restActive
-          ? "grid-cols-[2.75rem_1fr_1fr_3rem]"
-          : "grid-cols-[2rem_1fr_1fr_3rem]";
+        : fieldSet === "strength"
+          ? restActive
+            ? "grid-cols-[2.75rem_1fr_1fr_1fr_3rem]"
+            : "grid-cols-[2rem_1fr_1fr_1fr_3rem]"
+          : restActive
+            ? "grid-cols-[2.75rem_1fr_1fr_3rem]"
+            : "grid-cols-[2rem_1fr_1fr_3rem]";
 
   const selectClass =
     "h-9 min-w-0 rounded-md border border-input bg-transparent px-1 text-center text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50";
@@ -923,7 +921,6 @@ function SetRow({
       className={`scroll-mt-24 rounded-xl border p-1.5 transition-all duration-300 ${rowClass} ${
         isActive ? "scale-[1.01]" : ""
       }`}
-
     >
       <div className={`grid items-center gap-2 ${gridClass}`}>
         {restActive ? (
@@ -965,6 +962,23 @@ function SetRow({
               onBlur={() => commit("reps", r)}
               className="h-9 min-w-0 text-center text-sm font-bold tabular-nums"
             />
+            <select
+              value={rpe}
+              disabled={disabled}
+              onChange={(e) => {
+                setRpe(e.target.value);
+                onChange("rpe", e.target.value === "" ? null : Number(e.target.value));
+              }}
+              className={selectClass}
+              title="RPE"
+            >
+              <option value="">RPE —</option>
+              <option value="6">RPE 6</option>
+              <option value="7">RPE 7</option>
+              <option value="8">RPE 8</option>
+              <option value="9">RPE 9</option>
+              <option value="10">RPE 10</option>
+            </select>
           </>
         )}
 
@@ -1120,7 +1134,6 @@ function SetRow({
           הושלם · ניתן לעריכה עד סיום האימון
         </p>
       ) : null}
-
     </div>
   );
 }
@@ -1254,4 +1267,3 @@ function MetricField({
     </label>
   );
 }
-
