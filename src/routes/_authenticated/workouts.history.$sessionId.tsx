@@ -88,6 +88,22 @@ function SessionDetailPage() {
         <div className="w-16" />
       </div>
 
+      <Button
+        asChild
+        size="lg"
+        variant="outline"
+        className="h-11 w-full gap-2 text-base"
+        aria-label="פתח את תחקיר המאמן עבור האימון הזה"
+      >
+        <Link
+          to="/workouts/session/$sessionId/debrief"
+          params={{ sessionId }}
+        >
+          <Sparkles className="h-5 w-5 text-primary" />
+          תחקיר המאמן
+        </Link>
+      </Button>
+
       {groups.length === 0 && (
         <p className="p-6 text-center text-sm text-muted-foreground">
           לא נמצא פירוט סטים עבור האימון הזה — כנראה אימון ישן שנשמר בפורמט קודם.
