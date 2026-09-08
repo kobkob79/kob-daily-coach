@@ -133,6 +133,31 @@ function makeFakeClient(state: FakeState) {
   };
 }
 
+/** A fake client where every query against `failTable` resolves `{ error }` — for proving a DB failure mid-context-build is caught, not thrown (Codex re-review round 3, F4). */
+function makeFailingClient(state: FakeState, failTable: string) {
+  const real = makeFakeClient(state);
+  const failingApi = {
+    select: () => failingApi,
+    eq: () => failingApi,
+    neq: () => failingApi,
+    in: () => failingApi,
+    not: () => failingApi,
+    order: () => failingApi,
+    limit: () => failingApi,
+    maybeSingle: async () => ({
+      data: null,
+      error: { code: "08006", message: "simulated DB failure" },
+    }),
+    then: (resolve: (v: { data: null; error: { code: string; message: string } }) => void) =>
+      resolve({ data: null, error: { code: "08006", message: "simulated DB failure" } }),
+  };
+  return {
+    from(table: string) {
+      return table === failTable ? failingApi : real.from(table);
+    },
+  };
+}
+
 function baseState(overrides: Partial<FakeState> = {}): FakeState {
   return {
     sessions: [
@@ -329,6 +354,33 @@ describe("buildVerifiedDebriefContext — ownership (Codex re-review round 2, bl
     });
     const client = makeFakeClient(state);
     const ctx = await buildVerifiedDebriefContext(client as never, OWNER_ID, SESSION_ID);
+    assert.equal(ctx!.nextWorkoutName, null);
+  });
+
+  test("a DB failure while building the context (Codex re-review round 3, F4) resolves to null, never throws", async () => {
+    const client = makeFailingClient(baseState(), "workout_sets");
+    await assert.doesNotReject(buildVerifiedDebriefContext(client as never, OWNER_ID, SESSION_ID));
+    const ctx = await buildVerifiedDebriefContext(client as never, OWNER_ID, SESSION_ID);
+    assert.equal(ctx, null);
+  });
+
+  test("a DB failure on a later query (exercise names) is also caught, never thrown", async () => {
+    const client = makeFailingClient(baseState(), "exercises");
+    const ctx = await buildVerifiedDebriefContext(client as never, OWNER_ID, SESSION_ID);
+    assert.equal(ctx, null);
+  });
+
+  // workout_plans and profiles failures are deliberately NOT included above:
+  // loadWeeklyPlan already degrades locally (.catch(() => [])) since
+  // nextWorkoutName is non-essential, and loadDisplayName never throws at
+  // all (ignores its own error, same convention as
+  // community-workout-share.server.ts's loadAuthorDisplayName) — both are
+  // intentional graceful degradation, not something this test should turn
+  // into a hard failure.
+  test("a weekly-plan query failure degrades gracefully (nextWorkoutName: null) rather than nulling the whole context", async () => {
+    const client = makeFailingClient(baseState(), "workout_plans");
+    const ctx = await buildVerifiedDebriefContext(client as never, OWNER_ID, SESSION_ID);
+    assert.notEqual(ctx, null);
     assert.equal(ctx!.nextWorkoutName, null);
   });
 });

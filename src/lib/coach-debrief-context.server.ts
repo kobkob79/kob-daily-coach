@@ -204,12 +204,7 @@ async function loadDisplayName(client: SupabaseClient, userId: string): Promise<
   return (data as { first_name: string | null } | null)?.first_name?.trim() || "";
 }
 
-/**
- * Returns null when the session doesn't exist or doesn't belong to `userId`
- * — the caller treats this the same as "session not found", never a
- * partial/best-effort context.
- */
-export async function buildVerifiedDebriefContext(
+async function buildVerifiedDebriefContextUnsafe(
   client: SupabaseClient,
   userId: string,
   sessionId: string,
@@ -325,4 +320,38 @@ export async function buildVerifiedDebriefContext(
     exercises,
     nextWorkoutName,
   };
+}
+
+/**
+ * Returns null when the session doesn't exist or doesn't belong to
+ * `userId` — the caller treats this the same as "session not found",
+ * never a partial/best-effort context.
+ *
+ * Also returns null (Codex re-review round 3, F4) on a genuine DB/query
+ * failure while building the context — a failed request here must never
+ * leak a raw server/Postgrest error to the caller. The failure is logged
+ * server-side with the narrowest possible fields (sessionId + the
+ * error's own code/message) — never the debrief content, health data
+ * (pain/notes/difficulty/energy), an API key, or a raw provider payload,
+ * none of which this function ever has in scope in the first place.
+ */
+export async function buildVerifiedDebriefContext(
+  client: SupabaseClient,
+  userId: string,
+  sessionId: string,
+): Promise<CoachDebriefContext | null> {
+  try {
+    return await buildVerifiedDebriefContextUnsafe(client, userId, sessionId);
+  } catch (error) {
+    const code =
+      typeof error === "object" && error !== null && "code" in error
+        ? (error as { code?: unknown }).code
+        : undefined;
+    const message =
+      typeof error === "object" && error !== null && "message" in error
+        ? (error as { message?: unknown }).message
+        : undefined;
+    console.error("[coach-debrief-context] failed to build context", { sessionId, code, message });
+    return null;
+  }
 }

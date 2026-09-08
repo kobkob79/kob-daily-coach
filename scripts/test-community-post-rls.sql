@@ -44,6 +44,9 @@ create or replace function auth.uid() returns uuid
 -- than failing on a second run.
 do $$
 begin
+  if not exists (select 1 from pg_roles where rolname = 'anon') then
+    create role anon nologin;
+  end if;
   if not exists (select 1 from pg_roles where rolname = 'authenticated') then
     create role authenticated nologin;
   end if;
@@ -51,7 +54,7 @@ begin
     create role service_role nologin bypassrls;
   end if;
 end $$;
-grant usage on schema public to authenticated, service_role;
+grant usage on schema public to anon, authenticated, service_role;
 grant usage on schema auth to authenticated, service_role;
 
 create table public.user_follows (
@@ -176,6 +179,11 @@ $$;
 create trigger workout_debriefs_verify_session_owner_trg
 before insert or update of session_id, user_id on public.workout_debriefs
 for each row execute function public.workout_debriefs_verify_session_owner();
+
+-- Codex re-review round 3, F3: no role should be able to call the
+-- trigger function directly.
+revoke execute on function public.workout_debriefs_verify_session_owner() from public;
+revoke execute on function public.workout_debriefs_verify_session_owner() from anon, authenticated;
 
 -- Minimal stand-in for Supabase Storage's storage.objects, just the two
 -- columns the shipped policy actually reads.
@@ -325,6 +333,36 @@ begin
       raise notice 'PASS: direct delete of workout_debriefs rejected (insufficient_privilege)';
   end;
 end $$;
+
+\echo '=== TEST 4b (F3): authenticated cannot directly EXECUTE the SECURITY DEFINER trigger function ==='
+do $$
+begin
+  begin
+    perform public.workout_debriefs_verify_session_owner();
+    raise exception 'FAIL: direct execute of the trigger function was NOT rejected';
+  exception
+    when insufficient_privilege then
+      raise notice 'PASS: direct execute of the trigger function rejected (insufficient_privilege)';
+  end;
+end $$;
+reset role;
+
+\echo '=== TEST 4c (F3): anon cannot directly EXECUTE it either ==='
+set role anon;
+do $$
+begin
+  begin
+    perform public.workout_debriefs_verify_session_owner();
+    raise exception 'FAIL: direct execute of the trigger function was NOT rejected for anon';
+  exception
+    when insufficient_privilege then
+      raise notice 'PASS: direct execute of the trigger function rejected for anon (insufficient_privilege)';
+  end;
+end $$;
+reset role;
+
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
 
 \echo '=== TEST 5: the session owner can read their own workout_debriefs snapshot ==='
 do $$

@@ -8,7 +8,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { buildDebriefFailure, type CoachDebriefResult } from "@/lib/coach-debrief-safety";
+import type { CoachDebriefResult } from "@/lib/coach-debrief-safety";
 
 const SESSION_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -71,42 +71,23 @@ export const generateCoachDebrief = createServerFn({ method: "POST" })
     const raw = (input ?? {}) as { sessionId?: unknown };
     return { sessionId: typeof raw.sessionId === "string" ? raw.sessionId : "" };
   })
-  // SECURITY (Codex re-review round 2, blockers 2+3): the context this
-  // handler feeds the AI used to be sent whole by the client (`ctx`) and
-  // trusted outright — a request could fabricate any metric, note, or
-  // exercise before the AI call, and that fabricated context would then
-  // be persisted and, from there, reach a public Community share under
-  // Viora's own byline. The client now sends only `sessionId`; every
-  // field the AI sees is rebuilt here from that id plus the caller's own
-  // verified identity (`context.userId`) via buildVerifiedDebriefContext,
-  // which returns null for a session that doesn't exist or isn't the
-  // caller's own — the same check that gates the snapshot write below.
+  // SECURITY (Codex re-review round 2, blockers 2+3; round 3, F1+F2): the
+  // context this handler feeds the AI used to be sent whole by the client
+  // (`ctx`) and trusted outright. The client now sends only `sessionId`;
+  // the real work — verifying ownership, rebuilding the context
+  // server-side, generating, and persisting the result via the
+  // service-role admin client (never the caller's own RLS-scoped client,
+  // which workout_debriefs' RLS makes read-only) — lives in
+  // runGenerateCoachDebrief (coach-debrief-orchestration.server.ts),
+  // which is directly tested end-to-end there rather than only through
+  // this thin handler.
   .handler(async ({ data, context }): Promise<CoachDebriefResult> => {
     if (!SESSION_ID_RE.test(data.sessionId)) {
+      const { buildDebriefFailure } = await import("./coach-debrief-safety");
       return buildDebriefFailure("INVALID_REQUEST");
     }
-    const { buildVerifiedDebriefContext } = await import("./coach-debrief-context.server");
-    const ctx = await buildVerifiedDebriefContext(
-      context.supabase,
-      String(context.userId),
-      data.sessionId,
-    );
-    if (!ctx) return buildDebriefFailure("INVALID_REQUEST");
-
-    const { generateCoachDebriefResult } = await import("./coach-debrief.server");
-    const result = await generateCoachDebriefResult(ctx, {
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-    if (result.status === "ok") {
-      const { saveWorkoutDebriefSnapshot } = await import("./coach-debrief-persistence.server");
-      await saveWorkoutDebriefSnapshot(
-        context.supabase,
-        String(context.userId),
-        data.sessionId,
-        result.debrief,
-      );
-    }
-    return result;
+    const { runGenerateCoachDebrief } = await import("./coach-debrief-orchestration.server");
+    return runGenerateCoachDebrief(context.supabase, String(context.userId), data.sessionId);
   });
 
 export type WorkoutDebriefSnapshotResult =

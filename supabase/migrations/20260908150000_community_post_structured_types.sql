@@ -282,6 +282,20 @@ create trigger workout_debriefs_verify_session_owner_trg
 before insert or update of session_id, user_id on public.workout_debriefs
 for each row execute function public.workout_debriefs_verify_session_owner();
 
+-- SECURITY FIX (Codex re-review round 3, F3): `create function` grants
+-- EXECUTE to PUBLIC by default, even for a SECURITY DEFINER function —
+-- there is no legitimate reason for anon/authenticated to call this
+-- function directly (Postgres invokes it as part of the trigger
+-- mechanism itself, which needs no EXECUTE grant on the triggering
+-- role), so revoke it explicitly rather than leaving an unused,
+-- elevated-privilege entry point reachable by every role. The function
+-- body already schema-qualifies every table reference
+-- (`public.workout_sessions`) and pins `search_path = public`, so this
+-- is belt-and-suspenders on top of an already-locked-down definition,
+-- not a fix for a live hole.
+revoke execute on function public.workout_debriefs_verify_session_owner() from public;
+revoke execute on function public.workout_debriefs_verify_session_owner() from anon, authenticated;
+
 comment on table public.workout_debriefs is
   'Server-authored snapshot of the most recent successful Coach Debrief generation for a session — the sole trusted source for any "coach" text shown in a Community share (Share Studio and the publish path both read this, never client-supplied narrative text). Read-only for authenticated; only service_role (the trusted server path) may write, and a trigger independently enforces that user_id always matches the session''s real owner.';
 
