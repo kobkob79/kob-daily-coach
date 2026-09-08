@@ -31,6 +31,8 @@ import {
   type LikeRow,
   type PostLikeState,
 } from "@/lib/community-likes";
+import type { WorkoutSharePayload } from "@/lib/community-workout-share";
+import { WorkoutResultCard } from "@/components/community/WorkoutResultCard";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/community")({
@@ -58,6 +60,8 @@ type CommunityPost = {
   photo_path: string | null;
   author_avatar_path: string | null;
   created_at: string;
+  post_type: string;
+  payload: WorkoutSharePayload | null;
 };
 
 function CommunityPage() {
@@ -90,7 +94,9 @@ function CommunityPage() {
     queryFn: async () => {
       const { data, error } = await db
         .from("community_posts")
-        .select("id,user_id,author_display_name,body,photo_path,author_avatar_path,created_at")
+        .select(
+          "id,user_id,author_display_name,body,photo_path,author_avatar_path,created_at,post_type,payload",
+        )
         .order("created_at", { ascending: false })
         .limit(FEED_LIMIT);
       if (error) throw error;
@@ -449,8 +455,18 @@ function PostCard({
           </button>
         )}
       </div>
-      {post.body && <p className="whitespace-pre-wrap text-sm">{post.body}</p>}
-      {post.photo_path &&
+      {post.post_type === "workout_result" && post.payload && (
+        <WorkoutResultCard
+          payload={post.payload}
+          photoUrl={photoUrl}
+          className="border-0 shadow-none"
+        />
+      )}
+      {post.post_type !== "workout_result" && post.body && (
+        <p className="whitespace-pre-wrap text-sm">{post.body}</p>
+      )}
+      {post.post_type !== "workout_result" &&
+        post.photo_path &&
         (photoUrl ? (
           <img
             src={photoUrl}

@@ -515,32 +515,50 @@ export type Database = {
       }
       community_posts: {
         Row: {
+          audience: string
           author_avatar_path: string | null
           author_display_name: string
           body: string
           created_at: string
           id: string
+          location_label: string | null
+          payload: Json | null
           photo_path: string | null
+          post_type: string
+          source_id: string | null
+          source_type: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          audience?: string
           author_avatar_path?: string | null
           author_display_name: string
           body?: string
           created_at?: string
           id?: string
+          location_label?: string | null
+          payload?: Json | null
           photo_path?: string | null
+          post_type?: string
+          source_id?: string | null
+          source_type?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          audience?: string
           author_avatar_path?: string | null
           author_display_name?: string
           body?: string
           created_at?: string
           id?: string
+          location_label?: string | null
+          payload?: Json | null
           photo_path?: string | null
+          post_type?: string
+          source_id?: string | null
+          source_type?: string | null
           updated_at?: string
           user_id?: string
         }

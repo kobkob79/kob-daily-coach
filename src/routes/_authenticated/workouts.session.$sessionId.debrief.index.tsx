@@ -108,19 +108,14 @@ function DebriefPage() {
         </Button>
       ) : (
         <div className="flex gap-2 w-full">
-          {d && (
-            <Button asChild size="lg" variant="outline" className="h-12 flex-1 text-base">
-              <Link
-                to="/community"
-                search={{
-                  draft: [d.greeting, "", ...d.highlights.slice(0, 2)].join("\n").trim(),
-                }}
-              >
-                <Users className="ml-2 h-4 w-4" />
-                שתף בקהילה
-              </Link>
-            </Button>
-          )}
+          {/* Available even when the debrief failed — AI is never a
+              precondition for sharing the workout itself. */}
+          <Button asChild size="lg" variant="outline" className="h-12 flex-1 text-base">
+            <Link to="/workouts/session/$sessionId/debrief/share" params={{ sessionId }}>
+              <Users className="ml-2 h-4 w-4" />
+              שתף בקהילה
+            </Link>
+          </Button>
           <Button asChild size="lg" variant="outline" className="h-12 flex-1 text-base">
             <Link to="/workouts/session/$sessionId/debrief/export" params={{ sessionId }}>
               <Share2 className="ml-2 h-4 w-4" />
