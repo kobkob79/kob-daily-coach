@@ -25,7 +25,10 @@
  */
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { runGenerateCoachDebrief } from "./coach-debrief-orchestration.server.ts";
+import {
+  runGenerateCoachDebrief,
+  runGetWorkoutDebriefSnapshot,
+} from "./coach-debrief-orchestration.server.ts";
 import { loadWorkoutDebriefSnapshot } from "./coach-debrief-persistence.server.ts";
 import type { CoachDebrief } from "./coach-debrief.functions";
 
@@ -33,6 +36,17 @@ const OWNER_ID = "11111111-1111-1111-1111-111111111111";
 const OTHER_USER_ID = "22222222-2222-2222-2222-222222222222";
 const SESSION_ID = "33333333-3333-3333-3333-333333333333";
 const UNKNOWN_SESSION_ID = "44444444-4444-4444-4444-444444444444";
+
+/** Throws the instant any query is attempted — for proving malformed input never reaches the DB at all (Codex re-review round 4, F2), not just that the query returns nothing. */
+function makeUntouchableClient() {
+  return {
+    from(table: string) {
+      throw new Error(
+        `DB was touched for table "${table}" — this must never happen for malformed input`,
+      );
+    },
+  };
+}
 
 function matches(row: unknown, filters: Record<string, unknown>): boolean {
   return Object.entries(filters).every(([k, v]) => (row as Record<string, unknown>)[k] === v);
@@ -267,5 +281,76 @@ describe("runGenerateCoachDebrief — the real end-to-end path (Codex re-review 
     assert.equal(loaded!.greeting, SAMPLE_DEBRIEF.greeting);
     assert.deepEqual(loaded!.paragraphs, SAMPLE_DEBRIEF.paragraphs);
     assert.deepEqual(loaded!.highlights, SAMPLE_DEBRIEF.highlights);
+  });
+
+  test("a malformed sessionId never reaches the DB at all — the auth client is never touched (Codex re-review round 4, F2)", async () => {
+    const untouchable = makeUntouchableClient();
+    let generateCallCount = 0;
+
+    const malformedIds = [
+      "",
+      "not-a-uuid",
+      "  ",
+      "11111111-1111-1111-1111-11111111111",
+      "'; drop table workout_sessions; --",
+    ];
+    for (const malformed of malformedIds) {
+      const result = await runGenerateCoachDebrief(untouchable as never, OWNER_ID, malformed, {
+        generateDebrief: async () => {
+          generateCallCount++;
+          return { status: "ok", debrief: SAMPLE_DEBRIEF };
+        },
+      });
+      assert.equal(
+        result.status,
+        "error",
+        `expected an error for malformed sessionId "${malformed}"`,
+      );
+    }
+    assert.equal(generateCallCount, 0, "no AI call for any malformed sessionId");
+  });
+});
+
+describe("runGetWorkoutDebriefSnapshot — the real end-to-end read path (Codex re-review round 4, F2)", () => {
+  test("a well-formed, owned session id is found", async () => {
+    const state = { rows: [], upsertCalls: [] };
+    const adminClient = makeAdminClient(state);
+    await runGenerateCoachDebrief(makeAuthClient() as never, OWNER_ID, SESSION_ID, {
+      adminClient: adminClient as never,
+      generateDebrief: async () => ({ status: "ok", debrief: SAMPLE_DEBRIEF }),
+    });
+
+    const result = await runGetWorkoutDebriefSnapshot(adminClient as never, OWNER_ID, SESSION_ID);
+    assert.equal(result.status, "found");
+    assert.equal((result as { debrief: CoachDebrief }).debrief.greeting, SAMPLE_DEBRIEF.greeting);
+  });
+
+  test("a genuinely unknown but well-formed session id resolves to not_found", async () => {
+    const adminClient = makeAdminClient({ rows: [], upsertCalls: [] });
+    const result = await runGetWorkoutDebriefSnapshot(
+      adminClient as never,
+      OWNER_ID,
+      UNKNOWN_SESSION_ID,
+    );
+    assert.equal(result.status, "not_found");
+  });
+
+  test("a malformed sessionId resolves to not_found and never touches the DB at all", async () => {
+    const untouchable = makeUntouchableClient();
+    const malformedIds = [
+      "",
+      "not-a-uuid",
+      "  ",
+      "11111111-1111-1111-1111-11111111111",
+      "'; drop table workout_debriefs; --",
+    ];
+    for (const malformed of malformedIds) {
+      const result = await runGetWorkoutDebriefSnapshot(untouchable as never, OWNER_ID, malformed);
+      assert.equal(
+        result.status,
+        "not_found",
+        `expected not_found for malformed sessionId "${malformed}"`,
+      );
+    }
   });
 });

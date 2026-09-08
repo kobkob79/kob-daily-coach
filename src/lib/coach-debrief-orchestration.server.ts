@@ -17,9 +17,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "../integrations/supabase/client.server.ts";
 import { buildVerifiedDebriefContext } from "./coach-debrief-context.server.ts";
-import { saveWorkoutDebriefSnapshot } from "./coach-debrief-persistence.server.ts";
+import {
+  loadWorkoutDebriefSnapshot,
+  saveWorkoutDebriefSnapshot,
+} from "./coach-debrief-persistence.server.ts";
 import { buildDebriefFailure, type CoachDebriefResult } from "./coach-debrief-safety.ts";
-import type { CoachDebriefContext } from "./coach-debrief.functions";
+import { SESSION_ID_RE } from "./coach-debrief-session-id.ts";
+import type { CoachDebriefContext, WorkoutDebriefSnapshotResult } from "./coach-debrief.functions";
 
 export interface RunGenerateCoachDebriefOptions {
   /** Defaults to the real supabaseAdmin (service_role) singleton. */
@@ -56,6 +60,11 @@ export async function runGenerateCoachDebrief(
   sessionId: string,
   options: RunGenerateCoachDebriefOptions = {},
 ): Promise<CoachDebriefResult> {
+  // Checked again here (also checked by the createServerFn handler before
+  // it even dynamically imports this module) — defense in depth so this
+  // function is safe to call directly, not just via that handler.
+  if (!SESSION_ID_RE.test(sessionId)) return buildDebriefFailure("INVALID_REQUEST");
+
   const ctx = await buildVerifiedDebriefContext(authClient, userId, sessionId);
   if (!ctx) return buildDebriefFailure("INVALID_REQUEST");
 
@@ -72,4 +81,23 @@ export async function runGenerateCoachDebrief(
     await saveWorkoutDebriefSnapshot(admin, userId, sessionId, result.debrief);
   }
   return result;
+}
+
+/**
+ * The complete getWorkoutDebriefSnapshot flow (Codex re-review round 4,
+ * F2) — read-only, never triggers AI generation. Uses the same
+ * SESSION_ID_RE as runGenerateCoachDebrief so the two paths can never
+ * silently drift apart: a malformed sessionId is rejected before
+ * `authClient` is ever touched, resolving to the same "not_found" a
+ * genuinely unknown-but-well-formed session id would.
+ */
+export async function runGetWorkoutDebriefSnapshot(
+  authClient: SupabaseClient,
+  userId: string,
+  sessionId: string,
+): Promise<WorkoutDebriefSnapshotResult> {
+  if (!SESSION_ID_RE.test(sessionId)) return { status: "not_found" };
+
+  const debrief = await loadWorkoutDebriefSnapshot(authClient, userId, sessionId);
+  return debrief ? { status: "found", debrief } : { status: "not_found" };
 }

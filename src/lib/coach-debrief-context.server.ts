@@ -31,6 +31,7 @@
  * "@/" alias).
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logDebriefSafeFailure } from "./coach-debrief-safety.ts";
 import type { CoachDebriefContext, DebriefExercise } from "./coach-debrief.functions.ts";
 
 // workout_sessions/workout_sets/workout_plans/exercises are not yet
@@ -329,11 +330,11 @@ async function buildVerifiedDebriefContextUnsafe(
  *
  * Also returns null (Codex re-review round 3, F4) on a genuine DB/query
  * failure while building the context — a failed request here must never
- * leak a raw server/Postgrest error to the caller. The failure is logged
- * server-side with the narrowest possible fields (sessionId + the
- * error's own code/message) — never the debrief content, health data
- * (pain/notes/difficulty/energy), an API key, or a raw provider payload,
- * none of which this function ever has in scope in the first place.
+ * leak a raw server/Postgrest error to the caller. Logged via
+ * logDebriefSafeFailure (Codex re-review round 4, F1) — a fixed event
+ * name and a fresh correlationId only, never the error itself, never
+ * sessionId/userId, never debrief content or health data. Nothing here
+ * is in scope to leak the raw error even if a future edit tried to.
  */
 export async function buildVerifiedDebriefContext(
   client: SupabaseClient,
@@ -342,16 +343,8 @@ export async function buildVerifiedDebriefContext(
 ): Promise<CoachDebriefContext | null> {
   try {
     return await buildVerifiedDebriefContextUnsafe(client, userId, sessionId);
-  } catch (error) {
-    const code =
-      typeof error === "object" && error !== null && "code" in error
-        ? (error as { code?: unknown }).code
-        : undefined;
-    const message =
-      typeof error === "object" && error !== null && "message" in error
-        ? (error as { message?: unknown }).message
-        : undefined;
-    console.error("[coach-debrief-context] failed to build context", { sessionId, code, message });
+  } catch {
+    logDebriefSafeFailure("coach_debrief_context_failed");
     return null;
   }
 }

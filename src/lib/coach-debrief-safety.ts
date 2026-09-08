@@ -64,6 +64,32 @@ export function buildDebriefFailure(
   return { status: "error", category, message: DEBRIEF_SAFE_MESSAGES[category], correlationId };
 }
 
+/** The only events logDebriefSafeFailure accepts — a closed, reviewed set, not an arbitrary string. */
+export type DebriefSafeFailureEvent =
+  | "coach_debrief_context_failed"
+  | "coach_debrief_snapshot_save_failed"
+  | "coach_debrief_snapshot_load_failed";
+
+/**
+ * Safe failure log for a Coach Debrief-adjacent DB/query failure — context
+ * build, snapshot save, snapshot load (Codex re-review round 4, F1). The
+ * PARAMETER LIST is the safety boundary, same principle as this module's
+ * own header comment: `event` is always one of the closed set above, never
+ * a string built from the underlying error. There is no parameter through
+ * which `error.message`, `error.code`, a Postgrest `details`/`hint`, a
+ * stack trace, a userId, a sessionId, debrief content, health data
+ * (pain/notes/difficulty/energy), or a provider payload could reach this
+ * function — the caller physically cannot pass them, so a future call
+ * site can't accidentally widen what gets logged.
+ */
+export function logDebriefSafeFailure(event: DebriefSafeFailureEvent): void {
+  console.error("[Coach Debrief]", {
+    event,
+    correlationId: createCorrelationId(),
+    category: "DATABASE_FAILURE",
+  });
+}
+
 /**
  * Maps the shared Advisor OpenAI error classification (classifyOpenAIAPIError
  * in advisor-core/server/providers/openai-provider.server.ts) onto Coach

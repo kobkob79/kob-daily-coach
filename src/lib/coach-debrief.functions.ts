@@ -9,8 +9,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { CoachDebriefResult } from "@/lib/coach-debrief-safety";
-
-const SESSION_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// One canonical sessionId format check for both handlers below (Codex
+// re-review round 4, F2) — see coach-debrief-session-id.ts for why it's a
+// standalone module rather than living in coach-debrief-safety.ts or
+// coach-debrief-orchestration.server.ts.
+import { SESSION_ID_RE } from "@/lib/coach-debrief-session-id";
 
 export interface DebriefExercise {
   name: string;
@@ -105,13 +108,15 @@ export const getWorkoutDebriefSnapshot = createServerFn({ method: "POST" })
     const raw = (input ?? {}) as { sessionId?: unknown };
     return { sessionId: typeof raw.sessionId === "string" ? raw.sessionId : "" };
   })
+  // SECURITY (Codex re-review round 4, F2): same UUID check as
+  // generateCoachDebrief (same imported SESSION_ID_RE) — a malformed
+  // sessionId is rejected here before the dynamic import even runs, and
+  // again inside runGetWorkoutDebriefSnapshot itself, so no DB query or
+  // client access happens for anything that can never be a real session
+  // id. Resolves to the same "not_found" a genuinely unknown-but-well-
+  // formed session id would.
   .handler(async ({ data, context }): Promise<WorkoutDebriefSnapshotResult> => {
-    if (!data.sessionId) return { status: "not_found" };
-    const { loadWorkoutDebriefSnapshot } = await import("./coach-debrief-persistence.server");
-    const debrief = await loadWorkoutDebriefSnapshot(
-      context.supabase,
-      String(context.userId),
-      data.sessionId,
-    );
-    return debrief ? { status: "found", debrief } : { status: "not_found" };
+    if (!SESSION_ID_RE.test(data.sessionId)) return { status: "not_found" };
+    const { runGetWorkoutDebriefSnapshot } = await import("./coach-debrief-orchestration.server");
+    return runGetWorkoutDebriefSnapshot(context.supabase, String(context.userId), data.sessionId);
   });

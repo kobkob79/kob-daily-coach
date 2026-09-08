@@ -61,6 +61,39 @@ function makeSelectClient(result: { data: unknown; error: unknown }) {
   };
 }
 
+function makeSelectThrowingClient(error: unknown) {
+  return {
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          eq: () => ({
+            maybeSingle: async () => {
+              throw error;
+            },
+          }),
+        }),
+      }),
+    }),
+  };
+}
+
+/** Captures every console.error call made during `fn`, then restores it — for proving nothing sensitive reaches the log (Codex re-review round 4, F1). */
+async function withCapturedConsoleErrors<T>(
+  fn: () => Promise<T>,
+): Promise<{ result: T; calls: unknown[][] }> {
+  const original = console.error;
+  const calls: unknown[][] = [];
+  console.error = (...args: unknown[]) => {
+    calls.push(args);
+  };
+  try {
+    const result = await fn();
+    return { result, calls };
+  } finally {
+    console.error = original;
+  }
+}
+
 describe("saveWorkoutDebriefSnapshot — { error } without throw (Codex re-review round 2, blocker 4)", () => {
   test("resolves true on a genuine success", async () => {
     const client = makeUpsertClient({ data: null, error: null });
@@ -138,5 +171,75 @@ describe("loadWorkoutDebriefSnapshot — { error } without throw", () => {
     const client = makeSelectClient({ data: null, error: null });
     const debrief = await loadWorkoutDebriefSnapshot(client as never, USER_ID, SESSION_ID);
     assert.equal(debrief, null);
+  });
+});
+
+describe("logging safety — no raw error data ever reaches console.error (Codex re-review round 4, F1)", () => {
+  const SENTINEL = "SHOULD_NEVER_APPEAR_SECRET";
+
+  function assertNoLeak(calls: unknown[][], leakedMessage: string) {
+    assert.ok(calls.length > 0, "expected the failure to be logged at least once");
+    const serialized = JSON.stringify(calls);
+    assert.ok(!serialized.includes(SENTINEL), "the sentinel must never reach the log");
+    assert.ok(
+      !serialized.includes(leakedMessage),
+      "the raw error message must never reach the log",
+    );
+    assert.ok(!serialized.includes(SESSION_ID), "sessionId must never reach the log");
+    assert.ok(!serialized.includes(USER_ID), "userId must never reach the log");
+    assert.ok(
+      !serialized.includes(SAMPLE_DEBRIEF.greeting),
+      "debrief content must never reach the log",
+    );
+  }
+
+  test("save: a Supabase { error } result never leaks into the log", async () => {
+    const leakedMessage = `leaked details: ${SENTINEL}`;
+    const client = makeUpsertClient({
+      data: null,
+      error: { code: SENTINEL, message: leakedMessage, details: SENTINEL, hint: SENTINEL },
+    });
+    const { result: ok, calls } = await withCapturedConsoleErrors(() =>
+      saveWorkoutDebriefSnapshot(client as never, USER_ID, SESSION_ID, SAMPLE_DEBRIEF),
+    );
+    assert.equal(ok, false);
+    assertNoLeak(calls, leakedMessage);
+  });
+
+  test("save: a thrown exception never leaks into the log", async () => {
+    const leakedMessage = `thrown failure: ${SENTINEL}`;
+    const client = makeUpsertThrowingClient(
+      Object.assign(new Error(leakedMessage), { stack: `Error: ${SENTINEL}\n    at somewhere` }),
+    );
+    const { result: ok, calls } = await withCapturedConsoleErrors(() =>
+      saveWorkoutDebriefSnapshot(client as never, USER_ID, SESSION_ID, SAMPLE_DEBRIEF),
+    );
+    assert.equal(ok, false);
+    assertNoLeak(calls, leakedMessage);
+  });
+
+  test("load: a Supabase { error } result never leaks into the log", async () => {
+    const leakedMessage = `leaked details: ${SENTINEL}`;
+    const client = makeSelectClient({
+      data: null,
+      error: { code: SENTINEL, message: leakedMessage, details: SENTINEL, hint: SENTINEL },
+    });
+    const { result: debrief, calls } = await withCapturedConsoleErrors(() =>
+      loadWorkoutDebriefSnapshot(client as never, USER_ID, SESSION_ID),
+    );
+    assert.equal(debrief, null);
+    assertNoLeak(calls, leakedMessage);
+  });
+
+  test("load: a thrown exception never leaks into the log", async () => {
+    const leakedMessage = `thrown failure: ${SENTINEL}`;
+    const client = makeSelectThrowingClient(
+      Object.assign(new Error(leakedMessage), { stack: `Error: ${SENTINEL}\n    at somewhere` }),
+    );
+    const { result: debrief, calls } = await withCapturedConsoleErrors(() =>
+      loadWorkoutDebriefSnapshot(client as never, USER_ID, SESSION_ID),
+    );
+    assert.equal(debrief, null);
+    assertNoLeak(calls, leakedMessage);
   });
 });

@@ -133,8 +133,12 @@ function makeFakeClient(state: FakeState) {
   };
 }
 
-/** A fake client where every query against `failTable` resolves `{ error }` — for proving a DB failure mid-context-build is caught, not thrown (Codex re-review round 3, F4). */
-function makeFailingClient(state: FakeState, failTable: string) {
+/** A fake client where every query against `failTable` resolves `{ error }` — for proving a DB failure mid-context-build is caught, not thrown (Codex re-review round 3, F4). `error` is injectable (round 4, F1) so a test can plant a sentinel and prove it never reaches a log. */
+function makeFailingClient(
+  state: FakeState,
+  failTable: string,
+  error: { code: string; message: string } = { code: "08006", message: "simulated DB failure" },
+) {
   const real = makeFakeClient(state);
   const failingApi = {
     select: () => failingApi,
@@ -144,12 +148,9 @@ function makeFailingClient(state: FakeState, failTable: string) {
     not: () => failingApi,
     order: () => failingApi,
     limit: () => failingApi,
-    maybeSingle: async () => ({
-      data: null,
-      error: { code: "08006", message: "simulated DB failure" },
-    }),
-    then: (resolve: (v: { data: null; error: { code: string; message: string } }) => void) =>
-      resolve({ data: null, error: { code: "08006", message: "simulated DB failure" } }),
+    maybeSingle: async () => ({ data: null, error }),
+    then: (resolve: (v: { data: null; error: typeof error }) => void) =>
+      resolve({ data: null, error }),
   };
   return {
     from(table: string) {
@@ -382,5 +383,34 @@ describe("buildVerifiedDebriefContext — ownership (Codex re-review round 2, bl
     const ctx = await buildVerifiedDebriefContext(client as never, OWNER_ID, SESSION_ID);
     assert.notEqual(ctx, null);
     assert.equal(ctx!.nextWorkoutName, null);
+  });
+
+  test("no raw error data reaches the log on a context-build failure (Codex re-review round 4, F1)", async () => {
+    const sentinel = "SHOULD_NEVER_APPEAR_SECRET";
+    const injectedError = { code: sentinel, message: `leaked details: ${sentinel}` };
+    const client = makeFailingClient(baseState(), "workout_sets", injectedError);
+
+    const originalConsoleError = console.error;
+    const calls: unknown[][] = [];
+    console.error = (...args: unknown[]) => {
+      calls.push(args);
+    };
+    let ctx: unknown;
+    try {
+      ctx = await buildVerifiedDebriefContext(client as never, OWNER_ID, SESSION_ID);
+    } finally {
+      console.error = originalConsoleError;
+    }
+
+    assert.equal(ctx, null);
+    assert.ok(calls.length > 0, "expected the failure to be logged at least once");
+    const serialized = JSON.stringify(calls);
+    assert.ok(!serialized.includes(sentinel), "the sentinel must never reach the log");
+    assert.ok(
+      !serialized.includes(injectedError.message),
+      "the raw error message must never reach the log",
+    );
+    assert.ok(!serialized.includes(SESSION_ID), "sessionId must never reach the log");
+    assert.ok(!serialized.includes(OWNER_ID), "userId must never reach the log");
   });
 });
