@@ -230,7 +230,8 @@ Must Have · P0 · M · Deps: WORKOUT-001, STATS-003 · **Shipped** · AI
 
 **AI-005 — Next-session load recommendation**
 Suggest weight/reps per exercise for the upcoming session.
-Should Have · P1 · M · Deps: AI-004, WORKOUT-012 · Ready · AI
+Should Have · P1 · M · Deps: AI-004, WORKOUT-012 · **Shipped** · AI
+*Rule-based v1: deterministic recommendations based on last session's RPE (no LLM).*
 
 **AI-006 — Long-horizon pattern insights**
 Cross-module correlations (e.g. pain after training gaps, sleep vs performance).

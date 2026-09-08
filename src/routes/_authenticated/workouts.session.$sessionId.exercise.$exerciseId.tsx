@@ -64,6 +64,7 @@ import {
   formatPerformance,
   type PreviousPerformance,
 } from "@/components/workouts/PreviousVsCurrent";
+import { suggestNextLoad, type LoadSuggestion } from "@/lib/next-load-suggestion";
 import { useSessionRestTimer } from "@/components/workouts/RestTimerProvider";
 import {
   PRCelebration,
@@ -188,6 +189,19 @@ function ExerciseDetailPage() {
         reps: s.reps,
         durationSec: s.duration_seconds,
       });
+    }
+    return map;
+  }, [prevQ.data]);
+  const suggestionBySetNumber = useMemo(() => {
+    const map = new Map<number, LoadSuggestion>();
+    for (const s of prevQ.data ?? []) {
+      if (!s.completed_at || s.is_warmup) continue;
+      const suggestion = suggestNextLoad({
+        weightKg: s.weight_kg,
+        reps: s.reps,
+        rpe: s.rpe,
+      });
+      if (suggestion) map.set(s.set_number, suggestion);
     }
     return map;
   }, [prevQ.data]);
@@ -660,6 +674,7 @@ function ExerciseDetailPage() {
             restActive={s.id === activeSet?.id && rest.active}
             onStartSet={() => rest.clear()}
             previous={previousBySetNumber.get(s.set_number) ?? null}
+            suggestion={suggestionBySetNumber.get(s.set_number) ?? null}
             onComplete={() => completeMut.mutate(s)}
             onUncomplete={() => uncompleteMut.mutate(s)}
             onDelete={() => removeMut.mutate(s.id)}
@@ -787,6 +802,7 @@ function SetRow({
   restActive,
   onStartSet,
   previous,
+  suggestion,
   onComplete,
   onUncomplete,
   onDelete,
@@ -805,6 +821,7 @@ function SetRow({
   /** Dismisses the rest timer immediately — "I'm starting this set now." */
   onStartSet: () => void;
   previous: PreviousPerformance | null;
+  suggestion: LoadSuggestion | null;
   onComplete: () => void;
   onUncomplete: () => void;
   onDelete: () => void;
@@ -1128,7 +1145,14 @@ function SetRow({
       )}
 
       {!done ? (
-        <p className="mt-0.5 px-1 text-[9px] text-muted-foreground">קודם: {prevText}</p>
+        <div className="mt-0.5 px-1">
+          <p className="text-[9px] text-muted-foreground">קודם: {prevText}</p>
+          {fieldSet === "strength" && !set.is_warmup && suggestion && (
+            <p className="text-[9px] font-medium text-accent" title={suggestion.reason}>
+              💡 {suggestion.weightKg} ק״ג × {suggestion.reps}
+            </p>
+          )}
+        </div>
       ) : !locked ? (
         <p className="mt-0.5 px-1 text-[9px] text-muted-foreground">
           הושלם · ניתן לעריכה עד סיום האימון
