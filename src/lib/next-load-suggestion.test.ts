@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { suggestNextLoad } from "./next-load-suggestion";
+import { suggestNextLoad } from "./next-load-suggestion.ts";
 
 test("suggestNextLoad - null previous", () => {
   assert.equal(suggestNextLoad(null), null);
