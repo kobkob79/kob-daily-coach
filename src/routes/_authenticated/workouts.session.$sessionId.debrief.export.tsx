@@ -37,10 +37,12 @@ function ExportPreviewPage() {
     },
   });
 
+  const debrief = debriefQ.data?.status === "ok" ? debriefQ.data.debrief : null;
+
   const textQ = useQuery({
-    queryKey: ["workout-export-text", sessionId, debriefQ.data ?? null],
+    queryKey: ["workout-export-text", sessionId, debrief],
     enabled: !debriefQ.isLoading,
-    queryFn: () => buildWorkoutExportText(sessionId, debriefQ.data ?? null),
+    queryFn: () => buildWorkoutExportText(sessionId, debrief),
   });
 
   const text = textQ.data ?? "";

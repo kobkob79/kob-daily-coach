@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Share2, Sparkles, Droplets, Apple, Moon, Target, Users } from "lucide-react";
 import { buildDebriefContext } from "@/lib/coach-debrief";
 import { generateCoachDebrief } from "@/lib/coach-debrief.functions";
+import type { CoachDebriefResult } from "@/lib/coach-debrief-safety";
 import { fetchLifeProfile } from "@/lib/life-profile";
 
 export const Route = createFileRoute("/_authenticated/workouts/session/$sessionId/debrief/")({
@@ -30,7 +31,9 @@ function DebriefPage() {
     },
   });
 
-  const d = q.data;
+  const result: CoachDebriefResult | undefined = q.data;
+  const d = result?.status === "ok" ? result.debrief : null;
+  const failure = result && result.status === "error" ? result : null;
 
   return (
     <div dir="rtl" className="mx-auto max-w-md space-y-4 py-4">
@@ -47,16 +50,19 @@ function DebriefPage() {
           </div>
         )}
 
-        {q.isError && (
-          <div className="space-y-1 py-3">
+        {(q.isError || failure) && (
+          <div className="space-y-2 py-3">
             <p className="text-sm text-muted-foreground">
               לא הצלחתי להפיק תחקיר כרגע. הנתונים של האימון נשמרו במלואם.
             </p>
-            {q.error instanceof Error && q.error.message && (
+            {failure && (
               <p dir="ltr" className="text-left text-xs text-muted-foreground/70">
-                {q.error.message}
+                {failure.message} · {failure.correlationId}
               </p>
             )}
+            <Button size="sm" variant="outline" onClick={() => q.refetch()}>
+              נסה שוב
+            </Button>
           </div>
         )}
 
