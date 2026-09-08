@@ -94,8 +94,16 @@ function WorkoutShareStudio() {
     enabled: Boolean(existingPhotoPath),
   });
 
+  // Codex re-review round 2, blocker 6: when the workout is already
+  // shared, the composer below is never rendered — there's no need to
+  // load the session/sets/exercises or the debrief snapshot at all. Wait
+  // for existingQ to actually resolve to "not_found" before either query
+  // is even enabled, instead of firing all three in parallel every time.
+  const needsComposerData = existingQ.data?.status === "not_found";
+
   const sourceQ = useQuery({
     queryKey: ["workout-share-source", sessionId],
+    enabled: needsComposerData,
     queryFn: async () => {
       const [session, sets] = await Promise.all([getSession(sessionId), getSessionSets(sessionId)]);
       if (!session) return null;
@@ -116,6 +124,7 @@ function WorkoutShareStudio() {
   // never depends on it.
   const debriefQ = useQuery({
     queryKey: ["workout-debrief-snapshot", sessionId],
+    enabled: needsComposerData,
     queryFn: () => fetchDebriefSnapshot({ data: { sessionId } }),
   });
 
@@ -248,7 +257,10 @@ function WorkoutShareStudio() {
     },
   });
 
-  const loading = sourceQ.isLoading || existingQ.isLoading;
+  // sourceQ is disabled until existingQ resolves to "not_found", so its
+  // own isLoading is meaningless (false-but-not-yet-started) until then —
+  // only count it once it's actually the query in flight.
+  const loading = existingQ.isLoading || (needsComposerData && sourceQ.isLoading);
   const alreadyShared = existingQ.data?.status === "found";
   const showComposer = !loading && Boolean(sourceQ.data) && !alreadyShared;
 
@@ -276,18 +288,33 @@ function WorkoutShareStudio() {
           <Loader2 className="h-4 w-4 animate-spin" />
           טוען...
         </div>
-      ) : !sourceQ.data ? (
-        <p className="py-16 text-center text-sm text-muted-foreground">האימון לא נמצא.</p>
-      ) : alreadyShared ? (
+      ) : /* alreadyShared must be checked before `!sourceQ.data` — sourceQ
+             is now disabled (blocker 6) whenever the workout is already
+             shared, so sourceQ.data is always undefined in that state; a
+             `!sourceQ.data` check first would misroute to "not found". */
+      alreadyShared ? (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">כבר שיתפת את האימון הזה בקהילה.</p>
-          {existingQ.data?.status === "found" && (
-            <WorkoutResultCard payload={existingQ.data.payload} photoUrl={existingPhotoUrlQ.data} />
-          )}
+          {existingQ.data?.status === "found" &&
+            (existingQ.data.payload ? (
+              <WorkoutResultCard
+                payload={existingQ.data.payload}
+                photoUrl={existingPhotoUrlQ.data}
+              />
+            ) : (
+              // Codex re-review round 2, blocker 5: a stored payload that
+              // fails runtime validation must show a safe fallback, never
+              // an empty/broken card built from an unchecked cast.
+              <p className="surface-card p-4 text-sm text-muted-foreground">
+                לא ניתן להציג את נתוני האימון הזה כרגע.
+              </p>
+            ))}
           <Button asChild size="lg" className="h-12 w-full text-base">
             <Link to="/community">עבור לקהילה</Link>
           </Button>
         </div>
+      ) : !sourceQ.data ? (
+        <p className="py-16 text-center text-sm text-muted-foreground">האימון לא נמצא.</p>
       ) : (
         <>
           <div className="surface-card space-y-3 p-4">

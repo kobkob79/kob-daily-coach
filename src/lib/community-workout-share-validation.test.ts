@@ -259,4 +259,94 @@ describe("parseWorkoutSharePayload (Codex review finding 10)", () => {
     assert.equal(parseWorkoutSharePayload("not a payload"), null);
     assert.equal(parseWorkoutSharePayload([]), null);
   });
+
+  test("rejects negative counts and weights (Codex re-review round 2, blocker 5)", () => {
+    assert.equal(parseWorkoutSharePayload(validPayload({ completedSetCount: -1 })), null);
+    assert.equal(parseWorkoutSharePayload(validPayload({ totalVolumeKg: -1 })), null);
+    assert.equal(
+      parseWorkoutSharePayload(
+        validPayload({ bestSet: { exerciseName: "x", weightKg: -5, reps: 6, volumeKg: 1 } }),
+      ),
+      null,
+    );
+  });
+
+  test("rejects non-integer reps/set counts", () => {
+    assert.equal(parseWorkoutSharePayload(validPayload({ completedSetCount: 3.5 })), null);
+    assert.equal(
+      parseWorkoutSharePayload(
+        validPayload({ bestSet: { exerciseName: "x", weightKg: 80, reps: 6.5, volumeKg: 1 } }),
+      ),
+      null,
+    );
+    assert.equal(
+      parseWorkoutSharePayload(
+        validPayload({ exercises: [{ name: "x", sets: [{ weightKg: 80, reps: 6.5 }] }] }),
+      ),
+      null,
+    );
+  });
+
+  test("rejects an implausibly large weight/volume/rep count (defends against a tampered row, not a real workout)", () => {
+    assert.equal(parseWorkoutSharePayload(validPayload({ totalVolumeKg: 50_000_000 })), null);
+    assert.equal(parseWorkoutSharePayload(validPayload({ totalReps: 10_000_000 })), null);
+    assert.equal(
+      parseWorkoutSharePayload(
+        validPayload({ bestSet: { exerciseName: "x", weightKg: 999_999, reps: 6, volumeKg: 1 } }),
+      ),
+      null,
+    );
+  });
+
+  test("rejects an invalid dateISO", () => {
+    assert.equal(parseWorkoutSharePayload(validPayload({ dateISO: "not a date" })), null);
+    assert.equal(parseWorkoutSharePayload(validPayload({ dateISO: "2026-13-40" })), null);
+  });
+
+  test("rejects a text field far beyond any real name/caption length", () => {
+    assert.equal(parseWorkoutSharePayload(validPayload({ workoutName: "א".repeat(5000) })), null);
+    assert.equal(
+      parseWorkoutSharePayload(validPayload({ exercises: [{ name: "א".repeat(5000), sets: [] }] })),
+      null,
+    );
+  });
+
+  test("rejects an implausibly large exercises/sets/muscle-groups array", () => {
+    assert.equal(
+      parseWorkoutSharePayload(
+        validPayload({
+          exercises: Array.from({ length: 500 }, () => ({ name: "x", sets: [] })),
+        }),
+      ),
+      null,
+    );
+    assert.equal(
+      parseWorkoutSharePayload(
+        validPayload({
+          exercises: [
+            {
+              name: "x",
+              sets: Array.from({ length: 500 }, () => ({ weightKg: 10, reps: 1 })),
+            },
+          ],
+        }),
+      ),
+      null,
+    );
+    assert.equal(
+      parseWorkoutSharePayload(
+        validPayload({ primaryMuscleGroups: Array.from({ length: 500 }, () => "חזה") }),
+      ),
+      null,
+    );
+  });
+
+  test("rejects a coachFull array longer than the builder ever produces", () => {
+    assert.equal(
+      parseWorkoutSharePayload(
+        validPayload({ coachFull: Array.from({ length: 50 }, () => "פסקה") }),
+      ),
+      null,
+    );
+  });
 });

@@ -90,9 +90,9 @@ export interface WorkoutSharePayloadV1 {
 export type WorkoutSharePayload = WorkoutSharePayloadV1;
 
 export const WORKOUT_SHARE_CAPTION_MAX_LENGTH = 500;
-/** Paragraphs beyond this count are dropped, and each paragraph is capped — a caption-length sanity bound on AI-generated text, not a rewrite of it. */
-const COACH_MAX_PARAGRAPHS = 6;
-const COACH_MAX_PARAGRAPH_LENGTH = 600;
+/** Paragraphs beyond this count are dropped, and each paragraph is capped — a caption-length sanity bound on AI-generated text, not a rewrite of it. Exported so community-workout-share-validation.ts's stored-payload schema (Codex re-review round 2, blocker 5) bounds coachFull by the same numbers this builder actually produces, instead of a second, driftable set of magic numbers. */
+export const COACH_MAX_PARAGRAPHS = 6;
+export const COACH_MAX_PARAGRAPH_LENGTH = 600;
 /** Codex review finding 6: the feed summary is greeting + a couple of highlights, not the first paragraph. */
 const COACH_MAX_SUMMARY_HIGHLIGHTS = 2;
 

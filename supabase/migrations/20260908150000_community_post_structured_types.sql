@@ -226,19 +226,76 @@ create table public.workout_debriefs (
 
 alter table public.workout_debriefs enable row level security;
 
-create policy "Users manage own workout debriefs"
-  on public.workout_debriefs for all
+-- SECURITY FIX (Codex re-review round 2, blocker 1): the original "for all"
+-- policy plus a blanket insert/update/delete grant to `authenticated` meant
+-- any signed-in user could write or overwrite their own workout_debriefs
+-- row directly — greeting/paragraphs/highlights included — completely
+-- bypassing generateCoachDebrief's AI generation. Share Studio would then
+-- read that self-authored text back and display it under "תחקיר מאמן" as
+-- if Viora had said it. The table is now read-only for `authenticated`;
+-- the only legitimate writer is the trusted server path
+-- (coach-debrief.functions.ts -> coach-debrief-context.server.ts), which
+-- writes via `supabaseAdmin` (service_role, bypasses RLS) after verifying
+-- session ownership itself — see the ownership-verification trigger below
+-- for a second, independent guarantee that doesn't depend on that server
+-- code being correct.
+create policy "Users read own workout debriefs"
+  on public.workout_debriefs for select
   to authenticated
-  using ((select auth.uid()) = user_id)
-  with check ((select auth.uid()) = user_id);
+  using ((select auth.uid()) = user_id);
 
 revoke all on public.workout_debriefs from public, anon;
-grant select, insert, update, delete on public.workout_debriefs to authenticated;
+revoke insert, update, delete on public.workout_debriefs from authenticated;
+grant select on public.workout_debriefs to authenticated;
 grant all on public.workout_debriefs to service_role;
 
 create trigger workout_debriefs_touch
 before update on public.workout_debriefs
 for each row execute function public.touch_updated_at();
 
+-- SECURITY FIX (Codex re-review round 2, blocker 2, "מומלץ" hardening):
+-- even though only service_role can write this table now, enforce at the
+-- database level — independent of any application code's correctness —
+-- that a workout_debriefs row's user_id can never be anyone other than
+-- the actual owner of the workout_sessions row it claims to summarize.
+-- This is defense in depth: it protects against a future bug in the
+-- server write path (e.g. a forwarded/forged sessionId) just as much as
+-- against a compromised or misconfigured client.
+create function public.workout_debriefs_verify_session_owner()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (
+    select 1 from public.workout_sessions
+    where id = new.session_id and user_id = new.user_id
+  ) then
+    raise exception 'workout_debriefs.user_id must match workout_sessions.user_id for session_id %', new.session_id;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger workout_debriefs_verify_session_owner_trg
+before insert or update of session_id, user_id on public.workout_debriefs
+for each row execute function public.workout_debriefs_verify_session_owner();
+
 comment on table public.workout_debriefs is
-  'Server-authored snapshot of the most recent successful Coach Debrief generation for a session — the sole trusted source for any "coach" text shown in a Community share (Share Studio and the publish path both read this, never client-supplied narrative text).';
+  'Server-authored snapshot of the most recent successful Coach Debrief generation for a session — the sole trusted source for any "coach" text shown in a Community share (Share Studio and the publish path both read this, never client-supplied narrative text). Read-only for authenticated; only service_role (the trusted server path) may write, and a trigger independently enforces that user_id always matches the session''s real owner.';
+
+-- SECURITY FIX (Codex re-review round 2, blocker 8): the storage read
+-- policy above (`Read community post photos per post audience`) looks up
+-- community_posts by photo_path/author_avatar_path in an EXISTS subquery
+-- on every signed URL / object read — without an index that's a sequential
+-- scan of the whole table on every photo view, which gets worse as the
+-- Community feed grows. Partial indexes (most rows have neither field set)
+-- keep that lookup an index scan.
+create index community_posts_photo_path_idx
+  on public.community_posts (photo_path)
+  where photo_path is not null;
+
+create index community_posts_author_avatar_path_idx
+  on public.community_posts (author_avatar_path)
+  where author_avatar_path is not null;

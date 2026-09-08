@@ -8,6 +8,11 @@
  * suite, which can't resolve that Vite-only alias.
  */
 import { z } from "zod";
+import {
+  COACH_MAX_PARAGRAPH_LENGTH,
+  COACH_MAX_PARAGRAPHS,
+  WORKOUT_SHARE_CAPTION_MAX_LENGTH,
+} from "./community-workout-share.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** No C0/C1 control characters (multi-line text is fine — a caption is a Textarea). */
@@ -45,49 +50,75 @@ export type PublishWorkoutShareInput = z.infer<typeof publishInputSchema>;
  * enforcement of its own) is treated the same as any other externally
  * supplied data: parsed and rejected, never cast straight to a TS type.
  */
-const finiteNumber = z.number().finite();
+// Bounds below (Codex re-review round 2, blocker 5) are sanity limits
+// matching what buildWorkoutSharePayload() itself can actually produce —
+// generous enough to never reject a real payload, tight enough that a
+// corrupted/tampered jsonb row can't push an arbitrarily large or
+// nonsensical structure into the feed. A weight/volume/rep count is
+// always a non-negative real-world number for a workout a person actually
+// did; a set/rep/exercise COUNT is always a non-negative integer.
+const MAX_TEXT_LENGTH = 200;
+const MAX_NAME_LENGTH = 120;
+const MAX_WEIGHT_KG = 2000;
+const MAX_REPS = 2000;
+const MAX_VOLUME_KG = 1_000_000;
+const MAX_SET_COUNT = 2000;
+const MAX_EXERCISES = 200;
+const MAX_SETS_PER_EXERCISE = 200;
+const MAX_MUSCLE_GROUPS = 50;
+/** greeting + up to COACH_MAX_PARAGRAPHS paragraphs. */
+const MAX_COACH_FULL_ENTRIES = COACH_MAX_PARAGRAPHS + 1;
+/** Generous upper bound for coachSummary's "greeting + up to 2 highlights" join — each part is already capped at COACH_MAX_PARAGRAPH_LENGTH by the builder. */
+const MAX_COACH_SUMMARY_LENGTH = COACH_MAX_PARAGRAPH_LENGTH * 3 + 20;
+
+const nonNegInt = (max: number) => z.number().finite().int().min(0).max(max);
+const nonNegFinite = (max: number) => z.number().finite().min(0).max(max);
+const boundedText = (max: number) => z.string().max(max);
 
 const workoutShareExerciseSetSchema = z
   .object({
-    weightKg: finiteNumber.nullable(),
-    reps: finiteNumber.nullable(),
+    weightKg: nonNegFinite(MAX_WEIGHT_KG).nullable(),
+    reps: nonNegInt(MAX_REPS).nullable(),
   })
   .strict();
 
 const workoutShareExerciseSchema = z
   .object({
-    name: z.string(),
-    sets: z.array(workoutShareExerciseSetSchema),
+    name: boundedText(MAX_NAME_LENGTH),
+    sets: z.array(workoutShareExerciseSetSchema).max(MAX_SETS_PER_EXERCISE),
   })
   .strict();
 
 const workoutShareBestSetSchema = z
   .object({
-    exerciseName: z.string(),
-    weightKg: finiteNumber,
-    reps: finiteNumber,
-    volumeKg: finiteNumber,
+    exerciseName: boundedText(MAX_NAME_LENGTH),
+    weightKg: nonNegFinite(MAX_WEIGHT_KG),
+    reps: nonNegInt(MAX_REPS),
+    volumeKg: nonNegFinite(MAX_VOLUME_KG),
   })
   .strict();
 
 export const workoutSharePayloadSchema = z
   .object({
     version: z.literal(1),
-    workoutName: z.string().nullable(),
-    dateISO: z.string(),
-    durationMinutes: finiteNumber.nullable(),
+    workoutName: boundedText(MAX_TEXT_LENGTH).nullable(),
+    dateISO: z.string().datetime({ offset: true }),
+    durationMinutes: nonNegInt(24 * 60).nullable(),
     isPartial: z.boolean(),
-    completedSetCount: finiteNumber,
-    plannedSetCount: finiteNumber,
-    totalReps: finiteNumber,
-    totalVolumeKg: finiteNumber,
+    completedSetCount: nonNegInt(MAX_SET_COUNT),
+    plannedSetCount: nonNegInt(MAX_SET_COUNT),
+    totalReps: nonNegInt(MAX_SET_COUNT * 50),
+    totalVolumeKg: nonNegFinite(MAX_VOLUME_KG),
     bestSet: workoutShareBestSetSchema.nullable(),
-    primaryMuscleGroups: z.array(z.string()),
-    exercises: z.array(workoutShareExerciseSchema),
-    coachSummary: z.string().nullable(),
-    coachFull: z.array(z.string()).nullable(),
-    caption: z.string().nullable(),
-    locationLabel: z.string().nullable(),
+    primaryMuscleGroups: z.array(boundedText(MAX_NAME_LENGTH)).max(MAX_MUSCLE_GROUPS),
+    exercises: z.array(workoutShareExerciseSchema).max(MAX_EXERCISES),
+    coachSummary: boundedText(MAX_COACH_SUMMARY_LENGTH).nullable(),
+    coachFull: z
+      .array(boundedText(COACH_MAX_PARAGRAPH_LENGTH))
+      .max(MAX_COACH_FULL_ENTRIES)
+      .nullable(),
+    caption: boundedText(WORKOUT_SHARE_CAPTION_MAX_LENGTH).nullable(),
+    locationLabel: boundedText(120).nullable(),
   })
   .strict();
 

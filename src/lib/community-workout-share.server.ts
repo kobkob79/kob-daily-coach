@@ -22,6 +22,7 @@ import {
   type WorkoutSharePayload,
 } from "./community-workout-share.ts";
 import { loadWorkoutDebriefSnapshot } from "./coach-debrief-persistence.server.ts";
+import { parseWorkoutSharePayload } from "./community-workout-share-validation.ts";
 import type {
   ExistingWorkoutShareResult,
   PublishWorkoutShareInput,
@@ -165,7 +166,7 @@ async function findExistingPost(
   client: AnyClient,
   userId: string,
   sessionId: string,
-): Promise<{ id: string; payload: WorkoutSharePayload; photoPath: string | null } | null> {
+): Promise<{ id: string; payload: WorkoutSharePayload | null; photoPath: string | null } | null> {
   const { data, error } = await client
     .from("community_posts")
     .select("id,payload,photo_path")
@@ -175,9 +176,16 @@ async function findExistingPost(
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
+  // SECURITY (Codex re-review round 2, blocker 5): the same runtime
+  // validation the feed applies to a stored payload before rendering
+  // (community.tsx) applies here too — a malformed/corrupted row must
+  // never be cast straight to WorkoutSharePayload and handed to
+  // WorkoutResultCard. `payload: null` is a real, render-safe state the
+  // caller (the "already shared" view, the unique-violation resolve path)
+  // is expected to show a fallback for, not a card built from garbage.
   return {
     id: data.id as string,
-    payload: data.payload as WorkoutSharePayload,
+    payload: parseWorkoutSharePayload(data.payload),
     photoPath: (data.photo_path as string | null) ?? null,
   };
 }

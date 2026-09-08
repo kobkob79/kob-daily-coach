@@ -18,15 +18,26 @@ interface WorkoutDebriefRow {
   hydration: string | null;
 }
 
-/** Best-effort: a failed save must never surface as a debrief-generation failure to the user. */
+/**
+ * Best-effort: a failed save must never surface as a debrief-generation
+ * failure to the user, so this never throws. It must not silently look
+ * like success either (Codex re-review round 2, blocker 4) — supabase-js
+ * resolves a business-logic failure (RLS denial, the ownership-verifying
+ * trigger raising, a constraint violation) as `{ error }`, it does not
+ * reject the promise, so a bare try/catch around the call never sees it.
+ * The `{ error }` case is checked explicitly, logged server-side (never
+ * the raw DB error text to the user — this function has no user-facing
+ * return value at all), and reflected in the returned boolean so a test
+ * (or a future caller) can tell a real save from a swallowed failure.
+ */
 export async function saveWorkoutDebriefSnapshot(
   client: SupabaseClient,
   userId: string,
   sessionId: string,
   debrief: CoachDebrief,
-): Promise<void> {
+): Promise<boolean> {
   try {
-    await client.from("workout_debriefs").upsert(
+    const { error } = await client.from("workout_debriefs").upsert(
       {
         session_id: sessionId,
         user_id: userId,
@@ -40,12 +51,22 @@ export async function saveWorkoutDebriefSnapshot(
       },
       { onConflict: "session_id" },
     );
-  } catch {
-    // Swallow — the caller already has a valid, already-generated debrief
-    // to return to the user; a snapshot write failure only means Share
-    // Studio won't have a coach section for this session later, which is
-    // an explicitly supported state (AI/coach data is never required to
-    // share a workout).
+    if (error) {
+      console.error("[workout-debrief-persistence] save failed", {
+        sessionId,
+        code: error.code,
+        message: error.message,
+      });
+      return false;
+    }
+    return true;
+  } catch (error) {
+    // A thrown exception (network failure, not a business-logic error
+    // response) is just as much a failed save as an `{ error }` result —
+    // still swallowed toward the caller, still logged, still reported as
+    // "did not save" via the return value.
+    console.error("[workout-debrief-persistence] save threw", { sessionId, error });
+    return false;
   }
 }
 
@@ -54,12 +75,25 @@ export async function loadWorkoutDebriefSnapshot(
   userId: string,
   sessionId: string,
 ): Promise<CoachDebrief | null> {
-  const { data } = await client
+  const { data, error } = await client
     .from("workout_debriefs")
     .select("greeting,paragraphs,highlights,next_focus,recovery,nutrition,hydration")
     .eq("session_id", sessionId)
     .eq("user_id", userId)
     .maybeSingle();
+  if (error) {
+    // Same reasoning as the save path: a query error resolves as
+    // `{ error }`, not a throw. Treated as "no snapshot available" (the
+    // safe default an already-supported state — Share Studio's coach
+    // section is optional) but logged server-side rather than silently
+    // indistinguishable from a genuinely empty table.
+    console.error("[workout-debrief-persistence] load failed", {
+      sessionId,
+      code: error.code,
+      message: error.message,
+    });
+    return null;
+  }
   if (!data) return null;
   const row = data as WorkoutDebriefRow;
   return {

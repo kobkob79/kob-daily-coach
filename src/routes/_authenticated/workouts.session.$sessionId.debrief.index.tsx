@@ -7,10 +7,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Loader2, Share2, Sparkles, Droplets, Apple, Moon, Target, Users } from "lucide-react";
-import { buildDebriefContext } from "@/lib/coach-debrief";
 import { generateCoachDebrief } from "@/lib/coach-debrief.functions";
 import type { CoachDebriefResult } from "@/lib/coach-debrief-safety";
-import { fetchLifeProfile } from "@/lib/life-profile";
 
 export const Route = createFileRoute("/_authenticated/workouts/session/$sessionId/debrief/")({
   component: DebriefPage,
@@ -24,11 +22,10 @@ function DebriefPage() {
     queryKey: ["coach-debrief", sessionId],
     staleTime: Infinity,
     retry: false,
-    queryFn: async () => {
-      const profile = await fetchLifeProfile().catch(() => null);
-      const ctx = await buildDebriefContext(sessionId, profile?.first_name ?? "");
-      return run({ data: { ctx, sessionId } });
-    },
+    // The server rebuilds the whole debrief context itself from sessionId
+    // (Codex re-review round 2, blocker 3) — the client no longer builds
+    // or sends it.
+    queryFn: () => run({ data: { sessionId } }),
   });
 
   const result: CoachDebriefResult | undefined = q.data;

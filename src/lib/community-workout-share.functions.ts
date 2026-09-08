@@ -30,7 +30,12 @@ export type { PublishWorkoutShareInput };
 
 export type PublishWorkoutShareResult =
   | { status: "published"; postId: string; payload: WorkoutSharePayload }
-  | { status: "already_shared"; postId: string; payload: WorkoutSharePayload }
+  // payload is nullable here (Codex re-review round 2, blocker 5): this
+  // branch is reached via a unique-violation on insert, re-reading the
+  // row that already exists — its payload goes through the same runtime
+  // validation as the feed, so a corrupted row resolves to null instead
+  // of being cast straight to WorkoutSharePayload.
+  | { status: "already_shared"; postId: string; payload: WorkoutSharePayload | null }
   | {
       status: "error";
       reason:
@@ -50,7 +55,17 @@ export const publishWorkoutShare = createServerFn({ method: "POST" })
   });
 
 export type ExistingWorkoutShareResult =
-  | { status: "found"; postId: string; payload: WorkoutSharePayload; photoPath: string | null }
+  // payload is nullable (Codex re-review round 2, blocker 5): a stored
+  // row that fails runtime validation resolves to a real, render-safe
+  // "found, but nothing displayable" state instead of being cast straight
+  // to WorkoutSharePayload — the caller shows a fallback, never an empty
+  // or broken card.
+  | {
+      status: "found";
+      postId: string;
+      payload: WorkoutSharePayload | null;
+      photoPath: string | null;
+    }
   | { status: "not_found" };
 
 export const findExistingWorkoutShare = createServerFn({ method: "POST" })

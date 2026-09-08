@@ -29,6 +29,26 @@ const SESSION_ID = "33333333-3333-3333-3333-333333333333";
 const OWN_PHOTO_PATH = `${OWNER_ID}/44444444-4444-4444-4444-444444444444.jpg`;
 const OTHER_USERS_PHOTO_PATH = `${OTHER_USER_ID}/55555555-5555-5555-5555-555555555555.jpg`;
 
+/** A fully valid WorkoutSharePayloadV1 — passes parseWorkoutSharePayload (Codex re-review round 2, blocker 5), unlike a bare `{ version: 1 }` stub. */
+const VALID_STORED_PAYLOAD = {
+  version: 1,
+  workoutName: "יום חזה",
+  dateISO: "2026-09-08T09:00:00.000Z",
+  durationMinutes: 30,
+  isPartial: false,
+  completedSetCount: 1,
+  plannedSetCount: 1,
+  totalReps: 10,
+  totalVolumeKg: 400,
+  bestSet: null,
+  primaryMuscleGroups: [],
+  exercises: [],
+  coachSummary: null,
+  coachFull: null,
+  caption: null,
+  locationLabel: null,
+};
+
 interface FakeSessionRow {
   id: string;
   user_id: string;
@@ -316,11 +336,26 @@ describe("publishWorkoutShareResult — idempotency", () => {
       user_id: OWNER_ID,
       source_type: "workout",
       source_id: SESSION_ID,
-      payload: { version: 1 },
+      payload: VALID_STORED_PAYLOAD,
     });
     const result = await publish(state, OWNER_ID, basePublishInput());
     assert.equal(result.status, "already_shared");
     assert.equal((result as { postId: string }).postId, "existing-post");
+    assert.notEqual((result as { payload: unknown }).payload, null);
+  });
+
+  test("a unique-violation resolving to a row whose stored payload fails validation returns payload: null, not a raw cast (Codex re-review round 2, blocker 5)", async () => {
+    const state = baseState({ insertBehavior: "unique_violation" });
+    state.posts.push({
+      id: "existing-post",
+      user_id: OWNER_ID,
+      source_type: "workout",
+      source_id: SESSION_ID,
+      payload: { version: 1 }, // missing every other required field
+    });
+    const result = await publish(state, OWNER_ID, basePublishInput());
+    assert.equal(result.status, "already_shared");
+    assert.equal((result as { payload: unknown }).payload, null);
   });
 
   test("a genuine, non-uniqueness insert failure surfaces as a safe, generic error", async () => {
@@ -339,12 +374,28 @@ describe("findExistingWorkoutShareResult — reopening an already-shared workout
       user_id: OWNER_ID,
       source_type: "workout",
       source_id: SESSION_ID,
-      payload: { version: 1 },
+      payload: VALID_STORED_PAYLOAD,
     });
     const client = makeFakeClient(state);
     const result = await findExistingWorkoutShareResult(client as never, OWNER_ID, SESSION_ID);
     assert.equal(result.status, "found");
     assert.equal((result as { postId: string }).postId, "existing-post");
+    assert.notEqual((result as { payload: unknown }).payload, null);
+  });
+
+  test("a found post whose stored payload fails validation returns payload: null — a safe fallback state, never a raw cast (Codex re-review round 2, blocker 5)", async () => {
+    const state = baseState();
+    state.posts.push({
+      id: "existing-post",
+      user_id: OWNER_ID,
+      source_type: "workout",
+      source_id: SESSION_ID,
+      payload: { version: 1 },
+    });
+    const client = makeFakeClient(state);
+    const result = await findExistingWorkoutShareResult(client as never, OWNER_ID, SESSION_ID);
+    assert.equal(result.status, "found");
+    assert.equal((result as { payload: unknown }).payload, null);
   });
 
   test("returns not_found when nothing has been shared yet", async () => {
