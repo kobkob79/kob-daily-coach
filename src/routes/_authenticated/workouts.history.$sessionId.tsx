@@ -5,7 +5,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronRight, Trash2 } from "lucide-react";
+import { ChevronRight, Sparkles, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getSession, getSessionSets, updateSet, deleteSet, type SessionSet } from "@/lib/workout-session";
 import { toast } from "sonner";
