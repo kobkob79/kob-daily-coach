@@ -15,19 +15,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import { toast } from "sonner";
 import { ChevronRight, ImagePlus, Loader2, MapPin, Sparkles, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { compressImageFile } from "@/lib/image-compress";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { WorkoutResultCard } from "@/components/community/WorkoutResultCard";
 import { getSession, getSessionSets } from "@/lib/workout-session";
-import { buildDebriefContext } from "@/lib/coach-debrief";
-import { generateCoachDebrief } from "@/lib/coach-debrief.functions";
-import type { CoachDebriefResult } from "@/lib/coach-debrief-safety";
-import { fetchLifeProfile } from "@/lib/life-profile";
+import { getWorkoutDebriefSnapshot } from "@/lib/coach-debrief.functions";
 import {
   buildWorkoutSharePayload,
   WORKOUT_SHARE_CAPTION_MAX_LENGTH,
@@ -40,6 +39,11 @@ import {
 } from "@/lib/community-workout-share.functions";
 
 const PHOTO_BUCKET = "community-post-photos";
+// Matches the community-post-photos bucket's own allowed_mime_types/file_size_limit
+// (supabase/migrations/20260908150000_community_post_structured_types.sql) — reject
+// obviously-wrong files with a clear message instead of an opaque upload failure.
+const ALLOWED_PHOTO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
 export const Route = createFileRoute("/_authenticated/workouts/session/$sessionId/debrief/share")({
   component: WorkoutShareStudio,
@@ -49,7 +53,7 @@ function WorkoutShareStudio() {
   const { sessionId } = Route.useParams();
   const navigate = useNavigate();
 
-  const generateDebrief = useServerFn(generateCoachDebrief);
+  const fetchDebriefSnapshot = useServerFn(getWorkoutDebriefSnapshot);
   const publish = useServerFn(publishWorkoutShare);
   const findExisting = useServerFn(findExistingWorkoutShare);
 
@@ -61,11 +65,33 @@ function WorkoutShareStudio() {
   const [locationOn, setLocationOn] = useState(false);
   const [locationLabel, setLocationLabel] = useState("");
   const [announcement, setAnnouncement] = useState("");
+  const [photoProcessing, setPhotoProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoPreviewRef = useRef<string | null>(null);
+
+  // Revoke the object URL on unmount too, not only when replaced/removed —
+  // navigating away mid-edit (e.g. the back button) leaked it otherwise.
+  useEffect(() => {
+    return () => {
+      if (photoPreviewRef.current) URL.revokeObjectURL(photoPreviewRef.current);
+    };
+  }, []);
 
   const existingQ = useQuery({
     queryKey: ["workout-share-existing", sessionId],
     queryFn: () => findExisting({ data: { sessionId } }),
+  });
+
+  const existingPhotoPath = existingQ.data?.status === "found" ? existingQ.data.photoPath : null;
+  const existingPhotoUrlQ = useQuery({
+    queryKey: ["workout-share-existing-photo-url", existingPhotoPath],
+    queryFn: async () => {
+      const { data } = await supabase.storage
+        .from(PHOTO_BUCKET)
+        .createSignedUrl(existingPhotoPath!, 3600);
+      return data?.signedUrl ?? null;
+    },
+    enabled: Boolean(existingPhotoPath),
   });
 
   const sourceQ = useQuery({
@@ -82,25 +108,23 @@ function WorkoutShareStudio() {
     },
   });
 
-  // Same queryKey as the debrief screen — a cache hit there, no extra AI call.
+  // Read-only — never generates. Opening Share Studio (including a direct
+  // URL visit or a refresh) makes zero OpenAI calls; this only reads
+  // whatever the debrief screen already generated and saved for this
+  // session, if anything. If nothing was ever generated (or it failed),
+  // the coach section is simply unavailable — sharing the workout itself
+  // never depends on it.
   const debriefQ = useQuery({
-    queryKey: ["coach-debrief", sessionId],
-    staleTime: Infinity,
-    retry: false,
-    queryFn: async () => {
-      const profile = await fetchLifeProfile().catch(() => null);
-      const ctx = await buildDebriefContext(sessionId, profile?.first_name ?? "");
-      return generateDebrief({ data: ctx });
-    },
+    queryKey: ["workout-debrief-snapshot", sessionId],
+    queryFn: () => fetchDebriefSnapshot({ data: { sessionId } }),
   });
 
-  const debriefResult: CoachDebriefResult | undefined = debriefQ.data;
   const coach: WorkoutShareCoachInput | null =
-    debriefResult?.status === "ok"
+    debriefQ.data?.status === "found"
       ? {
-          greeting: debriefResult.debrief.greeting,
-          paragraphs: debriefResult.debrief.paragraphs,
-          highlights: debriefResult.debrief.highlights,
+          greeting: debriefQ.data.debrief.greeting,
+          paragraphs: debriefQ.data.debrief.paragraphs,
+          highlights: debriefQ.data.debrief.highlights,
         }
       : null;
 
@@ -115,12 +139,36 @@ function WorkoutShareStudio() {
       coach: includeCoach ? coach : null,
     });
 
-  const onPickPhoto = (file: File | null) => {
+  const setPreview = (file: File | null) => {
     setPhotoFile(file);
     setPhotoPreview((prev) => {
       if (prev) URL.revokeObjectURL(prev);
-      return file ? URL.createObjectURL(file) : null;
+      const next = file ? URL.createObjectURL(file) : null;
+      photoPreviewRef.current = next;
+      return next;
     });
+  };
+
+  const onPickPhoto = async (file: File | null) => {
+    if (!file) {
+      setPreview(null);
+      return;
+    }
+    if (!ALLOWED_PHOTO_MIME_TYPES.includes(file.type)) {
+      toast.error("סוג הקובץ אינו נתמך — יש לבחור תמונת JPEG, PNG או WebP");
+      return;
+    }
+    setPhotoProcessing(true);
+    try {
+      const compressed = await compressImageFile(file);
+      if (compressed.size > MAX_PHOTO_BYTES) {
+        toast.error("התמונה גדולה מדי");
+        return;
+      }
+      setPreview(compressed);
+    } finally {
+      setPhotoProcessing(false);
+    }
   };
 
   const publishMut = useMutation({
@@ -141,17 +189,42 @@ function WorkoutShareStudio() {
         photoPath = path;
       }
 
-      return publish({
-        data: {
-          sessionId,
-          caption: caption.trim() || null,
-          photoPath,
-          audience,
-          locationLabel: locationOn ? locationLabel.trim() || null : null,
-          includeCoach,
-          coach: includeCoach ? coach : null,
-        },
-      });
+      // Cleanup (Codex review finding 5): if a photo was just uploaded but
+      // publishing doesn't end up using it — the session turned out to
+      // already have a post, the publish call failed outright, or it threw
+      // — delete the orphaned upload rather than leaving it in Storage
+      // with nothing pointing at it. Never touches a photo that made it
+      // into a successfully published post.
+      const cleanupOrphanedUpload = async () => {
+        if (photoPath) {
+          await supabase.storage
+            .from(PHOTO_BUCKET)
+            .remove([photoPath])
+            .catch(() => {});
+        }
+      };
+
+      let result;
+      try {
+        result = await publish({
+          data: {
+            sessionId,
+            caption: caption.trim() || null,
+            photoPath,
+            audience,
+            locationLabel: locationOn ? locationLabel.trim() || null : null,
+            includeCoach,
+          },
+        });
+      } catch (e) {
+        await cleanupOrphanedUpload();
+        throw e;
+      }
+
+      if (result.status === "error" || result.status === "already_shared") {
+        await cleanupOrphanedUpload();
+      }
+      return result;
     },
     onSuccess: (result) => {
       if (result.status === "published" || result.status === "already_shared") {
@@ -177,9 +250,13 @@ function WorkoutShareStudio() {
 
   const loading = sourceQ.isLoading || existingQ.isLoading;
   const alreadyShared = existingQ.data?.status === "found";
+  const showComposer = !loading && Boolean(sourceQ.data) && !alreadyShared;
 
   return (
-    <div dir="rtl" className="mx-auto max-w-md space-y-4 py-4">
+    // pb-28 (+ the sticky bar's own safe-area padding below) keeps the last
+    // preview content clear of the fixed publish bar — otherwise the
+    // bottom of the live preview sits underneath it on short screens.
+    <div dir="rtl" className={`mx-auto max-w-md space-y-4 py-4 ${showComposer ? "pb-28" : ""}`}>
       <div aria-live="polite" role="status" className="sr-only">
         {announcement}
       </div>
@@ -205,7 +282,7 @@ function WorkoutShareStudio() {
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">כבר שיתפת את האימון הזה בקהילה.</p>
           {existingQ.data?.status === "found" && (
-            <WorkoutResultCard payload={existingQ.data.payload} />
+            <WorkoutResultCard payload={existingQ.data.payload} photoUrl={existingPhotoUrlQ.data} />
           )}
           <Button asChild size="lg" className="h-12 w-full text-base">
             <Link to="/community">עבור לקהילה</Link>
@@ -246,7 +323,7 @@ function WorkoutShareStudio() {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
               className="hidden"
               onChange={(e) => onPickPhoto(e.target.files?.[0] ?? null)}
             />
@@ -255,9 +332,14 @@ function WorkoutShareStudio() {
               variant="outline"
               size="sm"
               className="min-h-11"
+              disabled={photoProcessing}
               onClick={() => fileInputRef.current?.click()}
             >
-              <ImagePlus className="h-4 w-4" />
+              {photoProcessing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ImagePlus className="h-4 w-4" />
+              )}
               {photoFile ? "החלף תמונה" : "הוסף תמונה"}
             </Button>
           </div>
@@ -269,23 +351,21 @@ function WorkoutShareStudio() {
               checked={includeCoach}
               onChange={setIncludeCoach}
               disabled={!coach}
-              hint={!coach ? "התחקיר אינו זמין כרגע" : undefined}
+              hint={
+                !coach ? (debriefQ.isLoading ? "בודק זמינות…" : "התחקיר אינו זמין כרגע") : undefined
+              }
             />
 
             <fieldset className="space-y-1.5">
               <legend className="text-sm font-semibold">קהל</legend>
-              <div className="flex gap-2">
-                <AudienceOption
-                  label="כל קהילת Viora"
-                  selected={audience === "public"}
-                  onSelect={() => setAudience("public")}
-                />
-                <AudienceOption
-                  label="עוקבים בלבד"
-                  selected={audience === "followers"}
-                  onSelect={() => setAudience("followers")}
-                />
-              </div>
+              <RadioGroupPrimitive.Root
+                value={audience}
+                onValueChange={(v) => setAudience(v as WorkoutShareAudience)}
+                className="flex gap-2"
+              >
+                <AudienceOption value="public" label="כל קהילת Viora" />
+                <AudienceOption value="followers" label="עוקבים בלבד" />
+              </RadioGroupPrimitive.Root>
             </fieldset>
 
             <ToggleRow
@@ -314,16 +394,32 @@ function WorkoutShareStudio() {
               <WorkoutResultCard payload={payload} photoUrl={photoPreview ?? undefined} />
             )}
           </div>
-
-          <Button
-            size="lg"
-            className="h-14 w-full text-lg"
-            disabled={publishMut.isPending}
-            onClick={() => publishMut.mutate()}
-          >
-            {publishMut.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : "פרסם בקהילה"}
-          </Button>
         </>
+      )}
+
+      {/* Fixed bottom publish bar (Codex review finding 9) — a plain
+          block-flow button at the end of the page was pushed off-screen by
+          mobile browser chrome and, on some devices, sat under the
+          on-screen keyboard while the caption/location fields had focus.
+          Fixed + safe-area padding keeps it reachable at all times; the
+          content column above reserves matching bottom space (pb-28) so it
+          never overlaps the live preview. */}
+      {showComposer && (
+        <div
+          className="fixed inset-x-0 bottom-0 z-10 border-t border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
+          <div className="mx-auto max-w-md p-4">
+            <Button
+              size="lg"
+              className="h-14 w-full text-lg"
+              disabled={publishMut.isPending}
+              onClick={() => publishMut.mutate()}
+            >
+              {publishMut.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : "פרסם בקהילה"}
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -372,28 +468,13 @@ function ToggleRow({
   );
 }
 
-function AudienceOption({
-  label,
-  selected,
-  onSelect,
-}: {
-  label: string;
-  selected: boolean;
-  onSelect: () => void;
-}) {
+function AudienceOption({ value, label }: { value: WorkoutShareAudience; label: string }) {
   return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={selected}
-      onClick={onSelect}
-      className={`min-h-11 flex-1 rounded-xl border px-3 text-sm font-medium transition-colors motion-reduce:transition-none ${
-        selected
-          ? "border-primary bg-primary/10 text-primary"
-          : "border-border/60 text-muted-foreground"
-      }`}
+    <RadioGroupPrimitive.Item
+      value={value}
+      className="min-h-11 flex-1 rounded-xl border border-border/60 px-3 text-sm font-medium text-muted-foreground transition-colors motion-reduce:transition-none data-[state=checked]:border-primary data-[state=checked]:bg-primary/10 data-[state=checked]:text-primary"
     >
       {label}
-    </button>
+    </RadioGroupPrimitive.Item>
   );
 }

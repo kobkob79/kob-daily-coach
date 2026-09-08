@@ -93,6 +93,8 @@ export const WORKOUT_SHARE_CAPTION_MAX_LENGTH = 500;
 /** Paragraphs beyond this count are dropped, and each paragraph is capped — a caption-length sanity bound on AI-generated text, not a rewrite of it. */
 const COACH_MAX_PARAGRAPHS = 6;
 const COACH_MAX_PARAGRAPH_LENGTH = 600;
+/** Codex review finding 6: the feed summary is greeting + a couple of highlights, not the first paragraph. */
+const COACH_MAX_SUMMARY_HIGHLIGHTS = 2;
 
 function sanitizeCoachLine(line: string): string {
   // Strips control/formatting characters a raw provider string could carry
@@ -200,7 +202,16 @@ export function buildWorkoutSharePayload(
     const greeting = sanitizeCoachLine(coach.greeting);
     coachFull = greeting ? [greeting, ...paragraphs] : paragraphs;
     if (coachFull.length === 0) coachFull = null;
-    coachSummary = coachFull ? coachFull.slice(0, 2).join(" ") : null;
+
+    // The initial feed summary is greeting + up to 2 highlights — short,
+    // concrete points — not the first paragraph of the full narrative
+    // (which is what "קרא את התחקיר המלא" expands to separately).
+    const highlights = coach.highlights
+      .map(sanitizeCoachLine)
+      .filter(Boolean)
+      .slice(0, COACH_MAX_SUMMARY_HIGHLIGHTS);
+    const summaryParts = greeting ? [greeting, ...highlights] : highlights;
+    coachSummary = summaryParts.length > 0 ? summaryParts.join(" · ") : null;
   }
 
   const trimmedCaption = caption?.trim().slice(0, WORKOUT_SHARE_CAPTION_MAX_LENGTH) || null;

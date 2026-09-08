@@ -27,7 +27,7 @@ function DebriefPage() {
     queryFn: async () => {
       const profile = await fetchLifeProfile().catch(() => null);
       const ctx = await buildDebriefContext(sessionId, profile?.first_name ?? "");
-      return run({ data: ctx });
+      return run({ data: { ctx, sessionId } });
     },
   });
 

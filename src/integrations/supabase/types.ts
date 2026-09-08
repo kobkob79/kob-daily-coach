@@ -1486,6 +1486,56 @@ export type Database = {
           },
         ]
       }
+      workout_debriefs: {
+        Row: {
+          created_at: string
+          greeting: string
+          highlights: string[]
+          hydration: string | null
+          next_focus: string | null
+          nutrition: string | null
+          paragraphs: string[]
+          recovery: string | null
+          session_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          greeting: string
+          highlights?: string[]
+          hydration?: string | null
+          next_focus?: string | null
+          nutrition?: string | null
+          paragraphs?: string[]
+          recovery?: string | null
+          session_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          greeting?: string
+          highlights?: string[]
+          hydration?: string | null
+          next_focus?: string | null
+          nutrition?: string | null
+          paragraphs?: string[]
+          recovery?: string | null
+          session_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_debriefs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "workout_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workout_sessions: {
         Row: {
           created_at: string

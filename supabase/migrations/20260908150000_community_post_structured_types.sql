@@ -115,3 +115,130 @@ create policy "Read own, public, or followed-author posts"
 
 comment on table public.community_posts is
   'Public-within-app feed posts. author_display_name/author_avatar_path are point-in-time snapshots, not a live profile join. post_type=regular rows behave exactly as the pre-Phase-1 schema did.';
+
+-- SECURITY FIX (Codex review, VIORA-COMMUNITY-SHARE-STUDIO-PHASE-1):
+-- the INSERT/UPDATE policies above only ever checked ownership and photo-
+-- path prefix — nothing stopped an authenticated client from inserting a
+-- row with post_type='workout_result' and an arbitrary, self-authored
+-- payload directly, completely bypassing publishWorkoutShareResult()'s
+-- server-side metric computation and ownership/completion checks. A
+-- structured post can now ONLY be created through the trusted server path
+-- (community-workout-share.server.ts), which writes via `supabaseAdmin`
+-- (src/integrations/supabase/client.server.ts — an existing, already-
+-- configured service-role client already used the same way by
+-- health-sync.server.ts) after computing the payload itself from the
+-- caller's own RLS-scoped, ownership-verified session data. The
+-- service_role Postgres role bypasses RLS by design (Supabase sets
+-- BYPASSRLS on it), so no new policy is needed to let that path through —
+-- only the authenticated-role policies below need tightening.
+drop policy "Users create own community posts" on public.community_posts;
+create policy "Users create own regular community posts"
+  on public.community_posts for insert
+  to authenticated
+  with check (
+    (select auth.uid()) = user_id
+    and post_type = 'regular'
+    and (photo_path is null or photo_path like ((select auth.uid())::text || '/%'))
+    and (
+      author_avatar_path is null
+      or author_avatar_path like ((select auth.uid())::text || '/%')
+    )
+  );
+
+drop policy "Users update own community posts" on public.community_posts;
+create policy "Users update own regular community posts"
+  on public.community_posts for update
+  to authenticated
+  using ((select auth.uid()) = user_id and post_type = 'regular')
+  with check (
+    (select auth.uid()) = user_id
+    and post_type = 'regular'
+    and (photo_path is null or photo_path like ((select auth.uid())::text || '/%'))
+    and (
+      author_avatar_path is null
+      or author_avatar_path like ((select auth.uid())::text || '/%')
+    )
+  );
+
+comment on policy "Users create own regular community posts" on public.community_posts is
+  'Direct client inserts are only ever allowed for post_type=regular. A structured post (workout_result/meal_result/achievement) can only be written by the service-role publish path, which computes and verifies the payload server-side first.';
+
+-- SECURITY FIX (Codex review, finding 11): the original storage read policy
+-- granted every authenticated user read access to every file in the
+-- bucket, independent of the owning post's audience — so a followers-only
+-- post's photo (or a regular post's avatar snapshot) was effectively
+-- public to anyone who obtained its path, even though the post ROW itself
+-- was correctly hidden from non-followers. Gate photo reads on the same
+-- audience rule as the post row.
+drop policy "Authenticated users read community post photos" on storage.objects;
+
+create policy "Read community post photos per post audience"
+  on storage.objects for select
+  to authenticated
+  using (
+    bucket_id = 'community-post-photos'
+    and exists (
+      select 1
+      from public.community_posts p
+      where (p.photo_path = storage.objects.name or p.author_avatar_path = storage.objects.name)
+        and (
+          p.user_id = (select auth.uid())
+          or p.audience = 'public'
+          or (
+            p.audience = 'followers'
+            and exists (
+              select 1 from public.user_follows f
+              where f.follower_id = (select auth.uid()) and f.followed_id = p.user_id
+            )
+          )
+        )
+    )
+  );
+
+comment on policy "Read community post photos per post audience" on storage.objects is
+  'A photo is only readable when the community_posts row referencing it (by photo_path or author_avatar_path) is readable under the same public/followers/own-post audience rule as the post row itself — closes the gap where knowing a path alone was enough to read a followers-only photo.';
+
+-- Server-authored debrief snapshot (Codex review, findings 3+4): the
+-- Coach Debrief was previously only ever held in the client's React Query
+-- cache, so there was no authoritative server-side copy to trust — the
+-- Share Studio's publish request had to accept the debrief text FROM the
+-- client, which meant a user could submit fabricated "coach" text under
+-- Viora's own byline. This table gives the server something real to read
+-- instead: every successful AI debrief generation for a session is
+-- persisted here (upserted — the latest generation wins, matching what
+-- the debrief screen itself last showed the user), and both the Share
+-- Studio's live preview and the publish path read ONLY this row, never
+-- client-supplied narrative text. Regenerating a debrief is unaffected —
+-- this just also remembers the last successful result.
+create table public.workout_debriefs (
+  session_id uuid primary key references public.workout_sessions(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  greeting text not null,
+  paragraphs text[] not null default '{}',
+  highlights text[] not null default '{}',
+  next_focus text,
+  recovery text,
+  nutrition text,
+  hydration text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.workout_debriefs enable row level security;
+
+create policy "Users manage own workout debriefs"
+  on public.workout_debriefs for all
+  to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+
+revoke all on public.workout_debriefs from public, anon;
+grant select, insert, update, delete on public.workout_debriefs to authenticated;
+grant all on public.workout_debriefs to service_role;
+
+create trigger workout_debriefs_touch
+before update on public.workout_debriefs
+for each row execute function public.touch_updated_at();
+
+comment on table public.workout_debriefs is
+  'Server-authored snapshot of the most recent successful Coach Debrief generation for a session — the sole trusted source for any "coach" text shown in a Community share (Share Studio and the publish path both read this, never client-supplied narrative text).';

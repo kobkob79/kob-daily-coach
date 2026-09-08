@@ -32,6 +32,7 @@ import {
   type PostLikeState,
 } from "@/lib/community-likes";
 import type { WorkoutSharePayload } from "@/lib/community-workout-share";
+import { parseWorkoutSharePayload } from "@/lib/community-workout-share-validation";
 import { WorkoutResultCard } from "@/components/community/WorkoutResultCard";
 import { cn } from "@/lib/utils";
 
@@ -100,7 +101,19 @@ function CommunityPage() {
         .order("created_at", { ascending: false })
         .limit(FEED_LIMIT);
       if (error) throw error;
-      return (data ?? []) as unknown as CommunityPost[];
+      // Codex review finding 10: `payload` is jsonb — nothing stops a row
+      // from carrying a shape this build no longer produces (a future
+      // migration, a manual edit, a payload written before a field
+      // changed). Parse it before it's ever handed to WorkoutResultCard;
+      // a post whose payload doesn't parse falls back to no structured
+      // card rather than rendering garbage or throwing mid-feed.
+      return ((data ?? []) as { post_type: string; payload: unknown; [k: string]: unknown }[]).map(
+        (row) => ({
+          ...row,
+          payload:
+            row.post_type === "workout_result" ? parseWorkoutSharePayload(row.payload) : null,
+        }),
+      ) as unknown as CommunityPost[];
     },
   });
 

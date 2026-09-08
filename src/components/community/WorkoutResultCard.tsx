@@ -94,24 +94,28 @@ export function WorkoutResultCard({
         </dl>
 
         {payload.bestSet && (
-          <p className="flex items-center gap-1.5 text-sm font-medium">
+          <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
             <Trophy className="h-4 w-4 shrink-0 text-amber-500" aria-hidden="true" />
-            הסט הטוב ביותר: {payload.bestSet.exerciseName} — {payload.bestSet.weightKg} ק״ג ×{" "}
-            {payload.bestSet.reps}
+            <span className="min-w-0 truncate">
+              הסט הטוב ביותר: {payload.bestSet.exerciseName} —{" "}
+              <bdi dir="ltr">
+                {payload.bestSet.weightKg} ק״ג × {payload.bestSet.reps}
+              </bdi>
+            </span>
           </p>
         )}
 
         {payload.primaryMuscleGroups.length > 0 && (
-          <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+          <p className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
             <Dumbbell className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            {payload.primaryMuscleGroups.join(" · ")}
+            <span className="min-w-0 truncate">{payload.primaryMuscleGroups.join(" · ")}</span>
           </p>
         )}
 
         {payload.locationLabel && (
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <p className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
             <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            {payload.locationLabel}
+            <span className="min-w-0 truncate">{payload.locationLabel}</span>
           </p>
         )}
 
@@ -138,11 +142,10 @@ export function WorkoutResultCard({
             {breakdownOpen && (
               <ul id={breakdownId} className="mt-2 space-y-1.5 text-sm">
                 {payload.exercises.map((exercise, i) => (
-                  <li key={i}>
-                    <span className="font-medium">{exercise.name}</span>
+                  <li key={i} className="flex min-w-0 flex-wrap items-baseline gap-x-1">
+                    <span className="min-w-0 truncate font-medium">{exercise.name}</span>
                     <span className="text-muted-foreground">
-                      {" "}
-                      — {formatExerciseSetLine(exercise)}
+                      — <bdi dir="ltr">{formatExerciseSetLine(exercise)}</bdi>
                     </span>
                   </li>
                 ))}
@@ -157,20 +160,27 @@ export function WorkoutResultCard({
               <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
               תחקיר מאמן
             </p>
-            <p className="mt-1 text-sm leading-relaxed">
-              {debriefOpen && hasFullDebrief
-                ? payload.coachFull!.join(" ")
-                : (payload.coachSummary ?? payload.coachFull?.[0])}
-            </p>
-            {hasFullDebrief && !debriefOpen && (
+            {!debriefOpen && (
+              <p className="mt-1 text-sm leading-relaxed">
+                {payload.coachSummary ?? payload.coachFull?.[0]}
+              </p>
+            )}
+            {debriefOpen && hasFullDebrief && (
+              <div id={debriefId} className="mt-1 space-y-1.5 text-sm leading-relaxed">
+                {payload.coachFull!.map((paragraph, i) => (
+                  <p key={i}>{paragraph}</p>
+                ))}
+              </div>
+            )}
+            {hasFullDebrief && (
               <button
                 type="button"
-                onClick={() => setDebriefOpen(true)}
+                onClick={() => setDebriefOpen((v) => !v)}
                 aria-expanded={debriefOpen}
                 aria-controls={debriefId}
                 className="mt-1.5 min-h-11 text-sm font-semibold text-primary"
               >
-                קרא את התחקיר המלא
+                {debriefOpen ? "כווץ" : "קרא את התחקיר המלא"}
               </button>
             )}
           </div>
@@ -182,8 +192,10 @@ export function WorkoutResultCard({
 
 function WorkoutHeadline({ payload, onLight }: { payload: WorkoutSharePayload; onLight: boolean }) {
   return (
-    <div className={onLight ? "text-white" : "text-foreground"}>
-      <h3 className="text-lg font-extrabold leading-tight">{payload.workoutName ?? "אימון"}</h3>
+    <div className={cn("min-w-0", onLight ? "text-white" : "text-foreground")}>
+      <h3 className="line-clamp-2 text-lg font-extrabold leading-tight">
+        {payload.workoutName ?? "אימון"}
+      </h3>
       <p className={cn("text-xs", onLight ? "text-white/80" : "text-muted-foreground")}>
         {formatWorkoutDate(payload.dateISO)}
       </p>
@@ -193,9 +205,11 @@ function WorkoutHeadline({ payload, onLight }: { payload: WorkoutSharePayload; o
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</dt>
-      <dd className="text-base font-bold tabular-nums">{value}</dd>
+      <dd className="truncate text-base font-bold tabular-nums">
+        <bdi dir="ltr">{value}</bdi>
+      </dd>
     </div>
   );
 }

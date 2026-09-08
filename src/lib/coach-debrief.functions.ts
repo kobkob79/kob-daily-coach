@@ -65,8 +65,52 @@ export interface CoachDebrief {
 
 export const generateCoachDebrief = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => ({ ctx: (input ?? {}) as CoachDebriefContext }))
-  .handler(async ({ data }): Promise<CoachDebriefResult> => {
+  .inputValidator((input: unknown) => {
+    const raw = (input ?? {}) as { ctx?: unknown; sessionId?: unknown };
+    return {
+      ctx: (raw.ctx ?? {}) as CoachDebriefContext,
+      sessionId: typeof raw.sessionId === "string" ? raw.sessionId : "",
+    };
+  })
+  .handler(async ({ data, context }): Promise<CoachDebriefResult> => {
     const { generateCoachDebriefResult } = await import("./coach-debrief.server");
-    return generateCoachDebriefResult(data.ctx, { apiKey: process.env.OPENAI_API_KEY });
+    const result = await generateCoachDebriefResult(data.ctx, {
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+    if (result.status === "ok" && data.sessionId) {
+      const { saveWorkoutDebriefSnapshot } = await import("./coach-debrief-persistence.server");
+      await saveWorkoutDebriefSnapshot(
+        context.supabase,
+        String(context.userId),
+        data.sessionId,
+        result.debrief,
+      );
+    }
+    return result;
+  });
+
+export type WorkoutDebriefSnapshotResult =
+  { status: "found"; debrief: CoachDebrief } | { status: "not_found" };
+
+/**
+ * Read-only — never triggers AI generation. This is what Share Studio uses:
+ * opening it (including a direct URL visit or a refresh) never causes an
+ * OpenAI call, it only reads whatever the debrief screen already generated
+ * and saved for this session, if anything.
+ */
+export const getWorkoutDebriefSnapshot = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => {
+    const raw = (input ?? {}) as { sessionId?: unknown };
+    return { sessionId: typeof raw.sessionId === "string" ? raw.sessionId : "" };
+  })
+  .handler(async ({ data, context }): Promise<WorkoutDebriefSnapshotResult> => {
+    if (!data.sessionId) return { status: "not_found" };
+    const { loadWorkoutDebriefSnapshot } = await import("./coach-debrief-persistence.server");
+    const debrief = await loadWorkoutDebriefSnapshot(
+      context.supabase,
+      String(context.userId),
+      data.sessionId,
+    );
+    return debrief ? { status: "found", debrief } : { status: "not_found" };
   });

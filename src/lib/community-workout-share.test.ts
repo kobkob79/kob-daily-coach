@@ -215,8 +215,29 @@ test("coach section: only the AI narrative fields are accepted, sanitized and le
   const payload = buildWorkoutSharePayload(input);
   assert.ok(payload.coachFull);
   assert.equal(payload.coachFull![0], "אימון חזק היום!");
+  assert.deepEqual(payload.coachFull, ["אימון חזק היום!", "פסקה ראשונה.", "פסקה שנייה."]);
   assert.ok(payload.coachSummary);
-  assert.ok(payload.coachSummary!.length > 0);
+});
+
+test("coach summary (Codex review finding 6): greeting + up to 2 highlights, never the first paragraph", () => {
+  const input = baseInput([]);
+  input.coach = {
+    greeting: "אימון חזק היום!",
+    paragraphs: ["פסקה ראשונה שלא אמורה להופיע בתקציר.", "פסקה שנייה."],
+    highlights: ["שיא אישי בסקוואט", "נפח שיא", "רצף אימונים"],
+  };
+  const payload = buildWorkoutSharePayload(input);
+  assert.equal(payload.coachSummary, "אימון חזק היום! · שיא אישי בסקוואט · נפח שיא");
+  assert.doesNotMatch(payload.coachSummary!, /פסקה ראשונה/);
+  // The full narrative still has every paragraph, for the expanded view.
+  assert.equal(payload.coachFull!.length, 3);
+});
+
+test("coach summary with no highlights falls back to the greeting alone", () => {
+  const input = baseInput([]);
+  input.coach = { greeting: "אימון חזק היום!", paragraphs: ["פסקה."], highlights: [] };
+  const payload = buildWorkoutSharePayload(input);
+  assert.equal(payload.coachSummary, "אימון חזק היום!");
 });
 
 test("coach section absent when disabled/unavailable — never blocks the rest of the payload", () => {

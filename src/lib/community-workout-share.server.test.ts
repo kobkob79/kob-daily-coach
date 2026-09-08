@@ -2,10 +2,18 @@
  * Run with: node --test src/lib/community-workout-share.server.test.ts
  *
  * VIORA-COMMUNITY-SHARE-STUDIO-PHASE-1 — server-side publish authorization
- * and idempotency, exercised against a fake Supabase-shaped client (no
- * live database; RLS itself isn't executable here, so these tests instead
- * prove the *code* — not just the policy — enforces ownership scoping,
- * source-uniqueness handling, and never trusts client-provided ids).
+ * and idempotency, exercised against fake Supabase-shaped clients (no
+ * live database; RLS itself isn't executable here — see
+ * scripts/test-community-post-rls.sql for that — these tests instead prove
+ * the *code* enforces ownership scoping, source-uniqueness handling, photo
+ * ownership, and the server-authored coach-text source, never trusting
+ * client-provided ids/text).
+ *
+ * The service-role "admin" client used for the actual community_posts
+ * insert (Codex review finding 1) is passed in as an explicit
+ * `options.adminClient` override rather than the real `supabaseAdmin`
+ * singleton — same testability pattern as coach-debrief.server.ts's
+ * injectable apiKey/fetchImpl.
  */
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -15,9 +23,11 @@ import {
 } from "./community-workout-share.server.ts";
 import type { PublishWorkoutShareInput } from "./community-workout-share.functions.ts";
 
-const OWNER_ID = "user-owner";
-const OTHER_USER_ID = "user-other";
-const SESSION_ID = "session-1";
+const OWNER_ID = "11111111-1111-1111-1111-111111111111";
+const OTHER_USER_ID = "22222222-2222-2222-2222-222222222222";
+const SESSION_ID = "33333333-3333-3333-3333-333333333333";
+const OWN_PHOTO_PATH = `${OWNER_ID}/44444444-4444-4444-4444-444444444444.jpg`;
+const OTHER_USERS_PHOTO_PATH = `${OTHER_USER_ID}/55555555-5555-5555-5555-555555555555.jpg`;
 
 interface FakeSessionRow {
   id: string;
@@ -26,6 +36,18 @@ interface FakeSessionRow {
   started_at: string;
   duration_seconds: number | null;
   status: string;
+}
+
+interface FakeDebriefRow {
+  session_id: string;
+  user_id: string;
+  greeting: string;
+  paragraphs: string[];
+  highlights: string[];
+  next_focus: string | null;
+  recovery: string | null;
+  nutrition: string | null;
+  hydration: string | null;
 }
 
 interface FakeState {
@@ -42,6 +64,7 @@ interface FakeState {
     position: number;
   }>;
   exercises: Array<{ id: string; name: string; muscle_group: string | null }>;
+  debriefs: FakeDebriefRow[];
   posts: Array<{
     id: string;
     user_id: string;
@@ -53,9 +76,13 @@ interface FakeState {
   insertCalls: Array<Record<string, unknown>>;
 }
 
+function matches(row: unknown, filters: Record<string, unknown>): boolean {
+  return Object.entries(filters).every(([k, v]) => (row as Record<string, unknown>)[k] === v);
+}
+
 /** A tiny chainable stand-in for the subset of the Supabase query builder this module uses. */
 function makeFakeClient(state: FakeState) {
-  function sessionsQuery() {
+  function filteredSingleQuery<T>(rows: T[]) {
     const filters: Record<string, unknown> = {};
     const api = {
       select: () => api,
@@ -63,14 +90,10 @@ function makeFakeClient(state: FakeState) {
         filters[col] = val;
         return api;
       },
-      maybeSingle: async () => {
-        const row = state.sessions.find((s) =>
-          Object.entries(filters).every(
-            ([k, v]) => (s as unknown as Record<string, unknown>)[k] === v,
-          ),
-        );
-        return { data: row ?? null, error: null };
-      },
+      maybeSingle: async () => ({
+        data: rows.find((r) => matches(r, filters)) ?? null,
+        error: null,
+      }),
     };
     return api;
   }
@@ -83,16 +106,10 @@ function makeFakeClient(state: FakeState) {
         filters[col] = val;
         return api;
       },
-      order: async () => {
-        const rows = state.sets
-          .filter((s) =>
-            Object.entries(filters).every(
-              ([k, v]) => (s as unknown as Record<string, unknown>)[k] === v,
-            ),
-          )
-          .sort((a, b) => a.position - b.position);
-        return { data: rows, error: null };
-      },
+      order: async () => ({
+        data: state.sets.filter((s) => matches(s, filters)).sort((a, b) => a.position - b.position),
+        error: null,
+      }),
     };
     return api;
   }
@@ -125,14 +142,10 @@ function makeFakeClient(state: FakeState) {
         filters[col] = val;
         return api;
       },
-      maybeSingle: async () => {
-        const row = state.posts.find((p) =>
-          Object.entries(filters).every(
-            ([k, v]) => (p as unknown as Record<string, unknown>)[k] === v,
-          ),
-        );
-        return { data: row ?? null, error: null };
-      },
+      maybeSingle: async () => ({
+        data: state.posts.find((p) => matches(p, filters)) ?? null,
+        error: null,
+      }),
       insert: (values: Record<string, unknown>) => {
         state.insertCalls.push(values);
         return {
@@ -163,14 +176,14 @@ function makeFakeClient(state: FakeState) {
 
   return {
     from(table: string) {
-      if (table === "workout_sessions") return sessionsQuery();
+      if (table === "workout_sessions") return filteredSingleQuery(state.sessions);
       if (table === "workout_sets") return setsQuery();
       if (table === "exercises") return exercisesQuery();
       if (table === "profiles") return profilesQuery();
+      if (table === "workout_debriefs") return filteredSingleQuery(state.debriefs);
       if (table === "community_posts") return postsQuery();
       throw new Error(`unexpected table in test: ${table}`);
     },
-    // Minimal shape cast to SupabaseClient at the call site.
   };
 }
 
@@ -200,6 +213,7 @@ function baseState(overrides: Partial<FakeState> = {}): FakeState {
       },
     ],
     exercises: [{ id: "ex-1", name: "לחיצת חזה", muscle_group: "חזה" }],
+    debriefs: [],
     posts: [],
     insertBehavior: "success",
     insertCalls: [],
@@ -217,21 +231,21 @@ function basePublishInput(
     audience: "public",
     locationLabel: null,
     includeCoach: false,
-    coach: null,
     ...overrides,
   };
+}
+
+/** Runs publishWorkoutShareResult against the same fake state for both the RLS-scoped and admin clients. */
+function publish(state: FakeState, userId: string, input: PublishWorkoutShareInput) {
+  const client = makeFakeClient(state);
+  const admin = makeFakeClient(state);
+  return publishWorkoutShareResult(client as never, userId, input, { adminClient: admin as never });
 }
 
 describe("publishWorkoutShareResult — authorization", () => {
   test("a foreign session id (belongs to another user) is rejected as not found", async () => {
     const state = baseState();
-    const client = makeFakeClient(state);
-    // Same session id, but requested as a different user than its owner.
-    const result = await publishWorkoutShareResult(
-      client as never,
-      OTHER_USER_ID,
-      basePublishInput(),
-    );
+    const result = await publish(state, OTHER_USER_ID, basePublishInput());
     assert.equal(result.status, "error");
     assert.equal((result as { reason: string }).reason, "SESSION_NOT_FOUND");
     assert.equal(state.insertCalls.length, 0, "must never insert without a real owned session");
@@ -239,11 +253,10 @@ describe("publishWorkoutShareResult — authorization", () => {
 
   test("a genuinely unknown session id is rejected as not found", async () => {
     const state = baseState();
-    const client = makeFakeClient(state);
-    const result = await publishWorkoutShareResult(
-      client as never,
+    const result = await publish(
+      state,
       OWNER_ID,
-      basePublishInput({ sessionId: "does-not-exist" }),
+      basePublishInput({ sessionId: "44444444-4444-4444-4444-444444444444" }),
     );
     assert.equal(result.status, "error");
     assert.equal((result as { reason: string }).reason, "SESSION_NOT_FOUND");
@@ -252,16 +265,14 @@ describe("publishWorkoutShareResult — authorization", () => {
   test("an in-progress (not completed) session cannot be shared", async () => {
     const state = baseState();
     state.sessions[0]!.status = "in_progress";
-    const client = makeFakeClient(state);
-    const result = await publishWorkoutShareResult(client as never, OWNER_ID, basePublishInput());
+    const result = await publish(state, OWNER_ID, basePublishInput());
     assert.equal(result.status, "error");
     assert.equal((result as { reason: string }).reason, "SESSION_NOT_COMPLETED");
   });
 
   test("a valid owned, completed session publishes successfully", async () => {
     const state = baseState();
-    const client = makeFakeClient(state);
-    const result = await publishWorkoutShareResult(client as never, OWNER_ID, basePublishInput());
+    const result = await publish(state, OWNER_ID, basePublishInput());
     assert.equal(result.status, "published");
     assert.equal(state.insertCalls.length, 1);
     assert.equal(state.insertCalls[0]!.user_id, OWNER_ID);
@@ -274,9 +285,26 @@ describe("publishWorkoutShareResult — authorization", () => {
     // insert always uses the server-derived userId argument, not anything
     // from `data`.
     const state = baseState();
-    const client = makeFakeClient(state);
-    await publishWorkoutShareResult(client as never, OWNER_ID, basePublishInput());
+    await publish(state, OWNER_ID, basePublishInput());
     assert.equal(state.insertCalls[0]!.user_id, OWNER_ID);
+  });
+
+  test("a photoPath in another user's folder is rejected, even though the admin insert would otherwise bypass RLS", async () => {
+    const state = baseState();
+    const result = await publish(
+      state,
+      OWNER_ID,
+      basePublishInput({ photoPath: OTHER_USERS_PHOTO_PATH }),
+    );
+    assert.equal(result.status, "error");
+    assert.equal(state.insertCalls.length, 0, "must never insert with a spoofed photo path");
+  });
+
+  test("a photoPath in the caller's own folder is accepted", async () => {
+    const state = baseState();
+    const result = await publish(state, OWNER_ID, basePublishInput({ photoPath: OWN_PHOTO_PATH }));
+    assert.equal(result.status, "published");
+    assert.equal(state.insertCalls[0]!.photo_path, OWN_PHOTO_PATH);
   });
 });
 
@@ -290,16 +318,14 @@ describe("publishWorkoutShareResult — idempotency", () => {
       source_id: SESSION_ID,
       payload: { version: 1 },
     });
-    const client = makeFakeClient(state);
-    const result = await publishWorkoutShareResult(client as never, OWNER_ID, basePublishInput());
+    const result = await publish(state, OWNER_ID, basePublishInput());
     assert.equal(result.status, "already_shared");
     assert.equal((result as { postId: string }).postId, "existing-post");
   });
 
   test("a genuine, non-uniqueness insert failure surfaces as a safe, generic error", async () => {
     const state = baseState({ insertBehavior: "other_error" });
-    const client = makeFakeClient(state);
-    const result = await publishWorkoutShareResult(client as never, OWNER_ID, basePublishInput());
+    const result = await publish(state, OWNER_ID, basePublishInput());
     assert.equal(result.status, "error");
     assert.equal((result as { reason: string }).reason, "PERSISTENCE_UNAVAILABLE");
   });
@@ -343,18 +369,100 @@ describe("findExistingWorkoutShareResult — reopening an already-shared workout
   });
 });
 
+describe("publishWorkoutShareResult — coach text source (Codex review findings 3+4)", () => {
+  test("coach text comes from the server-authored snapshot, never from client input (there is no such input field)", async () => {
+    const state = baseState({
+      debriefs: [
+        {
+          session_id: SESSION_ID,
+          user_id: OWNER_ID,
+          greeting: "אימון חזק היום",
+          paragraphs: ["פסקה אמיתית מהשרת"],
+          highlights: ["שיא אמיתי"],
+          next_focus: null,
+          recovery: null,
+          nutrition: null,
+          hydration: null,
+        },
+      ],
+    });
+    const result = await publish(state, OWNER_ID, basePublishInput({ includeCoach: true }));
+    assert.equal(result.status, "published");
+    const payload = state.insertCalls[0]!.payload as { coachSummary: string | null };
+    assert.match(payload.coachSummary ?? "", /אימון חזק היום/);
+  });
+
+  test("includeCoach with no persisted snapshot yields no coach section, and never blocks publishing", async () => {
+    const state = baseState(); // no debriefs
+    const result = await publish(state, OWNER_ID, basePublishInput({ includeCoach: true }));
+    assert.equal(result.status, "published");
+    const payload = state.insertCalls[0]!.payload as { coachSummary: string | null };
+    assert.equal(payload.coachSummary, null);
+  });
+
+  test("another user's debrief snapshot for the same session id is never used", async () => {
+    const state = baseState({
+      debriefs: [
+        {
+          session_id: SESSION_ID,
+          user_id: OTHER_USER_ID,
+          greeting: "לא לך",
+          paragraphs: [],
+          highlights: [],
+          next_focus: null,
+          recovery: null,
+          nutrition: null,
+          hydration: null,
+        },
+      ],
+    });
+    const result = await publish(state, OWNER_ID, basePublishInput({ includeCoach: true }));
+    assert.equal(result.status, "published");
+    const payload = state.insertCalls[0]!.payload as { coachSummary: string | null };
+    assert.equal(payload.coachSummary, null);
+  });
+
+  test("includeCoach=false never reads the snapshot into the payload, even if one exists", async () => {
+    const state = baseState({
+      debriefs: [
+        {
+          session_id: SESSION_ID,
+          user_id: OWNER_ID,
+          greeting: "לא צריך להופיע",
+          paragraphs: [],
+          highlights: [],
+          next_focus: null,
+          recovery: null,
+          nutrition: null,
+          hydration: null,
+        },
+      ],
+    });
+    const result = await publish(state, OWNER_ID, basePublishInput({ includeCoach: false }));
+    assert.equal(result.status, "published");
+    const payload = state.insertCalls[0]!.payload as { coachSummary: string | null };
+    assert.equal(payload.coachSummary, null);
+  });
+});
+
 describe("publishWorkoutShareResult — the built payload never carries private/debug data", () => {
   test("the stored payload only has the documented WorkoutSharePayload fields", async () => {
-    const state = baseState();
-    const client = makeFakeClient(state);
-    await publishWorkoutShareResult(
-      client as never,
-      OWNER_ID,
-      basePublishInput({
-        includeCoach: true,
-        coach: { greeting: "כל הכבוד", paragraphs: ["פסקה"], highlights: ["שיא"] },
-      }),
-    );
+    const state = baseState({
+      debriefs: [
+        {
+          session_id: SESSION_ID,
+          user_id: OWNER_ID,
+          greeting: "כל הכבוד",
+          paragraphs: ["פסקה"],
+          highlights: ["שיא"],
+          next_focus: null,
+          recovery: null,
+          nutrition: null,
+          hydration: null,
+        },
+      ],
+    });
+    await publish(state, OWNER_ID, basePublishInput({ includeCoach: true }));
     const stored = state.insertCalls[0]!.payload as Record<string, unknown>;
     const keys = Object.keys(stored).sort();
     assert.deepEqual(keys, [
@@ -379,28 +487,17 @@ describe("publishWorkoutShareResult — the built payload never carries private/
 
   test("location is absent by default and only present when explicitly enabled", async () => {
     const state = baseState();
-    const client = makeFakeClient(state);
-    await publishWorkoutShareResult(client as never, OWNER_ID, basePublishInput());
+    await publish(state, OWNER_ID, basePublishInput());
     assert.equal(state.insertCalls[0]!.location_label, null);
 
     const state2 = baseState();
-    const client2 = makeFakeClient(state2);
-    await publishWorkoutShareResult(
-      client2 as never,
-      OWNER_ID,
-      basePublishInput({ locationLabel: "מכון הכושר שלי" }),
-    );
+    await publish(state2, OWNER_ID, basePublishInput({ locationLabel: "מכון הכושר שלי" }));
     assert.equal(state2.insertCalls[0]!.location_label, "מכון הכושר שלי");
   });
 
   test("audience is stored exactly as chosen — public or followers", async () => {
     const state = baseState();
-    const client = makeFakeClient(state);
-    await publishWorkoutShareResult(
-      client as never,
-      OWNER_ID,
-      basePublishInput({ audience: "followers" }),
-    );
+    await publish(state, OWNER_ID, basePublishInput({ audience: "followers" }));
     assert.equal(state.insertCalls[0]!.audience, "followers");
   });
 });
