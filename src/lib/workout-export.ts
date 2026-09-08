@@ -89,7 +89,7 @@ export async function buildWorkoutExportText(
       (prCount > 0 ? ` · שיאים אישיים: ${prCount} 🏆` : ""),
   );
 
-  if (debrief && !debrief.unavailable) {
+  if (debrief) {
     lines.push("");
     lines.push("חוות דעת של ויורה:");
     if (debrief.greeting) lines.push(debrief.greeting);
