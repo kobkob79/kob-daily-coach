@@ -64,6 +64,11 @@ import {
   formatPerformance,
   type PreviousPerformance,
 } from "@/components/workouts/PreviousVsCurrent";
+import {
+  buildSuggestionAriaLabel,
+  buildSuggestionMap,
+  type LoadSuggestion,
+} from "@/lib/next-load-suggestion";
 import { useSessionRestTimer } from "@/components/workouts/RestTimerProvider";
 import {
   PRCelebration,
@@ -191,6 +196,7 @@ function ExerciseDetailPage() {
     }
     return map;
   }, [prevQ.data]);
+  const suggestionBySetNumber = useMemo(() => buildSuggestionMap(prevQ.data ?? []), [prevQ.data]);
 
   const allSets = useMemo(() => setsQ.data ?? [], [setsQ.data]);
   const sets = useMemo(
@@ -660,6 +666,7 @@ function ExerciseDetailPage() {
             restActive={s.id === activeSet?.id && rest.active}
             onStartSet={() => rest.clear()}
             previous={previousBySetNumber.get(s.set_number) ?? null}
+            suggestion={suggestionBySetNumber.get(s.set_number) ?? null}
             onComplete={() => completeMut.mutate(s)}
             onUncomplete={() => uncompleteMut.mutate(s)}
             onDelete={() => removeMut.mutate(s.id)}
@@ -787,6 +794,7 @@ function SetRow({
   restActive,
   onStartSet,
   previous,
+  suggestion,
   onComplete,
   onUncomplete,
   onDelete,
@@ -805,6 +813,7 @@ function SetRow({
   /** Dismisses the rest timer immediately — "I'm starting this set now." */
   onStartSet: () => void;
   previous: PreviousPerformance | null;
+  suggestion: LoadSuggestion | null;
   onComplete: () => void;
   onUncomplete: () => void;
   onDelete: () => void;
@@ -1128,7 +1137,18 @@ function SetRow({
       )}
 
       {!done ? (
-        <p className="mt-0.5 px-1 text-[9px] text-muted-foreground">קודם: {prevText}</p>
+        <div className="mt-0.5 px-1">
+          <p className="text-[9px] text-muted-foreground">קודם: {prevText}</p>
+          {fieldSet === "strength" && !set.is_warmup && suggestion && (
+            <p
+              className="text-xs font-medium text-accent"
+              aria-label={buildSuggestionAriaLabel(suggestion)}
+              title={suggestion.reason}
+            >
+              <span aria-hidden="true">💡</span> {suggestion.weightKg} ק״ג × {suggestion.reps}
+            </p>
+          )}
+        </div>
       ) : !locked ? (
         <p className="mt-0.5 px-1 text-[9px] text-muted-foreground">
           הושלם · ניתן לעריכה עד סיום האימון
