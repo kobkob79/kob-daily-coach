@@ -64,7 +64,11 @@ import {
   formatPerformance,
   type PreviousPerformance,
 } from "@/components/workouts/PreviousVsCurrent";
-import { suggestNextLoad, type LoadSuggestion } from "@/lib/next-load-suggestion";
+import {
+  buildSuggestionAriaLabel,
+  buildSuggestionMap,
+  type LoadSuggestion,
+} from "@/lib/next-load-suggestion";
 import { useSessionRestTimer } from "@/components/workouts/RestTimerProvider";
 import {
   PRCelebration,
@@ -192,19 +196,7 @@ function ExerciseDetailPage() {
     }
     return map;
   }, [prevQ.data]);
-  const suggestionBySetNumber = useMemo(() => {
-    const map = new Map<number, LoadSuggestion>();
-    for (const s of prevQ.data ?? []) {
-      if (!s.completed_at || s.is_warmup) continue;
-      const suggestion = suggestNextLoad({
-        weightKg: s.weight_kg,
-        reps: s.reps,
-        rpe: s.rpe,
-      });
-      if (suggestion) map.set(s.set_number, suggestion);
-    }
-    return map;
-  }, [prevQ.data]);
+  const suggestionBySetNumber = useMemo(() => buildSuggestionMap(prevQ.data ?? []), [prevQ.data]);
 
   const allSets = useMemo(() => setsQ.data ?? [], [setsQ.data]);
   const sets = useMemo(
@@ -1148,8 +1140,12 @@ function SetRow({
         <div className="mt-0.5 px-1">
           <p className="text-[9px] text-muted-foreground">קודם: {prevText}</p>
           {fieldSet === "strength" && !set.is_warmup && suggestion && (
-            <p className="text-[9px] font-medium text-accent" title={suggestion.reason}>
-              💡 {suggestion.weightKg} ק״ג × {suggestion.reps}
+            <p
+              className="text-xs font-medium text-accent"
+              aria-label={buildSuggestionAriaLabel(suggestion)}
+              title={suggestion.reason}
+            >
+              <span aria-hidden="true">💡</span> {suggestion.weightKg} ק״ג × {suggestion.reps}
             </p>
           )}
         </div>
