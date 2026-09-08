@@ -5,7 +5,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronRight, Trash2 } from "lucide-react";
+import { ChevronRight, Sparkles, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getSession, getSessionSets, updateSet, deleteSet, type SessionSet } from "@/lib/workout-session";
 import { toast } from "sonner";
@@ -87,6 +87,22 @@ function SessionDetailPage() {
         <h1 className="text-lg font-bold">{session?.name ?? "אימון"}</h1>
         <div className="w-16" />
       </div>
+
+      <Button
+        asChild
+        size="lg"
+        variant="outline"
+        className="h-11 w-full gap-2 text-base"
+        aria-label="פתח את תחקיר המאמן עבור האימון הזה"
+      >
+        <Link
+          to="/workouts/session/$sessionId/debrief"
+          params={{ sessionId }}
+        >
+          <Sparkles className="h-5 w-5 text-primary" />
+          תחקיר המאמן
+        </Link>
+      </Button>
 
       {groups.length === 0 && (
         <p className="p-6 text-center text-sm text-muted-foreground">
