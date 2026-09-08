@@ -5,12 +5,12 @@
   "summary": {
     "totalExercises": 156,
     "completedExercises": 12,
-    "partialExercises": 8,
-    "notStartedExercises": 136,
+    "partialExercises": 9,
+    "notStartedExercises": 135,
     "coversComplete": 12,
     "infographicsComplete": 12,
-    "thumbnailsComplete": 20,
-    "demosComplete": 8,
+    "thumbnailsComplete": 21,
+    "demosComplete": 10,
     "overallProgressPercent": 7.6923076923076925
   },
   "nextRecommendedExercise": {
@@ -804,19 +804,18 @@
       "canonicalHebrewName": "הרחקת זרועות לצדדים עם משקולות יד",
       "englishName": "Dumbbell Lateral Raise",
       "muscleGroup": "shoulders",
-      "status": "NOT_STARTED",
+      "status": "PARTIAL",
       "media": {
         "hasCover": false,
         "hasInfographic": false,
-        "hasThumbnail": false,
-        "hasDemo": false
+        "hasThumbnail": true,
+        "hasDemo": true
       },
       "missingAssets": [
         "cover",
-        "infographic",
-        "thumbnail",
-        "demo"
-      ]
+        "infographic"
+      ],
+      "lastUpdated": "2026-09-08T11:17:53.659Z"
     },
     {
       "exerciseId": "f75ba874-8f92-4eb0-a3d2-3ee22dcdcc51",
@@ -1266,12 +1265,10 @@
         "hasCover": true,
         "hasInfographic": true,
         "hasThumbnail": true,
-        "hasDemo": false
+        "hasDemo": true
       },
-      "missingAssets": [
-        "demo"
-      ],
-      "lastUpdated": "2026-08-18T17:57:11.879Z"
+      "missingAssets": [],
+      "lastUpdated": "2026-09-08T11:00:08.480Z"
     },
     {
       "exerciseId": "35faeab5-4976-4b86-9590-2e2d44cba4b6",
