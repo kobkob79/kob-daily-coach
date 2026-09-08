@@ -18,6 +18,7 @@ import {
   type DebriefErrorCategory,
   logDebriefOutcome,
   mapAdvisorErrorCodeToDebriefCategory,
+  parseCoachDebriefResponseText,
   validateCoachDebriefShape,
 } from "./coach-debrief-safety";
 import type { CoachDebriefContext } from "./coach-debrief.functions";
@@ -165,12 +166,9 @@ export async function generateCoachDebriefResult(
     return fail("INVALID_RESPONSE");
   }
 
-  const match = extraction.text.match(/\{[\s\S]*\}/);
-  if (!match) return fail("INVALID_RESPONSE");
-
   let parsed: unknown;
   try {
-    parsed = JSON.parse(match[0]);
+    parsed = parseCoachDebriefResponseText(extraction.text);
   } catch {
     return fail("INVALID_RESPONSE");
   }

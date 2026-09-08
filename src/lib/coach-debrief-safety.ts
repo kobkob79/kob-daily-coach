@@ -139,6 +139,20 @@ export const COACH_DEBRIEF_JSON_SCHEMA = {
   additionalProperties: false,
 } as const;
 
+/**
+ * Parses model output that must BE the complete JSON response, nothing
+ * else — never searches for an object embedded in surrounding text. Text
+ * before or after the object, a Markdown code fence, or two concatenated
+ * JSON values all make `JSON.parse` throw on the full trimmed string, the
+ * same as genuinely malformed JSON. The caller treats any throw here as
+ * INVALID_RESPONSE. Exported (rather than inlined at the call site) so
+ * this exact parsing contract — reject anything but a single complete
+ * JSON value — is unit-testable without a live OpenAI response.
+ */
+export function parseCoachDebriefResponseText(text: string): unknown {
+  return JSON.parse(text.trim());
+}
+
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
@@ -147,15 +161,25 @@ function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === "string";
 }
 
+/** The only keys COACH_DEBRIEF_JSON_SCHEMA allows — kept in one place so the
+ *  runtime check below can never silently drift from the schema's own
+ *  `properties` list. */
+const COACH_DEBRIEF_ALLOWED_KEYS: ReadonlySet<string> = new Set(
+  Object.keys(COACH_DEBRIEF_JSON_SCHEMA.properties),
+);
+
 /**
  * Structural mirror of COACH_DEBRIEF_JSON_SCHEMA — every property/required
- * field declared there has exactly one corresponding check below. Returns
- * null (→ INVALID_RESPONSE) for a refusal, empty output, or any shape that
- * doesn't match, rather than silently defaulting missing fields.
+ * field declared there has exactly one corresponding check below, including
+ * the schema's `additionalProperties: false`. Returns null (→
+ * INVALID_RESPONSE) for a refusal, empty output, an unknown property, or
+ * any shape that doesn't match, rather than silently defaulting or
+ * forwarding fields the schema never approved.
  */
 export function validateCoachDebriefShape(value: unknown): CoachDebrief | null {
   if (!value || typeof value !== "object") return null;
   const v = value as Record<string, unknown>;
+  if (Object.keys(v).some((key) => !COACH_DEBRIEF_ALLOWED_KEYS.has(key))) return null;
   if (typeof v.greeting !== "string" || !v.greeting.trim()) return null;
   if (!isStringArray(v.paragraphs)) return null;
   if (!isStringArray(v.highlights)) return null;

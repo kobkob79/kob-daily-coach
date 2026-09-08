@@ -51,14 +51,17 @@ function DebriefPage() {
         )}
 
         {(q.isError || failure) && (
-          <div className="space-y-2 py-3">
+          <div className="space-y-2 py-3" role="alert">
             <p className="text-sm text-muted-foreground">
               לא הצלחתי להפיק תחקיר כרגע. הנתונים של האימון נשמרו במלואם.
             </p>
             {failure && (
-              <p dir="ltr" className="text-left text-xs text-muted-foreground/70">
-                {failure.message} · {failure.correlationId}
-              </p>
+              <div className="space-y-1 text-xs text-muted-foreground/70">
+                <p>{failure.message}</p>
+                <p>
+                  מזהה תקלה: <bdi dir="ltr">{failure.correlationId}</bdi>
+                </p>
+              </div>
             )}
             <Button size="sm" variant="outline" onClick={() => q.refetch()}>
               נסה שוב

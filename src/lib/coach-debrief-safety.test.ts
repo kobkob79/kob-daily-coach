@@ -22,6 +22,7 @@ import {
   DEBRIEF_SAFE_MESSAGES,
   type DebriefErrorCategory,
   mapAdvisorErrorCodeToDebriefCategory,
+  parseCoachDebriefResponseText,
   validateCoachDebriefShape,
 } from "./coach-debrief-safety.ts";
 import type { AdvisorCoreErrorCode } from "./advisor-core/response.ts";
@@ -193,5 +194,69 @@ describe("validateCoachDebriefShape — schema/validator parity", () => {
     assert.ok(result);
     assert.equal(result!.paragraphs.length, 5);
     assert.equal(result!.highlights.length, 3);
+  });
+
+  // VIORA-COACH-DEBRIEF-SAFE-RECOVERY-003 — COACH_DEBRIEF_JSON_SCHEMA
+  // declares additionalProperties: false; the runtime validator must
+  // reject any response carrying a key outside the seven approved ones,
+  // not just validate the ones it recognizes.
+  describe("rejects additional properties (schema declares additionalProperties: false)", () => {
+    test("a valid response containing exactly the seven approved properties is accepted", () => {
+      assert.deepEqual(
+        Object.keys(VALID_DEBRIEF).sort(),
+        [...COACH_DEBRIEF_JSON_SCHEMA.required].sort(),
+      );
+      assert.notEqual(validateCoachDebriefShape(VALID_DEBRIEF), null);
+    });
+
+    test("one unknown top-level property is rejected, even alongside all seven valid fields", () => {
+      const withExtra = { ...VALID_DEBRIEF, note: "a harmless-looking extra field" };
+      assert.equal(validateCoachDebriefShape(withExtra), null);
+    });
+
+    test("a provider/raw-error-like unknown property is rejected", () => {
+      const withProviderLeak = {
+        ...VALID_DEBRIEF,
+        error: "OpenAI API error: invalid_api_key (sk-live-abc123...)",
+      };
+      assert.equal(validateCoachDebriefShape(withProviderLeak), null);
+      const withRawField = {
+        ...VALID_DEBRIEF,
+        raw: { status: 500, message: "internal provider failure" },
+      };
+      assert.equal(validateCoachDebriefShape(withRawField), null);
+    });
+  });
+});
+
+describe("parseCoachDebriefResponseText — the complete output only, never a search", () => {
+  const validJson = JSON.stringify(VALID_DEBRIEF);
+
+  test("valid JSON only (optionally padded with whitespace) is accepted", () => {
+    assert.deepEqual(parseCoachDebriefResponseText(validJson), VALID_DEBRIEF);
+    assert.deepEqual(parseCoachDebriefResponseText(`\n  ${validJson}\n`), VALID_DEBRIEF);
+  });
+
+  test("text before valid JSON is rejected", () => {
+    assert.throws(() => parseCoachDebriefResponseText(`Here you go:\n${validJson}`));
+  });
+
+  test("text after valid JSON is rejected", () => {
+    assert.throws(() => parseCoachDebriefResponseText(`${validJson}\nHope that helps!`));
+  });
+
+  test("Markdown-fenced JSON is rejected", () => {
+    assert.throws(() => parseCoachDebriefResponseText("```json\n" + validJson + "\n```"));
+    assert.throws(() => parseCoachDebriefResponseText("```\n" + validJson + "\n```"));
+  });
+
+  test("two concatenated JSON objects are rejected", () => {
+    assert.throws(() => parseCoachDebriefResponseText(`${validJson}${validJson}`));
+    assert.throws(() => parseCoachDebriefResponseText(`${validJson} ${validJson}`));
+  });
+
+  test("malformed JSON is rejected", () => {
+    assert.throws(() => parseCoachDebriefResponseText("{not valid json"));
+    assert.throws(() => parseCoachDebriefResponseText(""));
   });
 });
