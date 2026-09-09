@@ -14,6 +14,138 @@ export type Database = {
   }
   public: {
     Tables: {
+      health_connections: {
+        Row: {
+          user_id: string
+          provider: "health_connect" | "garmin" | "apple_health" | "manual"
+          status: "connected" | "disconnected"
+          connected_at: string
+          disconnected_at: string | null
+          last_synced_at: string | null
+          last_sync_error: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          provider: "health_connect" | "garmin" | "apple_health" | "manual"
+          status?: "connected" | "disconnected"
+          connected_at?: string
+          disconnected_at?: string | null
+          last_synced_at?: string | null
+          last_sync_error?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          provider?: "health_connect" | "garmin" | "apple_health" | "manual"
+          status?: "connected" | "disconnected"
+          connected_at?: string
+          disconnected_at?: string | null
+          last_synced_at?: string | null
+          last_sync_error?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      health_metrics: {
+        Row: {
+          id: string
+          user_id: string
+          source: "health_connect" | "garmin" | "apple_health" | "manual"
+          metric_type: "heart_rate_resting" | "sleep_minutes" | "steps" | "calories_burned" | "workout_minutes"
+          value: number
+          unit: string
+          recorded_at: string
+          biological_day: string
+          raw: Json | null
+          created_at: string
+          external_id: string | null
+          raw_source: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          source: "health_connect" | "garmin" | "apple_health" | "manual"
+          metric_type: "heart_rate_resting" | "sleep_minutes" | "steps" | "calories_burned" | "workout_minutes"
+          value: number
+          unit: string
+          recorded_at: string
+          biological_day: string
+          raw?: Json | null
+          created_at?: string
+          external_id?: string | null
+          raw_source?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          source?: "health_connect" | "garmin" | "apple_health" | "manual"
+          metric_type?: "heart_rate_resting" | "sleep_minutes" | "steps" | "calories_burned" | "workout_minutes"
+          value?: number
+          unit?: string
+          recorded_at?: string
+          biological_day?: string
+          raw?: Json | null
+          created_at?: string
+          external_id?: string | null
+          raw_source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_metrics_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      health_sync_preferences: {
+        Row: {
+          user_id: string
+          sync_enabled: boolean
+          consented_at: string | null
+          revoked_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          sync_enabled?: boolean
+          consented_at?: string | null
+          revoked_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          sync_enabled?: boolean
+          consented_at?: string | null
+          revoked_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_sync_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       about_media: {
         Row: {
           alt_text: string | null
@@ -515,32 +647,50 @@ export type Database = {
       }
       community_posts: {
         Row: {
+          audience: string
           author_avatar_path: string | null
           author_display_name: string
           body: string
           created_at: string
           id: string
+          location_label: string | null
+          payload: Json | null
           photo_path: string | null
+          post_type: string
+          source_id: string | null
+          source_type: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          audience?: string
           author_avatar_path?: string | null
           author_display_name: string
           body?: string
           created_at?: string
           id?: string
+          location_label?: string | null
+          payload?: Json | null
           photo_path?: string | null
+          post_type?: string
+          source_id?: string | null
+          source_type?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          audience?: string
           author_avatar_path?: string | null
           author_display_name?: string
           body?: string
           created_at?: string
           id?: string
+          location_label?: string | null
+          payload?: Json | null
           photo_path?: string | null
+          post_type?: string
+          source_id?: string | null
+          source_type?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -1464,6 +1614,56 @@ export type Database = {
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "workout_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workout_debriefs: {
+        Row: {
+          created_at: string
+          greeting: string
+          highlights: string[]
+          hydration: string | null
+          next_focus: string | null
+          nutrition: string | null
+          paragraphs: string[]
+          recovery: string | null
+          session_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          greeting: string
+          highlights?: string[]
+          hydration?: string | null
+          next_focus?: string | null
+          nutrition?: string | null
+          paragraphs?: string[]
+          recovery?: string | null
+          session_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          greeting?: string
+          highlights?: string[]
+          hydration?: string | null
+          next_focus?: string | null
+          nutrition?: string | null
+          paragraphs?: string[]
+          recovery?: string | null
+          session_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_debriefs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "workout_sessions"
             referencedColumns: ["id"]
           },
         ]

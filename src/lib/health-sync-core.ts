@@ -49,20 +49,30 @@ function nonBlankString(value: unknown, field: string): string {
 }
 
 function finiteNumber(value: unknown, field: string, metricType: string): number {
-  const n = Number(value);
-  if (!Number.isFinite(n) || n < 0) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
     throw new HealthSyncValidationError(`${field} must be a positive finite number`);
   }
-  if (
-    metricType === "steps" ||
-    metricType === "workout_minutes" ||
-    metricType === "sleep_minutes" ||
-    metricType === "heart_rate_resting"
-  ) {
-    if (!Number.isInteger(n)) {
-      throw new HealthSyncValidationError(`${field} must be an integer for ${metricType}`);
+
+  const n = value;
+
+  if (metricType === "steps") {
+    if (!Number.isInteger(n) || n > 250000) {
+      throw new HealthSyncValidationError(`${field} must be an integer between 0-250000 for steps`);
+    }
+  } else if (metricType === "sleep_minutes" || metricType === "workout_minutes") {
+    if (!Number.isInteger(n) || n > 1440) {
+      throw new HealthSyncValidationError(`${field} must be an integer between 0-1440 for minutes`);
+    }
+  } else if (metricType === "heart_rate_resting") {
+    if (!Number.isInteger(n) || n < 20 || n > 300) {
+      throw new HealthSyncValidationError(`${field} must be an integer between 20-300 for resting heart rate`);
+    }
+  } else if (metricType === "calories_burned") {
+    if (n > 50000) {
+      throw new HealthSyncValidationError(`${field} must be between 0-50000 for calories`);
     }
   }
+
   return n;
 }
 
@@ -73,6 +83,40 @@ function isoTimestamp(value: unknown, field: string): string {
       `${field} must be a valid RFC3339 timestamp with offset or Z`,
     );
   }
+
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) {
+    throw new HealthSyncValidationError(`${field} is semantically invalid`);
+  }
+
+  const localDateStr = s.slice(0, 10);
+  const localYear = parseInt(s.slice(0, 4), 10);
+  const localMonth = parseInt(s.slice(5, 7), 10);
+  const localDay = parseInt(s.slice(8, 10), 10);
+  const localHour = parseInt(s.slice(11, 13), 10);
+  const localMin = parseInt(s.slice(14, 16), 10);
+  const localSec = parseInt(s.slice(17, 19), 10);
+
+  if (localHour > 23 || localMin > 59 || localSec > 59) {
+    throw new HealthSyncValidationError(`${field} contains invalid time`);
+  }
+
+  const daysInMonth = new Date(localYear, localMonth, 0).getDate();
+  if (localMonth < 1 || localMonth > 12 || localDay < 1 || localDay > daysInMonth) {
+    throw new HealthSyncValidationError(`${field} contains invalid date`);
+  }
+
+  if (!s.endsWith("Z")) {
+     const match = s.match(/([+-])(\d{2}):(\d{2})$/);
+     if (match) {
+        const oh = parseInt(match[2], 10);
+        const om = parseInt(match[3], 10);
+        if (oh > 14 || om > 59) {
+           throw new HealthSyncValidationError(`${field} contains invalid offset`);
+        }
+     }
+  }
+
   return s;
 }
 
@@ -91,6 +135,9 @@ function parseSample(raw: unknown, index: number): HealthSyncSample {
     throw new HealthSyncValidationError(`samples[${index}] must be an object`);
   }
   const r = raw as Record<string, unknown>;
+  if ("biologicalDay" in r) {
+    throw new HealthSyncValidationError(`samples[${index}].biologicalDay cannot be provided by the client`);
+  }
   const metricType = nonBlankString(r.metricType, `samples[${index}].metricType`);
   if (!(HEALTH_METRIC_TYPES as readonly string[]).includes(metricType)) {
     throw new HealthSyncValidationError(
