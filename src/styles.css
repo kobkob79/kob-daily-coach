@@ -310,4 +310,13 @@ html {
 .animate-breathe    { animation: breathe-glow 4.5s ease-in-out infinite; }
 .animate-particle   { animation: particle-float var(--dur, 6s) ease-out infinite; animation-delay: var(--delay, 0s); }
 
-
+/* Dialogs that must stay reachable when the on-screen keyboard opens (e.g.
+   the routine/template editor): 85vh is a safety net for browsers that don't
+   parse dvh at all (the whole declaration is then ignored, leaving vh in
+   effect); 85dvh follows the visual viewport when a real dvh-aware browser
+   resizes it for the keyboard. Two Tailwind max-h-[...] utilities on the same
+   element don't reliably cascade in this order, so this needs a real rule. */
+.dialog-max-height-safe {
+  max-height: 85vh;
+  max-height: 85dvh;
+}

@@ -144,9 +144,13 @@ export const getAdvisorConversationMessagesServer = createServerFn({ method: "GE
             state: value.allowed ? ("available" as const) : ("exhausted" as const),
             resetsAt: value.resets_at,
           }));
-      const { buildAdvisorContextForUser, createSupabaseAdvisorContextDataSource } =
+      const { safeConversationContextFlags, createSupabaseAdvisorContextDataSource } =
         await import("@/lib/advisor-core/server/advisor-context-bridge.server");
-      const contextResult = await buildAdvisorContextForUser(
+      // Personal context is an enrichment, not a precondition: conversation
+      // history must load even when building it fails for an unrelated
+      // reason. safeConversationContextFlags never throws, so this can
+      // never turn into "couldn't load conversations".
+      const contextFlags = await safeConversationContextFlags(
         userId,
         conversation.advisor_id,
         createSupabaseAdvisorContextDataSource(context.supabase),
@@ -171,7 +175,7 @@ export const getAdvisorConversationMessagesServer = createServerFn({ method: "GE
             data.cursor,
             data.limit ?? 50,
           ),
-          contextFlags: contextResult.contextFlags,
+          contextFlags,
           quota,
         },
       };

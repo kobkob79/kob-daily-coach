@@ -30,6 +30,27 @@ export const Route = createFileRoute("/_authenticated/workout-templates")({
   component: TemplatesPage,
 });
 
+/**
+ * Report a failed mutation without letting a raw Supabase/PostgREST error
+ * message (which can contain table, column, policy or query details) reach
+ * the UI. Only the error's `name` (a generic class like "PostgrestError")
+ * is logged — never `.message`, `.details` or `.hint`.
+ */
+function logMutationFailure(operation: string, error: unknown) {
+  const name = error instanceof Error ? error.name : "UnknownError";
+  console.error(`[workout-templates] ${operation} failed`, { operation, name });
+}
+
+/**
+ * None of the Supabase calls below ever had a request timeout: a hung
+ * request on a flaky mobile connection left the mutation's `isPending`
+ * (and every button gated by it — Add Exercise, delete, reorder) stuck
+ * `true` forever, indistinguishable from a frozen screen, with no keyboard
+ * involvement. Aborting after this long guarantees the mutation always
+ * settles, restoring the buttons and surfacing the safe error toast above.
+ */
+const REQUEST_TIMEOUT_MS = 15_000;
+
 type Template = { id: string; name: string; notes: string | null };
 type TExercise = {
   id: string;
@@ -243,7 +264,7 @@ function StartButton({
       });
     },
     onError: (e: Error) => {
-      console.error("[workout-templates] start failed", e);
+      logMutationFailure("start", e);
       toast.error(e instanceof ActiveSessionConflictError ? "יש לך אימון פעיל" : "לא הצלחנו להתחיל את האימון");
     },
   });
@@ -307,20 +328,28 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
         .from("exercises")
         .select("muscle_group")
         .eq("id", exerciseId)
+        .abortSignal(AbortSignal.timeout(REQUEST_TIMEOUT_MS))
         .maybeSingle();
       const fieldSet = fieldSetForExercise(ex?.muscle_group ?? null);
       const nextPos = (rowsQ.data?.length ?? 0);
-      const { error } = await supabase.from("workout_template_exercises").insert({
-        user_id: u.user.id,
-        template_id: templateId,
-        exercise_id: exerciseId,
-        position: nextPos,
-        target_sets: fieldSet === "cardio" ? 1 : 3,
-        target_duration_seconds: fieldSet === "cardio" ? 30 * 60 : fieldSet !== "strength" ? 45 : null,
-      });
+      const { error } = await supabase
+        .from("workout_template_exercises")
+        .insert({
+          user_id: u.user.id,
+          template_id: templateId,
+          exercise_id: exerciseId,
+          position: nextPos,
+          target_sets: fieldSet === "cardio" ? 1 : 3,
+          target_duration_seconds: fieldSet === "cardio" ? 30 * 60 : fieldSet !== "strength" ? 45 : null,
+        })
+        .abortSignal(AbortSignal.timeout(REQUEST_TIMEOUT_MS));
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workout_template_exercises", templateId] }),
+    onError: (e: Error) => {
+      logMutationFailure("addExercise", e);
+      toast.error("לא הצלחנו להוסיף את התרגיל. נסה שוב.");
+    },
   });
 
   const patchRow = useMutation({
@@ -330,38 +359,61 @@ function TemplateEditor({ templateId, onClose }: { templateId: string; onClose: 
       const { error } = await supabase
         .from("workout_template_exercises")
         .update(rest as never)
-        .eq("id", id);
+        .eq("id", id)
+        .abortSignal(AbortSignal.timeout(REQUEST_TIMEOUT_MS));
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workout_template_exercises", templateId] }),
+    onError: (e: Error) => {
+      logMutationFailure("patchRow", e);
+      toast.error("לא הצלחנו לשמור את השינוי. נסה שוב.");
+    },
   });
 
   const removeRow = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("workout_template_exercises").delete().eq("id", id);
+      const { error } = await supabase
+        .from("workout_template_exercises")
+        .delete()
+        .eq("id", id)
+        .abortSignal(AbortSignal.timeout(REQUEST_TIMEOUT_MS));
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workout_template_exercises", templateId] }),
+    onError: (e: Error) => {
+      logMutationFailure("removeRow", e);
+      toast.error("לא הצלחנו להסיר את התרגיל. נסה שוב.");
+    },
   });
 
   const swap = useMutation({
     mutationFn: async ({ a, b }: { a: TExercise; b: TExercise }) => {
       // swap positions
       const { error: e1 } = await supabase
-        .from("workout_template_exercises").update({ position: b.position }).eq("id", a.id);
+        .from("workout_template_exercises")
+        .update({ position: b.position })
+        .eq("id", a.id)
+        .abortSignal(AbortSignal.timeout(REQUEST_TIMEOUT_MS));
       if (e1) throw e1;
       const { error: e2 } = await supabase
-        .from("workout_template_exercises").update({ position: a.position }).eq("id", b.id);
+        .from("workout_template_exercises")
+        .update({ position: a.position })
+        .eq("id", b.id)
+        .abortSignal(AbortSignal.timeout(REQUEST_TIMEOUT_MS));
       if (e2) throw e2;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workout_template_exercises", templateId] }),
+    onError: (e: Error) => {
+      logMutationFailure("swap", e);
+      toast.error("לא הצלחנו לשנות את סדר התרגילים. נסה שוב.");
+    },
   });
 
   const [pickerVisible, setPickerVisible] = useState<boolean>(false);
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-lg overflow-y-auto dialog-max-height-safe">
         <DialogHeader>
           <DialogTitle>{tplQ.data?.name ?? "…"}</DialogTitle>
         </DialogHeader>

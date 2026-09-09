@@ -26,6 +26,12 @@ export interface AdvisorContextSourceData {
   healthMetrics: SafeHealthMetricsSummary | null;
   timelineInput: UnifiedTimelineInput;
   conflicts: AdvisorContextKey[];
+  /** Names of sources that failed to load and were silently degraded to
+   *  "not known" rather than aborting the whole load. Empty/absent means
+   *  every source loaded cleanly. See buildAdvisorContextForUser, which
+   *  turns a non-empty list into an explicit contextSharing:"limited" flag
+   *  so the UI never claims full sharing while data is actually missing. */
+  failedSources?: readonly string[];
 }
 
 export interface AdvisorContextDataSource {
@@ -99,7 +105,43 @@ export async function buildAdvisorContextForUser(
     sourceCount: new Set(Object.values(context.facts).flatMap((value) => value?.sources ?? []))
       .size,
   });
-  return { context, contextFlags: safeFlags(context) };
+  const flags = safeFlags(context);
+  // A source that failed to load is not the same as a user with no data:
+  // the sharing state must say "limited", not silently look like full,
+  // successful sharing, whenever one or more sources were degraded.
+  const contextFlags =
+    data.failedSources && data.failedSources.length > 0
+      ? [...flags, { key: "contextSharing" as const, state: "limited" as const }]
+      : flags;
+  return { context, contextFlags };
+}
+
+/**
+ * The one place that decides what a conversation load shows for context
+ * when building it goes wrong. Personal context is an enrichment, never a
+ * precondition: this always resolves (never throws), so a caller can use
+ * its result unconditionally instead of needing its own try/catch around
+ * buildAdvisorContextForUser.
+ *
+ * Used by both the conversation-load path (getAdvisorConversationMessagesServer)
+ * and directly by this module's own tests, so the two can never drift apart.
+ */
+export async function safeConversationContextFlags(
+  userId: string,
+  advisorId: ContextAdvisorId,
+  source: AdvisorContextDataSource,
+  logError: (operation: string, errorName: string) => void = (operation, errorName) =>
+    console.error(`[Viora Advisor Context] ${operation} failed`, { operation, errorName }),
+): Promise<readonly AdvisorContextFlag[]> {
+  try {
+    const result = await buildAdvisorContextForUser(userId, advisorId, source);
+    return result.contextFlags;
+  } catch (error) {
+    // Never log the raw error (it may be a raw Supabase/PostgREST error
+    // carrying table/column/query detail) — only its generic class name.
+    logError("conversation_context_build", error instanceof Error ? error.name : "UnknownError");
+    return [{ key: "contextSharing", state: "limited" }];
+  }
 }
 
 function trend(values: Array<{ value: number; date: string }>) {
@@ -138,7 +180,16 @@ export function createSupabaseAdvisorContextDataSource(
         .select("context_sharing_enabled")
         .eq("user_id", userId)
         .maybeSingle();
-      if (result.error) throw new Error("ADVISOR_CONTEXT_CONSENT_UNAVAILABLE");
+      if (result.error) {
+        // Fail closed: if we can't confirm consent, treat it as not granted
+        // rather than throwing and blocking conversation/message loading.
+        // Log a sanitized error category only — never the raw PostgREST
+        // message, which can describe tables, columns or policies.
+        console.warn("[Viora Advisor Context] consent check failed; treating as not granted", {
+          errorCode: result.error.code ?? "unknown",
+        });
+        return false;
+      }
       return Boolean(
         (result.data as { context_sharing_enabled?: boolean } | null)?.context_sharing_enabled,
       );
@@ -270,25 +321,40 @@ export function createSupabaseAdvisorContextDataSource(
           .gte("recorded_at", sinceIso)
           .order("recorded_at", { ascending: false }),
       ]);
-      const results = [
-        profileResult,
-        goalsResult,
-        bioDayResult,
-        shiftResult,
-        assignmentsResult,
-        nutritionResult,
-        eventsResult,
-        instancesResult,
-        sessionsResult,
-        workoutsResult,
-        healthResult,
-        medicalResult,
-        weightsResult,
-        measurementsResult,
-        labResultsResult,
-        healthMetricsResult,
+      // Each source below is optional context, not a load-bearing dependency:
+      // every consumer already treats a null/missing result the same as "not
+      // known" (see the `?? []` / `? … : null` handling throughout this
+      // function and the null-safe `fact()` helper in advisor-context-snapshot.ts).
+      // A single source erroring (e.g. a table that doesn't exist yet on this
+      // environment) must not block the rest of the conversation from
+      // loading, so we log and degrade per-source instead of throwing.
+      const namedResults: ReadonlyArray<
+        readonly [string, { data: unknown; error: { message?: string } | null }]
+      > = [
+        ["profile", profileResult],
+        ["goals", goalsResult],
+        ["bioDay", bioDayResult],
+        ["shift", shiftResult],
+        ["bioDayAssignments", assignmentsResult],
+        ["nutritionEntries", nutritionResult],
+        ["dailyEvents", eventsResult],
+        ["workoutInstances", instancesResult],
+        ["workoutSessions", sessionsResult],
+        ["legacyWorkouts", workoutsResult],
+        ["healthLogs", healthResult],
+        ["medicalIssues", medicalResult],
+        ["weightsHistory", weightsResult],
+        ["bodyMeasurements", measurementsResult],
+        ["labResults", labResultsResult],
+        ["healthMetrics", healthMetricsResult],
       ];
-      if (results.some((result) => result.error)) throw new Error("ADVISOR_CONTEXT_UNAVAILABLE");
+      const failedSources = namedResults.filter(([, result]) => result.error).map(([key]) => key);
+      if (failedSources.length > 0) {
+        console.warn(
+          "[Viora Advisor Context] one or more optional context sources failed to load; degrading gracefully instead of blocking the conversation",
+          { failedSources },
+        );
+      }
 
       const bio = bioDayResult.data;
       const freshnessCutoff = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
@@ -516,6 +582,7 @@ export function createSupabaseAdvisorContextDataSource(
           })),
         },
         conflicts: [],
+        failedSources,
       };
     },
   };
