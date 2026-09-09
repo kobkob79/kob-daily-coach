@@ -224,6 +224,77 @@ export function resolveExerciseMedia(
   return pickHeroMedia(items);
 }
 
+/**
+ * Ordered groups of items from one exercise's candidate Storage prefixes,
+ * most authoritative first. `useExerciseMedia()` builds this from
+ * `exerciseMediaPrefixes()`: the exercise-id folder (index 0, always
+ * canonical) then the name-slug folder (index 1, a manual-upload
+ * convenience only).
+ */
+export type ExerciseMediaPrefixGroups = MediaItem[][];
+
+/**
+ * Per-role lookup across ordered prefix groups (VIORA-EXERCISE-MEDIA-
+ * CROSS-SURFACE-SYNC-001 finding F2): the exercise-id folder is the source
+ * of truth. If a role exists there, the *same* role from the name-slug
+ * folder can never win, no matter how recently the slug-folder copy was
+ * updated - `updatedAt` (via `pickRoleMedia`'s own dedup) only ever breaks
+ * ties between duplicates *within* one folder. The slug folder is
+ * consulted at all only when the id folder has no file for that role.
+ */
+export function pickRoleMediaAcrossPrefixes(
+  prefixGroups: ExerciseMediaPrefixGroups,
+  role: ExerciseAssignedRole,
+): ExerciseHeroMedia | null {
+  for (const group of prefixGroups) {
+    const hit = pickRoleMedia(group, role);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/** Prefix-group-aware counterpart to `resolveExerciseThumbnailStill()` - see `pickRoleMediaAcrossPrefixes()`. */
+export function resolveExerciseThumbnailStillAcrossPrefixes(
+  prefixGroups: ExerciseMediaPrefixGroups,
+): ExerciseHeroMedia | null {
+  const thumbnail = pickRoleMediaAcrossPrefixes(prefixGroups, "thumbnail");
+  if (thumbnail && thumbnail.role === "image") return thumbnail;
+
+  const main = pickRoleMediaAcrossPrefixes(prefixGroups, "main");
+  if (main && main.role === "image") return main;
+
+  return null;
+}
+
+/**
+ * Prefix-group-aware counterpart to `resolveExerciseMedia()` - the
+ * function every UI surface should call once media is grouped by Storage
+ * prefix (see `useExerciseMedia()`). Same slot policy, but every role
+ * lookup along the way goes through `pickRoleMediaAcrossPrefixes()` so the
+ * id folder always outranks the slug folder for a given role, and only the
+ * final generic-hero fallback (non-canonical-only slots) considers a
+ * lower-priority group at all - and even then, only after the
+ * higher-priority group's own generic pick comes up empty.
+ */
+export function resolveExerciseMediaAcrossPrefixes(
+  prefixGroups: ExerciseMediaPrefixGroups,
+  slot: ExerciseMediaSlot = "hero",
+): ExerciseHeroMedia | null {
+  if (slot === "thumbnail") return resolveExerciseThumbnailStillAcrossPrefixes(prefixGroups);
+
+  for (const role of EXERCISE_SLOT_FALLBACKS[slot]) {
+    const hit = pickRoleMediaAcrossPrefixes(prefixGroups, role);
+    if (hit) return hit;
+  }
+  if (CANONICAL_ONLY_SLOTS.includes(slot)) return null;
+
+  for (const group of prefixGroups) {
+    const hit = pickHeroMedia(group);
+    if (hit) return hit;
+  }
+  return null;
+}
+
 export const EXERCISE_MEDIA_ROLE_LABEL: Record<ExerciseMediaRole, string> = {
   video: "וידאו",
   animation: "אנימציה",

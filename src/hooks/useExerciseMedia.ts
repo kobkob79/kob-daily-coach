@@ -2,9 +2,13 @@
  * useExerciseMedia — the single read path for exercise hero media.
  *
  * Walks every candidate Storage prefix for the exercise (id folder, then
- * name-slug folder), merges the results and returns the best hero item by
- * role priority: video → animation → image. Filenames are always discovered
- * from Storage, never hardcoded, so future uploads show up on their own.
+ * name-slug folder) and keeps them as separate, priority-ordered groups -
+ * the id folder is the canonical source of truth, the slug folder a
+ * manual-upload convenience only used as a per-role fallback (see
+ * `pickRoleMediaAcrossPrefixes()` in exercise-media.ts, VIORA-EXERCISE-
+ * MEDIA-CROSS-SURFACE-SYNC-001 finding F2). Filenames are always
+ * discovered from Storage, never hardcoded, so future uploads show up on
+ * their own.
  *
  * Root-level only (`maxDepth: 0`): the assignment flow always writes
  * canonical `<role>.<ext>` files directly under `exercises/<id>/`, and the
@@ -22,9 +26,10 @@ import { listMediaTree, SIGNED_URL_TTL, type MediaItem } from "@/services/media.
 import { ASSETS_BUCKET } from "@/lib/media-paths";
 import {
   exerciseMediaPrefixes,
-  pickRoleMedia,
-  resolveExerciseMedia,
+  pickRoleMediaAcrossPrefixes,
+  resolveExerciseMediaAcrossPrefixes,
   type ExerciseHeroMedia,
+  type ExerciseMediaPrefixGroups,
   type ExerciseMediaSlot,
 } from "@/lib/exercise-media";
 
@@ -44,10 +49,14 @@ export function useExerciseMedia({
   exerciseName,
   enabled = true,
 }: UseExerciseMediaOptions) {
-  const query = useQuery<MediaItem[]>({
+  const query = useQuery<ExerciseMediaPrefixGroups>({
     queryKey: exerciseMediaQueryKey(exerciseId, exerciseName),
     enabled: enabled && !!exerciseId,
     queryFn: async () => {
+      // exerciseMediaPrefixes() already returns the id folder first, the
+      // slug folder second - that order IS the priority order this hook
+      // and the resolver rely on, so it is preserved verbatim rather than
+      // flattened/merged into one array.
       const prefixes = exerciseMediaPrefixes(exerciseId, exerciseName);
       const pages = await Promise.all(
         prefixes.map((prefix) =>
@@ -56,38 +65,45 @@ export function useExerciseMedia({
           ),
         ),
       );
-      const seen = new Set<string>();
-      const merged: MediaItem[] = [];
-      for (const page of pages) {
+      // Dedup only within each group (a paginated listing could in theory
+      // repeat a path) - never across groups, since which group an item
+      // came from is exactly the information the id-over-slug policy needs.
+      return pages.map((page) => {
+        const seen = new Set<string>();
+        const group: MediaItem[] = [];
         for (const item of page) {
           if (seen.has(item.path)) continue;
           seen.add(item.path);
-          merged.push(item);
+          group.push(item);
         }
-      }
-      return merged;
+        return group;
+      });
     },
     staleTime: (SIGNED_URL_TTL - 300) * 1000,
     gcTime: SIGNED_URL_TTL * 1000,
     retry: 1,
   });
 
-  const items = query.data ?? [];
+  const prefixGroups = query.data ?? [];
+  // Flattened view for callers that just want "everything found," id-folder
+  // items first - never used by role/slot resolution, which must stay
+  // group-aware to preserve id-over-slug priority.
+  const items = prefixGroups.flat();
 
   return {
     ...query,
     items,
-    thumbnail: pickRoleMedia(items, "thumbnail"),
-    main: pickRoleMedia(items, "main"),
-    guide: pickRoleMedia(items, "guide"),
-    demo: pickRoleMedia(items, "demo"),
+    thumbnail: pickRoleMediaAcrossPrefixes(prefixGroups, "thumbnail"),
+    main: pickRoleMediaAcrossPrefixes(prefixGroups, "main"),
+    guide: pickRoleMediaAcrossPrefixes(prefixGroups, "guide"),
+    demo: pickRoleMediaAcrossPrefixes(prefixGroups, "demo"),
     /**
      * Slot resolution with fallbacks - the single read path every surface
      * (active workout, exercise details, library card) must go through, so
-     * they can never disagree. See resolveExerciseMedia() for the policy
-     * per slot.
+     * they can never disagree. See resolveExerciseMediaAcrossPrefixes() for
+     * the policy per slot.
      */
     resolve: (slot: ExerciseMediaSlot = "hero"): ExerciseHeroMedia | null =>
-      resolveExerciseMedia(items, slot),
+      resolveExerciseMediaAcrossPrefixes(prefixGroups, slot),
   };
 }

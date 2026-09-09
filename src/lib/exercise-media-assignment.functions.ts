@@ -1,129 +1,137 @@
+/**
+ * Media Inbox → exercise assignment server function.
+ *
+ * Thin TanStack Start wiring of the real service-role Supabase client to
+ * the pure, unit-tested orchestration in exercise-media-assignment-core.ts
+ * (VIORA-EXERCISE-MEDIA-CROSS-SURFACE-SYNC-001, findings F3/F4/F5). All
+ * validation and write-ordering/compensation decisions live there; this
+ * file's only job is translating between HTTP input, Supabase Storage
+ * responses, and that pure function's inputs/outputs - and turning a
+ * failure outcome into a safe, allowlisted error (see safe-server-error.ts)
+ * rather than ever passing a raw Supabase error through to the client or
+ * this app's own logs.
+ */
 import { createServerFn } from "@tanstack/react-start";
 import { requireAdminAuth } from "@/integrations/supabase/admin-middleware";
 import { ASSETS_BUCKET } from "@/lib/media-paths";
 import { MEDIA_INBOX_BUCKET } from "@/services/media-inbox.service";
+import {
+  performExerciseMediaAssignment,
+  type AssignmentDeps,
+  type DownloadResult,
+  type StorageFile,
+  type StorageOpResult,
+} from "@/lib/exercise-media-assignment-core";
+import { reportSafeServerError, type SafeErrorCategory } from "@/lib/safe-server-error";
 
-type AssignmentRole = "thumbnail" | "main" | "guide" | "demo";
-function extensionOf(path: string): string {
-  const fileName = path.split("/").pop() ?? "";
-  const dot = fileName.lastIndexOf(".");
-  return dot === -1 ? "" : fileName.slice(dot + 1).toLowerCase();
+/** Minimal shape this file needs from the real (or a test) Supabase client - kept narrow and easy to fake. */
+interface StorageClient {
+  storage: {
+    from(bucket: string): {
+      download(path: string): Promise<{ data: Blob | null; error: unknown }>;
+      list(
+        folder: string,
+        opts: { limit: number },
+      ): Promise<{ data: { name: string }[] | null; error: unknown }>;
+      upload(
+        path: string,
+        body: Uint8Array,
+        opts: { contentType: string | undefined; upsert: boolean },
+      ): Promise<{ error: unknown }>;
+      remove(paths: string[]): Promise<{ error: unknown }>;
+    };
+  };
 }
+
+/**
+ * Translates the real Supabase client's Storage calls into the plain,
+ * error-message-free shapes performExerciseMediaAssignment()'s deps
+ * interface expects - a Supabase error is checked for presence only and
+ * never forwarded (its message/code/details/hint could carry sensitive
+ * detail; see safe-server-error.ts). The handler below is the single place
+ * that turns a resulting failure status into a safe, logged category.
+ */
+function buildLiveDeps(client: StorageClient): AssignmentDeps {
+  return {
+    async downloadSource(sourcePath): Promise<DownloadResult> {
+      const { data: blob, error } = await client.storage
+        .from(MEDIA_INBOX_BUCKET)
+        .download(sourcePath);
+      if (error || !blob) return { found: false };
+      return {
+        found: true,
+        bytes: new Uint8Array(await blob.arrayBuffer()),
+        contentType: blob.type || null,
+      };
+    },
+
+    async listExerciseFolder(exerciseId): Promise<StorageFile[] | { failed: true }> {
+      const { data, error } = await client.storage
+        .from(ASSETS_BUCKET)
+        .list(`exercises/${exerciseId}`, { limit: 100 });
+      if (error) return { failed: true };
+      return data ?? [];
+    },
+
+    async upload(destinationPath, bytes, contentType): Promise<StorageOpResult> {
+      const { error } = await client.storage.from(ASSETS_BUCKET).upload(destinationPath, bytes, {
+        contentType,
+        upsert: true,
+      });
+      return error ? { ok: false } : { ok: true };
+    },
+
+    async remove(paths): Promise<StorageOpResult> {
+      const { error } = await client.storage.from(ASSETS_BUCKET).remove(paths);
+      return error ? { ok: false } : { ok: true };
+    },
+  };
+}
+
+const FAILURE_CATEGORY: Record<
+  Exclude<
+    Awaited<ReturnType<typeof performExerciseMediaAssignment>>["status"],
+    "exists" | "assigned" | "assigned_with_cleanup_warning"
+  >,
+  SafeErrorCategory
+> = {
+  invalid: "VALIDATION_FAILED",
+  forbidden: "FORBIDDEN",
+  not_found: "SOURCE_NOT_FOUND",
+  list_failed: "LIST_FAILED",
+  upload_failed: "UPLOAD_FAILED",
+};
 
 export const assignExerciseMediaServer = createServerFn({ method: "POST" })
   .middleware([requireAdminAuth])
-  .inputValidator((input: unknown) => {
-    const i = (input ?? {}) as Record<string, unknown>;
-
-    const sourcePath = String(i.sourcePath ?? "");
-    const exerciseId = String(i.exerciseId ?? "");
-    const role = String(i.role ?? "") as AssignmentRole;
-    const replace = Boolean(i.replace);
-
-    if (!sourcePath) throw new Error("Missing source media path");
-    if (!exerciseId) throw new Error("Missing exercise id");
-
-    if (!["thumbnail", "main", "guide", "demo"].includes(role)) {
-      throw new Error("Invalid media role");
-    }
-
-    return {
-      sourcePath,
-      exerciseId,
-      role,
-      replace,
-    };
-  })
+  .inputValidator((input: unknown) => input)
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const userId = String(context.userId);
 
-    if (!data.sourcePath.startsWith(`${userId}/`)) {
-      throw new Error("Forbidden media path");
+    const i = (data ?? {}) as Record<string, unknown>;
+    const exerciseId = typeof i.exerciseId === "string" ? i.exerciseId : undefined;
+    const role = typeof i.role === "string" ? i.role : undefined;
+
+    const deps = buildLiveDeps(supabaseAdmin as unknown as StorageClient);
+    const result = await performExerciseMediaAssignment(deps, data, userId);
+
+    if (result.status === "exists") {
+      return { status: "exists" as const, existingPath: result.existingPath };
     }
-
-    const { data: sourceBlob, error: downloadError } = await supabaseAdmin.storage
-      .from(MEDIA_INBOX_BUCKET)
-      .download(data.sourcePath);
-
-    if (downloadError || !sourceBlob) {
-      throw new Error(downloadError?.message ?? "Media file not found");
+    if (result.status === "assigned") {
+      return { status: "assigned" as const, destinationPath: result.destinationPath };
     }
-
-    const extension = extensionOf(data.sourcePath);
-
-    if (!extension) {
-      throw new Error("Media file has no extension");
-    }
-
-    const destinationPath = `exercises/${data.exerciseId}/${data.role}.${extension}`;
-
-    const { data: existingFiles, error: listError } = await supabaseAdmin.storage
-      .from(ASSETS_BUCKET)
-      .list(`exercises/${data.exerciseId}`, {
-        limit: 100,
-      });
-
-    if (listError) {
-      throw new Error(listError.message);
-    }
-
-    const rolePrefix = `${data.role}.`;
-    // Every existing object for this role, regardless of extension - a
-    // previous version of this handler only located the first match, which
-    // could leave a stale sibling (e.g. an old demo.mov next to a freshly
-    // assigned demo.mp4) behind after a replace.
-    const existingRoleFiles = (existingFiles ?? []).filter((file) =>
-      file.name.toLowerCase().startsWith(rolePrefix),
-    );
-
-    if (existingRoleFiles.length > 0 && !data.replace) {
+    if (result.status === "assigned_with_cleanup_warning") {
+      // Assignment succeeded; Storage still needs manual cleanup of a
+      // stale sibling. Never reported as a plain "assigned" - the caller
+      // must be able to tell the two apart (see ExerciseAssignSheet.tsx).
       return {
-        status: "exists" as const,
-        existingPath: `exercises/${data.exerciseId}/${existingRoleFiles[0].name}`,
+        status: "assigned_with_cleanup_warning" as const,
+        destinationPath: result.destinationPath,
       };
     }
 
-    // Upload the new file BEFORE touching any existing one: if the upload
-    // fails, the currently-assigned media for this role must stay active
-    // rather than being left with nothing. `upsert: true` makes the
-    // same-extension replacement case (new path === old path) a single
-    // atomic overwrite instead of a delete-then-insert gap.
-    const { error: uploadError } = await supabaseAdmin.storage
-      .from(ASSETS_BUCKET)
-      .upload(destinationPath, sourceBlob, {
-        contentType: sourceBlob.type || undefined,
-        upsert: true,
-      });
-
-    if (uploadError) {
-      throw new Error(uploadError.message);
-    }
-
-    // Only now, with the new file durably in place, remove every *other*
-    // sibling for this role (a different extension, or a leftover
-    // duplicate) so at most one file per role exists afterward. Best-effort:
-    // the assignment itself already succeeded, so a cleanup failure here
-    // must not be reported as a failed assignment.
-    const staleSiblingPaths = existingRoleFiles
-      .map((file) => `exercises/${data.exerciseId}/${file.name}`)
-      .filter((path) => path !== destinationPath);
-
-    if (staleSiblingPaths.length > 0) {
-      const { error: removeError } = await supabaseAdmin.storage
-        .from(ASSETS_BUCKET)
-        .remove(staleSiblingPaths);
-
-      if (removeError) {
-        console.error(
-          `[assignExerciseMediaServer] failed to remove stale ${data.role} siblings for exercise ${data.exerciseId}`,
-          removeError,
-        );
-      }
-    }
-
-    return {
-      status: "assigned" as const,
-      destinationPath,
-    };
+    const safe = reportSafeServerError(FAILURE_CATEGORY[result.status], { exerciseId, role });
+    throw new Error(safe.message);
   });

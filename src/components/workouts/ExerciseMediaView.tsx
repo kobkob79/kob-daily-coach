@@ -8,11 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { useExerciseMedia } from "@/hooks/useExerciseMedia";
-import {
-  resolveExerciseMedia,
-  resolveExerciseThumbnailStill,
-  type ExerciseMediaSlot,
-} from "@/lib/exercise-media";
+import type { ExerciseMediaSlot } from "@/lib/exercise-media";
 import { cn } from "@/lib/utils";
 
 import { MotionVideo } from "./MotionVideo";
@@ -52,7 +48,7 @@ export function ExerciseMediaView({
   preferRole,
   fit,
 }: ExerciseMediaViewProps) {
-  const { items, isPending, refetch } = useExerciseMedia({
+  const { resolve, isPending, refetch } = useExerciseMedia({
     exerciseId,
     exerciseName: name,
   });
@@ -76,13 +72,13 @@ export function ExerciseMediaView({
 
   const slot: ExerciseMediaSlot = mediaRole ?? preferRole ?? "hero";
   /**
-   * The thumbnail slot (Exercise Library cards) must always be a static
-   * image: it goes through resolveExerciseThumbnailStill(), which rejects
-   * video/animation outright, rather than resolveExerciseMedia()'s generic
-   * (video-first) fallback used by every other slot.
+   * `resolve()` (from useExerciseMedia) is the one resolver every surface
+   * goes through - it already routes the `thumbnail` slot through the
+   * static-only, video-rejecting policy internally (see
+   * resolveExerciseMediaAcrossPrefixes() in exercise-media.ts), so there is
+   * no separate branch to take here.
    */
-  const resolved =
-    slot === "thumbnail" ? resolveExerciseThumbnailStill(items) : resolveExerciseMedia(items, slot);
+  const resolved = resolve(slot);
 
   // A prior media item's load failure must not stick to a newly assigned
   // one (e.g. after replacing the demo video in Media Inbox): key the
@@ -101,7 +97,8 @@ export function ExerciseMediaView({
   const still = !usableHero && fallbackImage ? fallbackImage : null;
 
   // Belt-and-suspenders: the thumbnail slot can never render a <video>,
-  // even if resolveExerciseThumbnailStill()'s guarantee were ever weakened.
+  // even if resolveExerciseThumbnailStillAcrossPrefixes()'s guarantee were
+  // ever weakened.
   const isVideo = slot !== "thumbnail" && usableHero?.role === "video";
   const objectFit = fit ?? (CONTAIN_SLOTS.includes(slot) && !isVideo ? "contain" : "cover");
   const fitClass = objectFit === "contain" ? "object-contain" : "object-cover";

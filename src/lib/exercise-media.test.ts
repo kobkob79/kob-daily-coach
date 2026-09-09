@@ -11,8 +11,11 @@ import assert from "node:assert/strict";
 
 import {
   pickHeroMedia,
+  pickRoleMediaAcrossPrefixes,
   resolveExerciseMedia,
+  resolveExerciseMediaAcrossPrefixes,
   resolveExerciseThumbnailStill,
+  resolveExerciseThumbnailStillAcrossPrefixes,
 } from "./exercise-media.ts";
 import type { MediaItem } from "@/services/media.service";
 
@@ -269,4 +272,185 @@ test("scenario 6b: a duplicate with no updatedAt loses to one that has it, and t
     "demo.mov",
     "with no dates to compare, the first candidate wins deterministically",
   );
+});
+
+// ============================================================================
+// VIORA-EXERCISE-MEDIA-CROSS-SURFACE-SYNC-001, finding F2
+//
+// The exercise-id folder is the source of truth; the name-slug folder
+// (exerciseMediaPrefixes()'s "convenience for manual uploads made by
+// name") is a per-role fallback ONLY - consulted at all only when the id
+// folder has no file for that role. A role that exists in the id folder
+// can never lose to the same role in the slug folder, no matter how much
+// more recently the slug-folder file was updated. `updatedAt` only ever
+// breaks ties between duplicates *within* the same folder (see
+// pickMostRecentlyUpdated() above) - it must never leak across folders.
+// ============================================================================
+
+test("F2 scenario: an id-folder demo beats a newer slug-folder demo, in both group orderings", () => {
+  const idFolderDemo = mediaItem({
+    name: "demo.mp4",
+    kind: "video",
+    updatedAt: "2020-01-01T00:00:00.000Z", // much older
+  });
+  const slugFolderDemo = mediaItem({
+    name: "demo.mp4",
+    kind: "video",
+    path: "exercises/plank-classic/demo.mp4",
+    updatedAt: "2030-01-01T00:00:00.000Z", // much newer - must still lose
+  });
+
+  // pickRoleMediaAcrossPrefixes takes ordered groups: [idGroup, slugGroup].
+  const resolved = pickRoleMediaAcrossPrefixes([[idFolderDemo], [slugFolderDemo]], "demo");
+  assert.equal(resolved?.item.path, idFolderDemo.path);
+  assert.equal(
+    resolved?.item.updatedAt,
+    "2020-01-01T00:00:00.000Z",
+    "the id-folder file must win even though the slug-folder file is far more recently updated",
+  );
+});
+
+test("F2 scenario: the slug folder is used only when the id folder has no file for that role", () => {
+  const slugFolderDemo = mediaItem({
+    name: "demo.mp4",
+    kind: "video",
+    path: "exercises/plank-classic/demo.mp4",
+    updatedAt: "2020-01-01T00:00:00.000Z",
+  });
+
+  // id folder (first group) is empty for this role.
+  const resolved = pickRoleMediaAcrossPrefixes([[], [slugFolderDemo]], "demo");
+  assert.equal(resolved?.item.path, slugFolderDemo.path);
+});
+
+test("F2 scenario: reversed timestamps still cannot make the slug folder win when the id folder has the role", () => {
+  const idFolderDemo = mediaItem({
+    name: "demo.mp4",
+    kind: "video",
+    updatedAt: "2030-01-01T00:00:00.000Z", // now the id-folder file is the newer one
+  });
+  const slugFolderDemo = mediaItem({
+    name: "demo.mp4",
+    kind: "video",
+    path: "exercises/plank-classic/demo.mp4",
+    updatedAt: "2020-01-01T00:00:00.000Z",
+  });
+
+  const resolved = pickRoleMediaAcrossPrefixes([[idFolderDemo], [slugFolderDemo]], "demo");
+  assert.equal(resolved?.item.path, idFolderDemo.path);
+});
+
+test("F2 scenario: updatedAt only breaks ties among duplicates within the SAME group, never across groups", () => {
+  // Two id-folder duplicates for the same role (a legacy/duplicate-upload
+  // scenario) - pickMostRecentlyUpdated() must pick between THESE two, and
+  // the (even newer) slug-folder file must still never be considered at
+  // all, since the id folder already has an answer for this role.
+  const idFolderOlder = mediaItem({
+    name: "demo.mov",
+    kind: "video",
+    updatedAt: "2020-01-01T00:00:00.000Z",
+  });
+  const idFolderNewer = mediaItem({
+    name: "demo.mp4",
+    kind: "video",
+    updatedAt: "2021-01-01T00:00:00.000Z",
+  });
+  const slugFolderNewest = mediaItem({
+    name: "demo.mp4",
+    kind: "video",
+    path: "exercises/plank-classic/demo.mp4",
+    updatedAt: "2099-01-01T00:00:00.000Z",
+  });
+
+  const resolved = pickRoleMediaAcrossPrefixes(
+    [[idFolderOlder, idFolderNewer], [slugFolderNewest]],
+    "demo",
+  );
+  assert.equal(
+    resolved?.item.path,
+    idFolderNewer.path,
+    "the more recent of the two id-folder duplicates wins - the slug folder is never reached",
+  );
+});
+
+test("F2 scenario: array order within a group does not matter (both orderings of the id-folder duplicates)", () => {
+  const older = mediaItem({
+    name: "demo.mov",
+    kind: "video",
+    updatedAt: "2020-01-01T00:00:00.000Z",
+  });
+  const newer = mediaItem({
+    name: "demo.mp4",
+    kind: "video",
+    updatedAt: "2021-01-01T00:00:00.000Z",
+  });
+  const slug = mediaItem({
+    name: "demo.mp4",
+    kind: "video",
+    path: "exercises/plank-classic/demo.mp4",
+    updatedAt: "2099-01-01T00:00:00.000Z",
+  });
+
+  const forward = pickRoleMediaAcrossPrefixes([[older, newer], [slug]], "demo");
+  const backward = pickRoleMediaAcrossPrefixes([[newer, older], [slug]], "demo");
+  assert.equal(forward?.item.path, newer.path);
+  assert.equal(backward?.item.path, newer.path);
+});
+
+test("F2 scenario: resolveExerciseThumbnailStillAcrossPrefixes never lets a slug-folder thumbnail beat an id-folder one", () => {
+  const idThumbnail = mediaItem({
+    name: "thumbnail.jpg",
+    kind: "image",
+    updatedAt: "2020-01-01T00:00:00.000Z",
+  });
+  const slugThumbnail = mediaItem({
+    name: "thumbnail.jpg",
+    kind: "image",
+    path: "exercises/plank-classic/thumbnail.jpg",
+    updatedAt: "2099-01-01T00:00:00.000Z",
+  });
+
+  const resolved = resolveExerciseThumbnailStillAcrossPrefixes([[idThumbnail], [slugThumbnail]]);
+  assert.equal(resolved?.item.path, idThumbnail.path);
+});
+
+test("F2 scenario: resolveExerciseMediaAcrossPrefixes(active_workout) resolves an id-folder demo over a newer slug-folder demo", () => {
+  const idDemo = mediaItem({
+    name: "demo.mp4",
+    kind: "video",
+    updatedAt: "2020-01-01T00:00:00.000Z",
+  });
+  const slugDemo = mediaItem({
+    name: "demo.mp4",
+    kind: "video",
+    path: "exercises/plank-classic/demo.mp4",
+    updatedAt: "2099-01-01T00:00:00.000Z",
+  });
+
+  const resolved = resolveExerciseMediaAcrossPrefixes([[idDemo], [slugDemo]], "active_workout");
+  assert.equal(resolved?.item.path, idDemo.path);
+});
+
+test("F2 scenario: resolveExerciseMediaAcrossPrefixes falls through role-by-role - a slug main is used only once the id folder has neither demo nor main", () => {
+  const idThumbnailOnly = mediaItem({
+    name: "thumbnail.jpg",
+    kind: "image",
+    updatedAt: "2099-01-01T00:00:00.000Z", // newer, but a lower-priority role
+  });
+  const slugMain = mediaItem({
+    name: "main.jpg",
+    kind: "image",
+    path: "exercises/plank-classic/main.jpg",
+    updatedAt: "2020-01-01T00:00:00.000Z",
+  });
+
+  // id folder has no demo and no main for this exercise - only a thumbnail.
+  // The slug folder's main must be used ahead of falling back to the id
+  // folder's thumbnail, since main outranks thumbnail in the
+  // active_workout/exercise_details fallback chain regardless of folder.
+  const resolved = resolveExerciseMediaAcrossPrefixes(
+    [[idThumbnailOnly], [slugMain]],
+    "active_workout",
+  );
+  assert.equal(resolved?.item.path, slugMain.path);
 });
