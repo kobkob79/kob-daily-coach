@@ -1,5 +1,5 @@
 BEGIN;
-select plan(18);
+select plan(19);
 
 -- Create test users
 select tests.create_supabase_user('user1');
@@ -93,27 +93,46 @@ select lives_ok(
   'User can delete own metric'
 );
 
--- 13. user can create manual connection
+-- 13. delete metric of other user affects 0 rows under RLS
+select tests.authenticate_as('user2');
+-- Insert a metric for user1 so we can attempt to delete it
+select tests.authenticate_as('user1');
+insert into public.health_metrics (id, user_id, source, metric_type, value, unit, recorded_at, biological_day)
+values ('00000000-0000-0000-0000-000000000001', tests.get_supabase_uid('user1'), 'manual', 'steps', 100, 'steps', now(), '2026-09-08');
+
+select tests.authenticate_as('user2');
+-- Should affect 0 rows, we'll verify it's still there
+delete from public.health_metrics where id = '00000000-0000-0000-0000-000000000001';
+
+select tests.authenticate_as('user1');
+select results_eq(
+  $$ select count(*)::int from public.health_metrics where id = '00000000-0000-0000-0000-000000000001' $$,
+  $$ values (1::int) $$,
+  'User 2 cannot delete User 1 metric (remains 1 row)'
+);
+
+-- 14. user can create manual connection
+select tests.authenticate_as('user2');
 select lives_ok(
   $$ insert into public.health_connections (user_id, provider) values (tests.get_supabase_uid('user2'), 'manual') $$,
   'User can create manual connection'
 );
 
--- 14. user cannot create automated connection
+-- 15. user cannot create automated connection
 select throws_ok(
   $$ insert into public.health_connections (user_id, provider) values (tests.get_supabase_uid('user2'), 'health_connect') $$,
   'new row violates row-level security policy for table "health_connections"',
   'User cannot create automated connection'
 );
 
--- 15. user cannot change manual to health_connect
+-- 16. user cannot change manual to health_connect
 select throws_ok(
   $$ update public.health_connections set provider = 'health_connect' where user_id = tests.get_supabase_uid('user2') $$,
   'new row violates row-level security policy for table "health_connections"',
   'User cannot update manual to health_connect'
 );
 
--- 16. user cannot change other user connection
+-- 17. user cannot change other user connection
 select tests.authenticate_as('user1');
 select throws_ok(
   $$ delete from public.health_connections where user_id = tests.get_supabase_uid('user2') $$,
@@ -121,16 +140,16 @@ select throws_ok(
   'User 1 cannot change user 2 connection'
 );
 
--- Clear auth to become service_role (superuser in local test context)
+-- Clear auth to become superuser context (which maps to service_role privileges in pgTAP tests)
 select tests.clear_authentication();
 
--- 17. service_role can create automated metric
+-- 18. service_role can create automated metric
 select lives_ok(
   $$ insert into public.health_metrics (user_id, source, metric_type, value, unit, recorded_at, biological_day, external_id) values (tests.get_supabase_uid('user1'), 'health_connect', 'steps', 100, 'steps', now(), '2026-09-08', 'svc') $$,
   'service_role can create automated metric'
 );
 
--- 18. service_role can create automated connection
+-- 19. service_role can create automated connection
 select lives_ok(
   $$ insert into public.health_connections (user_id, provider) values (tests.get_supabase_uid('user1'), 'health_connect') $$,
   'service_role can create automated connection'

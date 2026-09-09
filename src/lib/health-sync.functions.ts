@@ -33,21 +33,6 @@ export const syncHealthPayload = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(parseHealthSyncPayload)
   .handler(async ({ context, data }): Promise<HealthSyncResult> => {
-    const {
-      checkHealthSyncEligibility,
-      upsertHealthMetrics,
-      touchHealthConnectionSynced,
-      recordHealthConnectionSyncError,
-    } = await import("./health-sync.server");
-
-    const userId = String(context.userId);
-    const eligibility = await checkHealthSyncEligibility(userId, data.provider);
-    if (!eligibility.eligible) {
-      throw new HealthSyncNotEligibleError(eligibility.reason);
-    }
-
-    const rows = buildHealthMetricRows(userId, data.provider, data.samples);
-
     try {
       const { recordHealthConnectionSyncError } = await import("./health-sync.server");
       const userId = String(context.userId);

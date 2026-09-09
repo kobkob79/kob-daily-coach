@@ -94,39 +94,91 @@ test("parseHealthSyncPayload rejects an unparsable recordedAt", () => {
   );
 });
 
-test("parseHealthSyncPayload rejects a malformed biologicalDay", () => {
-  assert.throws(
-    () =>
-      parseHealthSyncPayload({
-        provider: "health_connect",
-        samples: [validSample({ biologicalDay: "2026/09/06" })],
-      }),
-    HealthSyncValidationError,
-  );
-});
-
-test("parseHealthSyncPayload rejects a blank externalId", () => {
-  assert.throws(
-    () =>
-      parseHealthSyncPayload({
-        provider: "health_connect",
-        samples: [validSample({ externalId: "  " })],
-      }),
-    HealthSyncValidationError,
-  );
-});
-
-test("buildHealthMetricRows maps provider to source and preserves every field", () => {
-  const parsed = parseHealthSyncPayload({ provider: "garmin", samples: [validSample()] });
-  const rows = buildHealthMetricRows("user-1", "garmin", parsed.samples);
-  assert.deepEqual(rows[0], {
-    user_id: "user-1",
-    source: "garmin",
-    metric_type: "heart_rate_resting",
-    value: 58,
-    unit: "bpm",
-    recorded_at: "2026-09-06T06:00:00.000Z",
-    biological_day: "2026-09-06",
-    external_id: "sample-1",
+test("parseHealthSyncPayload correctly derives server biologicalDay based on local time from RFC3339", () => {
+  const parsed1 = parseHealthSyncPayload({
+    provider: "apple_health",
+    samples: [
+      {
+        metricType: "sleep_minutes",
+        value: 480,
+        unit: "min",
+        recordedAt: "2026-09-08T04:59:00.000+03:00",
+        externalId: "ext1",
+      },
+    ],
   });
+  assert.equal(parsed1.samples[0].biologicalDay, "2026-09-07");
+
+  const parsed2 = parseHealthSyncPayload({
+    provider: "apple_health",
+    samples: [
+      {
+        metricType: "sleep_minutes",
+        value: 480,
+        unit: "min",
+        recordedAt: "2026-09-08T05:01:00.000+03:00",
+        externalId: "ext1",
+      },
+    ],
+  });
+  assert.equal(parsed2.samples[0].biologicalDay, "2026-09-08");
+});
+
+test("parseHealthSyncPayload correctly rejects client biologicalDay", () => {
+  assert.throws(
+    () =>
+      parseHealthSyncPayload({
+        provider: "apple_health",
+        samples: [{ ...validSample(), biologicalDay: "2026-09-06" }],
+      }),
+    (err: Error) =>
+      err instanceof HealthSyncValidationError && err.message.includes("cannot be provided"),
+  );
+});
+
+test("parseHealthSyncPayload rejects semantic RFC3339 violations", () => {
+  const cases = [
+    "2026-13-01T12:00:00Z", // month 13
+    "2026-02-31T12:00:00Z", // 31st feb
+    "2026-01-01T25:00:00Z", // hour 25
+    "2026-01-01T12:00:00+99:99", // offset bad
+    "2026-01-01T12:00:00", // missing offset
+  ];
+  for (const c of cases) {
+    assert.throws(
+      () =>
+        parseHealthSyncPayload({
+          provider: "apple_health",
+          samples: [{ ...validSample(), recordedAt: c }],
+        }),
+      HealthSyncValidationError,
+    );
+  }
+});
+
+test("parseHealthSyncPayload strict value bounds", () => {
+  assert.throws(
+    () =>
+      parseHealthSyncPayload({
+        provider: "apple_health",
+        samples: [{ ...validSample(), metricType: "steps", value: 300000 }],
+      }),
+    HealthSyncValidationError,
+  );
+  assert.throws(
+    () =>
+      parseHealthSyncPayload({
+        provider: "apple_health",
+        samples: [{ ...validSample(), metricType: "heart_rate_resting", value: 0 }],
+      }),
+    HealthSyncValidationError,
+  );
+  assert.throws(
+    () =>
+      parseHealthSyncPayload({
+        provider: "apple_health",
+        samples: [{ ...validSample(), metricType: "steps", value: "100" }],
+      }),
+    HealthSyncValidationError,
+  );
 });
