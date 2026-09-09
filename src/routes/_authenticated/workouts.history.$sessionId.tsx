@@ -278,7 +278,9 @@ function SessionSummaryCard({
     <div className="surface-card hero-glow relative overflow-hidden p-4 shadow-soft">
       <div className="relative z-10 space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-success/15 px-2.5 py-1 text-xs font-semibold text-success">
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full ${statusTone.bg} px-2.5 py-1 text-xs font-semibold ${statusTone.text}`}
+          >
             <CheckCircle2 className="h-3.5 w-3.5" />
             {statusLabel}
           </span>
