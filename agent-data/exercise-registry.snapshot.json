@@ -10,7 +10,7 @@
     "coversComplete": 12,
     "infographicsComplete": 12,
     "thumbnailsComplete": 21,
-    "demosComplete": 10,
+    "demosComplete": 11,
     "overallProgressPercent": 7.6923076923076925
   },
   "nextRecommendedExercise": {
@@ -2254,12 +2254,10 @@
         "hasCover": true,
         "hasInfographic": true,
         "hasThumbnail": true,
-        "hasDemo": false
+        "hasDemo": true
       },
-      "missingAssets": [
-        "demo"
-      ],
-      "lastUpdated": "2026-08-26T11:51:49.524Z"
+      "missingAssets": [],
+      "lastUpdated": "2026-09-09T18:43:48.818Z"
     },
     {
       "exerciseId": "a93cf5f0-cb07-4820-bef3-6c7caafa89b5",
