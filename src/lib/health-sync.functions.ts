@@ -33,27 +33,29 @@ export const syncHealthPayload = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(parseHealthSyncPayload)
   .handler(async ({ context, data }): Promise<HealthSyncResult> => {
-    const {
-      checkHealthSyncEligibility,
-      upsertHealthMetrics,
-      touchHealthConnectionSynced,
-      recordHealthConnectionSyncError,
-    } = await import("./health-sync.server");
-
-    const userId = String(context.userId);
-    const eligibility = await checkHealthSyncEligibility(userId, data.provider);
-    if (!eligibility.eligible) {
-      throw new HealthSyncNotEligibleError(eligibility.reason);
-    }
-
-    const rows = buildHealthMetricRows(userId, data.provider, data.samples);
-
     try {
-      const { upserted } = await upsertHealthMetrics(rows);
-      await touchHealthConnectionSynced(userId, data.provider);
-      return { received: data.samples.length, upserted };
+      const { recordHealthConnectionSyncError } = await import("./health-sync.server");
+      const userId = String(context.userId);
+      const correlationId = crypto.randomUUID();
+
+      // F2: Block all automated syncs through this PWA boundary until Edge Function is ready
+      const safeErrorCategory = "SYNC_DISABLED_PENDING_EDGE_FUNCTION";
+      console.error(`HealthSyncError [${correlationId}]: ${safeErrorCategory}`);
+
+      // Try to log it, but if DB fails, it shouldn't leak
+      try {
+        await recordHealthConnectionSyncError(userId, data.provider, safeErrorCategory);
+      } catch (dbError) {
+        console.error(`HealthSyncError [${correlationId}]: Failed to write error state`);
+      }
+
+      throw new Error(`Health sync failed. Reference: ${correlationId}`);
     } catch (error) {
-      await recordHealthConnectionSyncError(userId, data.provider, (error as Error).message);
-      throw error;
+      if (error instanceof Error && error.message.includes("Health sync failed")) {
+         throw error;
+      }
+      const correlationId = crypto.randomUUID();
+      console.error(`HealthSyncError [${correlationId}]: SYNC_UNKNOWN_ERROR`);
+      throw new Error(`Health sync failed. Reference: ${correlationId}`);
     }
   });
