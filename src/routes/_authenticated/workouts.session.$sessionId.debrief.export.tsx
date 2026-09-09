@@ -10,9 +10,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, Copy, Loader2, Share2 } from "lucide-react";
 import { toast } from "sonner";
-import { buildDebriefContext } from "@/lib/coach-debrief";
 import { generateCoachDebrief } from "@/lib/coach-debrief.functions";
-import { fetchLifeProfile } from "@/lib/life-profile";
 import { buildWorkoutExportText } from "@/lib/workout-export";
 import { useServerFn } from "@tanstack/react-start";
 
@@ -30,11 +28,7 @@ function ExportPreviewPage() {
     queryKey: ["coach-debrief", sessionId],
     staleTime: Infinity,
     retry: false,
-    queryFn: async () => {
-      const profile = await fetchLifeProfile().catch(() => null);
-      const ctx = await buildDebriefContext(sessionId, profile?.first_name ?? "");
-      return run({ data: ctx });
-    },
+    queryFn: () => run({ data: { sessionId } }),
   });
 
   const debrief = debriefQ.data?.status === "ok" ? debriefQ.data.debrief : null;
