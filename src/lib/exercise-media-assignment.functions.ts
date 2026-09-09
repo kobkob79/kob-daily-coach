@@ -69,36 +69,57 @@ export const assignExerciseMediaServer = createServerFn({ method: "POST" })
     }
 
     const rolePrefix = `${data.role}.`;
-    const existing = (existingFiles ?? []).find((file) =>
+    // Every existing object for this role, regardless of extension - a
+    // previous version of this handler only located the first match, which
+    // could leave a stale sibling (e.g. an old demo.mov next to a freshly
+    // assigned demo.mp4) behind after a replace.
+    const existingRoleFiles = (existingFiles ?? []).filter((file) =>
       file.name.toLowerCase().startsWith(rolePrefix),
     );
 
-    if (existing && !data.replace) {
+    if (existingRoleFiles.length > 0 && !data.replace) {
       return {
         status: "exists" as const,
-        existingPath: `exercises/${data.exerciseId}/${existing.name}`,
+        existingPath: `exercises/${data.exerciseId}/${existingRoleFiles[0].name}`,
       };
     }
 
-    if (existing) {
-      const { error: removeError } = await supabaseAdmin.storage
-        .from(ASSETS_BUCKET)
-        .remove([`exercises/${data.exerciseId}/${existing.name}`]);
-
-      if (removeError) {
-        throw new Error(removeError.message);
-      }
-    }
-
+    // Upload the new file BEFORE touching any existing one: if the upload
+    // fails, the currently-assigned media for this role must stay active
+    // rather than being left with nothing. `upsert: true` makes the
+    // same-extension replacement case (new path === old path) a single
+    // atomic overwrite instead of a delete-then-insert gap.
     const { error: uploadError } = await supabaseAdmin.storage
       .from(ASSETS_BUCKET)
       .upload(destinationPath, sourceBlob, {
         contentType: sourceBlob.type || undefined,
-        upsert: false,
+        upsert: true,
       });
 
     if (uploadError) {
       throw new Error(uploadError.message);
+    }
+
+    // Only now, with the new file durably in place, remove every *other*
+    // sibling for this role (a different extension, or a leftover
+    // duplicate) so at most one file per role exists afterward. Best-effort:
+    // the assignment itself already succeeded, so a cleanup failure here
+    // must not be reported as a failed assignment.
+    const staleSiblingPaths = existingRoleFiles
+      .map((file) => `exercises/${data.exerciseId}/${file.name}`)
+      .filter((path) => path !== destinationPath);
+
+    if (staleSiblingPaths.length > 0) {
+      const { error: removeError } = await supabaseAdmin.storage
+        .from(ASSETS_BUCKET)
+        .remove(staleSiblingPaths);
+
+      if (removeError) {
+        console.error(
+          `[assignExerciseMediaServer] failed to remove stale ${data.role} siblings for exercise ${data.exerciseId}`,
+          removeError,
+        );
+      }
     }
 
     return {

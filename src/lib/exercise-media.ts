@@ -108,20 +108,48 @@ export function getExerciseAssignedRole(
   return EXERCISE_ASSIGNED_ROLES.find((role) => normalizedName.startsWith(`${role}.`)) ?? null;
 }
 
-/** Logical media slots requested by the UI. */
-export type ExerciseMediaSlot = "hero" | ExerciseAssignedRole;
+/**
+ * Logical media slots requested by the UI.
+ *
+ * `active_workout` and `exercise_details` are the two canonical-only
+ * surfaces fixed by VIORA-EXERCISE-MEDIA-CROSS-SURFACE-SYNC-001 (see
+ * `resolveExerciseMedia()`); `thumbnail` is the library-card policy.
+ */
+export type ExerciseMediaSlot =
+  "hero" | ExerciseAssignedRole | "active_workout" | "exercise_details";
+
+/**
+ * Picks the item to use when two or more files claim the same role (e.g. a
+ * leftover `demo.mov` alongside a freshly assigned `demo.mp4`). The
+ * assignment flow (`assignExerciseMediaServer`) is expected to keep at most
+ * one file per role, but this is the deterministic tie-breaker if that
+ * invariant is ever violated by stale/legacy data: the most recently
+ * updated file wins, so a fresh replacement always displays even if an old
+ * sibling failed to clean up.
+ */
+function pickMostRecentlyUpdated(items: MediaItem[]): MediaItem {
+  return items.reduce((latest, item) => {
+    const latestTime = latest.updatedAt ? Date.parse(latest.updatedAt) : Number.NEGATIVE_INFINITY;
+    const itemTime = item.updatedAt ? Date.parse(item.updatedAt) : Number.NEGATIVE_INFINITY;
+    return itemTime > latestTime ? item : latest;
+  });
+}
 
 /**
  * Explicit canonical-role lookup (`thumbnail.*` / `main.*` / `guide.*` /
  * `demo.*`), written by the Media Inbox assignment flow. Returns null when the
- * exercise has no file for that role, so callers can fall back.
+ * exercise has no file for that role, so callers can fall back. When more
+ * than one file exists for the same role, resolves deterministically to the
+ * most recently updated one rather than an incidental array/sort order.
  */
 export function pickRoleMedia(
   items: MediaItem[],
   role: ExerciseAssignedRole,
 ): ExerciseHeroMedia | null {
-  const hit = items.find((item) => getExerciseAssignedRole(item) === role);
-  return hit ? { item: hit, role: classifyExerciseMedia(hit) } : null;
+  const matches = items.filter((item) => getExerciseAssignedRole(item) === role);
+  if (matches.length === 0) return null;
+  const hit = matches.length === 1 ? matches[0] : pickMostRecentlyUpdated(matches);
+  return { item: hit, role: classifyExerciseMedia(hit) };
 }
 
 /** Fallback chains per slot; anything unresolved ends at the hero priority. */
@@ -138,6 +166,15 @@ export const EXERCISE_SLOT_FALLBACKS: Record<ExerciseMediaSlot, ExerciseAssigned
   main: ["main"],
   guide: ["guide", "main"],
   demo: ["demo"],
+  /**
+   * Cross-surface consistency policy (VIORA-EXERCISE-MEDIA-CROSS-SURFACE-
+   * SYNC-001): the active-workout hero and the exercise-details hero must
+   * always agree, so a demo video assigned in the Media Inbox shows up in
+   * both immediately. Deliberately does NOT fall through to the generic
+   * (video-first, any-file) `pickHeroMedia()` - see resolveExerciseMedia().
+   */
+  active_workout: ["demo", "main", "thumbnail"],
+  exercise_details: ["demo", "main", "thumbnail"],
 };
 
 /**
@@ -160,6 +197,18 @@ export function resolveExerciseThumbnailStill(items: MediaItem[]): ExerciseHeroM
   return null;
 }
 
+/**
+ * Slots that resolve *only* through canonical, explicitly assigned roles
+ * (`demo.*` / `main.*` / `thumbnail.*`) and never fall through to the
+ * generic (video-first, any-file-in-the-folder) `pickHeroMedia()`. This is
+ * the "only role קנוני ומאושר" guarantee from VIORA-EXERCISE-MEDIA-CROSS-
+ * SURFACE-SYNC-001: it also keeps these two surfaces from ever picking up
+ * an unrelated/incidental file (or, combined with `useExerciseMedia()`'s
+ * root-only Storage scan, a V2 Motion Video draft) that happens to sit in
+ * the exercise's folder without being assigned to a role.
+ */
+const CANONICAL_ONLY_SLOTS: readonly ExerciseMediaSlot[] = ["active_workout", "exercise_details"];
+
 /** Resolves a slot with its fallback chain, then the generic hero priority. */
 export function resolveExerciseMedia(
   items: MediaItem[],
@@ -171,6 +220,7 @@ export function resolveExerciseMedia(
     const hit = pickRoleMedia(items, role);
     if (hit) return hit;
   }
+  if (CANONICAL_ONLY_SLOTS.includes(slot)) return null;
   return pickHeroMedia(items);
 }
 

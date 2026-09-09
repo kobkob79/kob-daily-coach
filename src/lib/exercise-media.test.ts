@@ -129,3 +129,144 @@ test("pickHeroMedia (generic hero/session surfaces) is unchanged and still prior
   const resolved = pickHeroMedia([mainImage, genericMotionVideo]);
   assert.equal(resolved?.role, "video");
 });
+
+// ============================================================================
+// VIORA-EXERCISE-MEDIA-CROSS-SURFACE-SYNC-001
+//
+// active_workout / exercise_details must always agree with each other (demo
+// → main → thumbnail, canonical roles only) and library_card (the
+// `thumbnail` slot) must independently agree with itself - all through this
+// one resolver. See the ticket's "Part 5 — בדיקות חובה" for the numbered
+// scenarios these tests cover.
+// ============================================================================
+
+const demoVideo = mediaItem({ name: "demo.mp4", kind: "video" });
+
+test("scenario 1: demo + main + thumbnail all assigned - workout and details get demo, library gets thumbnail", () => {
+  const items = [demoVideo, mainImage, thumbnailImage];
+
+  const workout = resolveExerciseMedia(items, "active_workout");
+  assert.equal(workout?.item.name, "demo.mp4");
+  assert.equal(workout?.role, "video");
+
+  const details = resolveExerciseMedia(items, "exercise_details");
+  assert.equal(details?.item.name, "demo.mp4");
+  assert.equal(details?.role, "video");
+
+  const library = resolveExerciseMedia(items, "thumbnail");
+  assert.equal(library?.item.name, "thumbnail.jpg");
+  assert.equal(library?.role, "image");
+});
+
+test("scenario 2: main assigned, no demo - workout and details fall back to main, library still resolves", () => {
+  const items = [mainImage, thumbnailImage];
+
+  const workout = resolveExerciseMedia(items, "active_workout");
+  assert.equal(workout?.item.name, "main.jpg");
+
+  const details = resolveExerciseMedia(items, "exercise_details");
+  assert.equal(details?.item.name, "main.jpg");
+
+  const library = resolveExerciseMedia(items, "thumbnail");
+  assert.equal(library?.item.name, "thumbnail.jpg");
+});
+
+test("scenario 2b: main assigned, no demo, no thumbnail - library falls back to main too", () => {
+  const items = [mainImage];
+  const library = resolveExerciseMedia(items, "thumbnail");
+  assert.equal(library?.item.name, "main.jpg");
+});
+
+test("scenario 3: no canonical media anywhere - every surface resolves to null so the caller falls back to exercises.image_path", () => {
+  assert.equal(resolveExerciseMedia([], "active_workout"), null);
+  assert.equal(resolveExerciseMedia([], "exercise_details"), null);
+  assert.equal(resolveExerciseMedia([], "thumbnail"), null);
+});
+
+test("scenario 4: active_workout/exercise_details never fall through to the generic (any-file) hero pick, even when a non-canonical video is present", () => {
+  // Simulates a leaked/incidental file (e.g. an unassigned or V2 draft video
+  // that should never have reached this resolver) sitting alongside real
+  // canonical media - it must never win over the canonical policy, and must
+  // never be picked at all once canonical roles are exhausted.
+  const strayVideo = mediaItem({ name: "motion.mp4", kind: "video" });
+
+  const workoutWithMain = resolveExerciseMedia([mainImage, strayVideo], "active_workout");
+  assert.equal(
+    workoutWithMain?.item.name,
+    "main.jpg",
+    "canonical main must win over a stray video",
+  );
+
+  const workoutWithNothingCanonical = resolveExerciseMedia([strayVideo], "active_workout");
+  assert.equal(
+    workoutWithNothingCanonical,
+    null,
+    "a stray video must never surface on the active-workout surface",
+  );
+
+  const detailsWithNothingCanonical = resolveExerciseMedia([strayVideo], "exercise_details");
+  assert.equal(
+    detailsWithNothingCanonical,
+    null,
+    "a stray video must never surface on the exercise-details surface",
+  );
+});
+
+test("scenario 5: replacing demo resolves to the new file - the resolver is a pure function of current items, no stale state", () => {
+  const originalDemo = mediaItem({
+    name: "demo.mp4",
+    kind: "video",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  });
+  const before = resolveExerciseMedia([originalDemo, mainImage], "active_workout");
+  assert.equal(before?.item.updatedAt, "2026-01-01T00:00:00.000Z");
+
+  // Same role, same path is impossible mid-replace at the resolver level
+  // (the assignment flow uploads before removing - see
+  // exercise-media-assignment.functions.ts) - what the resolver must get
+  // right is: given the post-replace item list, it picks the new one.
+  const replacedDemo = mediaItem({
+    name: "demo.mp4",
+    kind: "video",
+    updatedAt: "2026-06-01T00:00:00.000Z",
+  });
+  const after = resolveExerciseMedia([replacedDemo, mainImage], "active_workout");
+  assert.equal(after?.item.updatedAt, "2026-06-01T00:00:00.000Z");
+});
+
+test("scenario 6: duplicate files for the same role resolve deterministically to the most recently updated one, regardless of array order", () => {
+  const older = mediaItem({
+    name: "demo.mov",
+    kind: "video",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  });
+  const newer = mediaItem({
+    name: "demo.mp4",
+    kind: "video",
+    updatedAt: "2026-06-01T00:00:00.000Z",
+  });
+
+  const forward = resolveExerciseMedia([older, newer], "active_workout");
+  const backward = resolveExerciseMedia([newer, older], "active_workout");
+  assert.equal(forward?.item.name, "demo.mp4");
+  assert.equal(backward?.item.name, "demo.mp4");
+  assert.equal(forward?.item.name, backward?.item.name);
+});
+
+test("scenario 6b: a duplicate with no updatedAt loses to one that has it, and ties keep the first candidate deterministically", () => {
+  const undated = mediaItem({ name: "demo.mov", kind: "video", updatedAt: null });
+  const dated = mediaItem({
+    name: "demo.mp4",
+    kind: "video",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  });
+  assert.equal(resolveExerciseMedia([undated, dated], "active_workout")?.item.name, "demo.mp4");
+  assert.equal(resolveExerciseMedia([dated, undated], "active_workout")?.item.name, "demo.mp4");
+
+  const bothUndated = mediaItem({ name: "demo.mp4", kind: "video", updatedAt: null });
+  assert.equal(
+    resolveExerciseMedia([undated, bothUndated], "active_workout")?.item.name,
+    "demo.mov",
+    "with no dates to compare, the first candidate wins deterministically",
+  );
+});

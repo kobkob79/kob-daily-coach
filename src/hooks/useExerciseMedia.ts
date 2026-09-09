@@ -5,17 +5,23 @@
  * name-slug folder), merges the results and returns the best hero item by
  * role priority: video → animation → image. Filenames are always discovered
  * from Storage, never hardcoded, so future uploads show up on their own.
+ *
+ * Root-level only (`maxDepth: 0`): the assignment flow always writes
+ * canonical `<role>.<ext>` files directly under `exercises/<id>/`, and the
+ * V2 Motion Video pipeline stores its own drafts one level down, under
+ * `exercises/<id>/v2/<mediaVersionId>/...` (see exercise-media-v2.ts). A
+ * deeper scan would surface those objects here too - including a
+ * draft/rejected/unpublished V2 video, which the Storage bucket's read
+ * policy does not itself gate by publish status (only the
+ * `exercise_media_versions`/`exercise_media_assets` *table* RLS does).
+ * Never widen this without a Storage-level fix for that first - see
+ * VIORA-EXERCISE-MEDIA-CROSS-SURFACE-SYNC-001.
  */
 import { useQuery } from "@tanstack/react-query";
-import {
-  listMediaTree,
-  SIGNED_URL_TTL,
-  type MediaItem,
-} from "@/services/media.service";
+import { listMediaTree, SIGNED_URL_TTL, type MediaItem } from "@/services/media.service";
 import { ASSETS_BUCKET } from "@/lib/media-paths";
 import {
   exerciseMediaPrefixes,
-  pickHeroMedia,
   pickRoleMedia,
   resolveExerciseMedia,
   type ExerciseHeroMedia,
@@ -45,7 +51,7 @@ export function useExerciseMedia({
       const prefixes = exerciseMediaPrefixes(exerciseId, exerciseName);
       const pages = await Promise.all(
         prefixes.map((prefix) =>
-          listMediaTree({ bucket: ASSETS_BUCKET, prefix, maxDepth: 3, maxFiles: 60 }).catch(
+          listMediaTree({ bucket: ASSETS_BUCKET, prefix, maxDepth: 0, maxFiles: 60 }).catch(
             () => [] as MediaItem[],
           ),
         ),
@@ -67,17 +73,20 @@ export function useExerciseMedia({
   });
 
   const items = query.data ?? [];
-  const hero: ExerciseHeroMedia | null = pickHeroMedia(items);
 
   return {
     ...query,
     items,
-    hero,
     thumbnail: pickRoleMedia(items, "thumbnail"),
     main: pickRoleMedia(items, "main"),
     guide: pickRoleMedia(items, "guide"),
     demo: pickRoleMedia(items, "demo"),
-    /** Slot resolution with fallbacks (thumbnail→main→hero, guide→main→hero). */
+    /**
+     * Slot resolution with fallbacks - the single read path every surface
+     * (active workout, exercise details, library card) must go through, so
+     * they can never disagree. See resolveExerciseMedia() for the policy
+     * per slot.
+     */
     resolve: (slot: ExerciseMediaSlot = "hero"): ExerciseHeroMedia | null =>
       resolveExerciseMedia(items, slot),
   };

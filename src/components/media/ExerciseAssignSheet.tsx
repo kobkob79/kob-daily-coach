@@ -22,13 +22,12 @@ import {
 import { ExercisePicker } from "@/components/workouts/ExercisePicker";
 import { supabase } from "@/integrations/supabase/client";
 import type { MediaItem } from "@/services/media.service";
-import {
-  MEDIA_INBOX_BUCKET,
-  deleteMediaInboxFile,
-} from "@/services/media-inbox.service";
+import { MEDIA_INBOX_BUCKET, deleteMediaInboxFile } from "@/services/media-inbox.service";
 import { assignExerciseMediaServer } from "@/lib/exercise-media-assignment.functions";
 import {
   destinationPath,
+  EXERCISE_ASSIGN_DEMO_EXPLANATION,
+  EXERCISE_ASSIGN_ROLE_AFFECTED_VIEWS,
   EXERCISE_ASSIGN_ROLE_LABEL,
   type ExerciseAssignRole,
 } from "@/services/exercise-media-assign.service";
@@ -75,7 +74,10 @@ export function ExerciseAssignSheet({ item, onClose }: Props) {
   }
 
   async function refreshGallery() {
-    await qc.invalidateQueries({ queryKey: ["exercise-media"] });
+    // Scoped to this exercise's own query key (["exercise-media", exerciseId, ...])
+    // rather than every exercise's cache, so a replace refetches exactly what
+    // just changed.
+    await qc.invalidateQueries({ queryKey: ["exercise-media", target?.id] });
     await qc.invalidateQueries({ queryKey: ["media-tree"] });
   }
 
@@ -90,43 +92,39 @@ export function ExerciseAssignSheet({ item, onClose }: Props) {
     setStep("confirm");
   }
 
- async function confirm(allowReplace = false) {
-  if (!item || !role || !target) return;
+  async function confirm(allowReplace = false) {
+    if (!item || !role || !target) return;
 
-  setBusy(true);
+    setBusy(true);
 
-  try {
-    const result = await assignExerciseMediaServer({
-      data: {
-        sourcePath: item.path,
-        exerciseId: target.id,
-        role,
-        replace: allowReplace,
-      },
-    });
+    try {
+      const result = await assignExerciseMediaServer({
+        data: {
+          sourcePath: item.path,
+          exerciseId: target.id,
+          role,
+          replace: allowReplace,
+        },
+      });
 
-    if (result.status === "exists") {
-      setReplacePath(result.existingPath);
-      setStep("replace");
+      if (result.status === "exists") {
+        setReplacePath(result.existingPath);
+        setStep("replace");
+        setBusy(false);
+        return;
+      }
+
+      await refreshGallery();
+
+      toast.success(`המדיה שויכה ל-${target.name} כ${EXERCISE_ASSIGN_ROLE_LABEL[role]}`);
+
       setBusy(false);
-      return;
+      setStep("post-assign");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "השיוך נכשל");
+      setBusy(false);
     }
-
-    await refreshGallery();
-
-    toast.success(
-      `המדיה שויכה ל-${target.name} כ${EXERCISE_ASSIGN_ROLE_LABEL[role]}`,
-    );
-
-    setBusy(false);
-    setStep("post-assign");
-  } catch (error) {
-    toast.error(
-      error instanceof Error ? error.message : "השיוך נכשל",
-    );
-    setBusy(false);
   }
-}
 
   async function removeFromInbox() {
     if (!item) return;
@@ -195,8 +193,13 @@ export function ExerciseAssignSheet({ item, onClose }: Props) {
           {step === "confirm" && target && role && (
             <div className="mt-4 space-y-4 pb-4">
               <p className="text-sm">
-                לשייך את המדיה ל-{target.name} כ{EXERCISE_ASSIGN_ROLE_LABEL[role]}?
+                לשייך את המדיה ל-{target.name} כ<strong>{EXERCISE_ASSIGN_ROLE_LABEL[role]}</strong>?
               </p>
+              {role === "demo" && (
+                <p className="rounded-xl border border-primary/30 bg-primary/10 p-2.5 text-xs text-foreground">
+                  {EXERCISE_ASSIGN_DEMO_EXPLANATION}
+                </p>
+              )}
               <p dir="ltr" className="text-[11px] text-muted-foreground">
                 {destinationPath(target.id, role, item!.path)}
               </p>
@@ -235,9 +238,18 @@ export function ExerciseAssignSheet({ item, onClose }: Props) {
             </div>
           )}
 
-          {step === "post-assign" && (
+          {step === "post-assign" && role && (
             <div className="mt-4 space-y-4 pb-4">
-              <p className="text-sm">השיוך הושלם. מה לעשות עם הקובץ המקורי ב-Inbox?</p>
+              <p className="text-sm">השיוך הושלם.</p>
+              <div className="rounded-xl border border-border/60 bg-muted/20 p-2.5">
+                <p className="text-[11px] font-medium text-muted-foreground">תצוגות שעודכנו:</p>
+                <ul className="mt-1 space-y-0.5 text-xs">
+                  {EXERCISE_ASSIGN_ROLE_AFFECTED_VIEWS[role].map((view) => (
+                    <li key={view}>• {view}</li>
+                  ))}
+                </ul>
+              </div>
+              <p className="text-sm">מה לעשות עם הקובץ המקורי ב-Inbox?</p>
               <div className="grid gap-3">
                 <Button className="h-12" variant="outline" disabled={busy} onClick={closeAll}>
                   השאר ב-Inbox
