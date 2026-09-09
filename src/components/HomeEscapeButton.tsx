@@ -33,9 +33,13 @@ export interface HomeEscapeButtonProps {
    */
   confirmKind?: HomeEscapeConfirmKind;
   /**
-   * Caller controls `display` (e.g. "inline-flex" vs a "hidden
-   * [@media(...)]:inline-flex" pair for viewport-conditional placements)
-   * so this component never fights a parent's layout.
+   * Caller controls `display` — a plain "inline-flex", or a "hidden" plus
+   * a viewport-conditional Tailwind variant for conditional placements —
+   * so this component never fights a parent's layout. Deliberately not
+   * spelled out as a literal class string here: Tailwind's content
+   * scanner reads raw file text, comments included, so an example
+   * bracket-variant class written in prose gets treated as a real
+   * candidate and can break the CSS build.
    */
   className?: string;
 }
