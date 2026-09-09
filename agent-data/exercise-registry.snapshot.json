@@ -5,12 +5,12 @@
   "summary": {
     "totalExercises": 156,
     "completedExercises": 12,
-    "partialExercises": 9,
-    "notStartedExercises": 135,
+    "partialExercises": 10,
+    "notStartedExercises": 134,
     "coversComplete": 12,
     "infographicsComplete": 12,
-    "thumbnailsComplete": 21,
-    "demosComplete": 11,
+    "thumbnailsComplete": 22,
+    "demosComplete": 12,
     "overallProgressPercent": 7.6923076923076925
   },
   "nextRecommendedExercise": {
@@ -1200,19 +1200,18 @@
       "canonicalHebrewName": "כפיפת מרפקים במכונת כומר",
       "englishName": "Machine Preacher Curl",
       "muscleGroup": "biceps",
-      "status": "NOT_STARTED",
+      "status": "PARTIAL",
       "media": {
         "hasCover": false,
         "hasInfographic": false,
-        "hasThumbnail": false,
-        "hasDemo": false
+        "hasThumbnail": true,
+        "hasDemo": true
       },
       "missingAssets": [
         "cover",
-        "infographic",
-        "thumbnail",
-        "demo"
-      ]
+        "infographic"
+      ],
+      "lastUpdated": "2026-09-09T19:56:42.210Z"
     },
     {
       "exerciseId": "f501172a-8adb-48cb-b9ae-d9bd8b30f771",
