@@ -15,14 +15,14 @@
  * re-deriving it and risking a wrong guess for a different timezone.
  */
 import type { HealthMetricType, HealthProvider } from "./health-metrics-core.ts";
-import { HEALTH_METRIC_TYPES } from "./health-metrics-core.ts";
+import { HEALTH_METRIC_TYPES, METRIC_UNIT } from "./health-metrics-core.ts";
 
 export const HEALTH_SYNC_PROVIDERS = ["health_connect", "garmin", "apple_health"] as const;
 export type HealthSyncProvider = (typeof HEALTH_SYNC_PROVIDERS)[number];
 
 export const MAX_SAMPLES_PER_SYNC = 1000;
 
-const BIOLOGICAL_DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const RFC3339_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
 
 export interface HealthSyncSample {
   metricType: HealthMetricType;
@@ -48,26 +48,42 @@ function nonBlankString(value: unknown, field: string): string {
   return s;
 }
 
-function finiteNumber(value: unknown, field: string): number {
+function finiteNumber(value: unknown, field: string, metricType: string): number {
   const n = Number(value);
-  if (!Number.isFinite(n)) throw new HealthSyncValidationError(`${field} must be a finite number`);
+  if (!Number.isFinite(n) || n < 0) {
+    throw new HealthSyncValidationError(`${field} must be a positive finite number`);
+  }
+  if (
+    metricType === "steps" ||
+    metricType === "workout_minutes" ||
+    metricType === "sleep_minutes" ||
+    metricType === "heart_rate_resting"
+  ) {
+    if (!Number.isInteger(n)) {
+      throw new HealthSyncValidationError(`${field} must be an integer for ${metricType}`);
+    }
+  }
   return n;
 }
 
 function isoTimestamp(value: unknown, field: string): string {
   const s = typeof value === "string" ? value : "";
-  const ms = Date.parse(s);
-  if (!s || Number.isNaN(ms))
-    throw new HealthSyncValidationError(`${field} must be an ISO timestamp`);
-  return new Date(ms).toISOString();
-}
-
-function biologicalDayString(value: unknown, field: string): string {
-  const s = typeof value === "string" ? value : "";
-  if (!BIOLOGICAL_DAY_PATTERN.test(s)) {
-    throw new HealthSyncValidationError(`${field} must be a YYYY-MM-DD date`);
+  if (!RFC3339_PATTERN.test(s)) {
+    throw new HealthSyncValidationError(
+      `${field} must be a valid RFC3339 timestamp with offset or Z`,
+    );
   }
   return s;
+}
+
+function serverDerivedBiologicalDay(recordedAtIso: string): string {
+  const localDateStr = recordedAtIso.slice(0, 10);
+  const localHour = parseInt(recordedAtIso.slice(11, 13), 10);
+  const d = new Date(localDateStr + "T00:00:00Z");
+  if (localHour < 5) {
+    d.setUTCDate(d.getUTCDate() - 1);
+  }
+  return d.toISOString().slice(0, 10);
 }
 
 function parseSample(raw: unknown, index: number): HealthSyncSample {
@@ -81,12 +97,22 @@ function parseSample(raw: unknown, index: number): HealthSyncSample {
       `samples[${index}].metricType must be one of ${HEALTH_METRIC_TYPES.join(", ")}`,
     );
   }
+  const unit = nonBlankString(r.unit, `samples[${index}].unit`);
+  const canonicalUnit = METRIC_UNIT[metricType as HealthMetricType];
+  if (unit !== canonicalUnit) {
+    throw new HealthSyncValidationError(
+      `samples[${index}].unit must be ${canonicalUnit} for ${metricType}`,
+    );
+  }
+
+  const recordedAt = isoTimestamp(r.recordedAt, `samples[${index}].recordedAt`);
+
   return {
     metricType: metricType as HealthMetricType,
-    value: finiteNumber(r.value, `samples[${index}].value`),
-    unit: nonBlankString(r.unit, `samples[${index}].unit`),
-    recordedAt: isoTimestamp(r.recordedAt, `samples[${index}].recordedAt`),
-    biologicalDay: biologicalDayString(r.biologicalDay, `samples[${index}].biologicalDay`),
+    value: finiteNumber(r.value, `samples[${index}].value`, metricType),
+    unit: canonicalUnit,
+    recordedAt: recordedAt,
+    biologicalDay: serverDerivedBiologicalDay(recordedAt),
     externalId: nonBlankString(r.externalId, `samples[${index}].externalId`),
   };
 }

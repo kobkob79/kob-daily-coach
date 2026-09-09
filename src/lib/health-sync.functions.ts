@@ -53,7 +53,15 @@ export const syncHealthPayload = createServerFn({ method: "POST" })
       await touchHealthConnectionSynced(userId, data.provider);
       return { received: data.samples.length, upserted };
     } catch (error) {
-      await recordHealthConnectionSyncError(userId, data.provider, (error as Error).message);
-      throw error;
+      const safeErrorCategory =
+        error instanceof Error && error.name === "HealthSyncUnavailableError"
+          ? "SYNC_DB_ERROR"
+          : "SYNC_UNKNOWN_ERROR";
+
+      const correlationId = crypto.randomUUID();
+      console.error(`HealthSyncError [${correlationId}]: ${safeErrorCategory}`);
+
+      await recordHealthConnectionSyncError(userId, data.provider, safeErrorCategory);
+      throw new Error(`Health sync failed. Reference: ${correlationId}`);
     }
   });
