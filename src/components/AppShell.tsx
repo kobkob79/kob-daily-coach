@@ -12,8 +12,8 @@ import { ActiveWorkoutBar } from "@/components/ActiveWorkoutBar";
 import { HomeEscapeButton } from "@/components/HomeEscapeButton";
 import { fetchIsAdmin } from "@/lib/admin";
 import {
+  homeEscapeConfirmKind,
   isWorkoutSessionRoute,
-  shouldConfirmBeforeHomeEscape,
   shouldShowHomeEscapeButton,
 } from "@/lib/home-escape";
 
@@ -109,7 +109,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
             {showHomeEscape && (
               <HomeEscapeButton
-                confirmBeforeLeave={shouldConfirmBeforeHomeEscape(pathname)}
+                confirmKind={homeEscapeConfirmKind(pathname)}
                 className="inline-flex"
               />
             )}

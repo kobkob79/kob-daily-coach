@@ -3,10 +3,11 @@
  *
  * A single, reusable "always works" way home: never depends on browser
  * history (no history.back()), always targets the real home route, and —
- * on screens where leaving mid-flow could interrupt an active workout —
- * confirms before navigating away. Rendered only where AppShell decides
- * the bottom nav's own home tab isn't already visible
- * (see src/lib/home-escape.ts).
+ * on screens where leaving mid-flow could interrupt an active workout or
+ * discard unsaved feedback — confirms before navigating away, with copy
+ * that matches what's actually at risk on that screen (see
+ * HomeEscapeConfirmKind in src/lib/home-escape.ts). Rendered only where
+ * AppShell decides the bottom nav's own home tab isn't already visible.
  */
 import { Home } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
@@ -22,11 +23,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import { HOME_ROUTE } from "@/lib/home-escape";
+import { HOME_ROUTE, type HomeEscapeConfirmKind } from "@/lib/home-escape";
 
 export interface HomeEscapeButtonProps {
-  /** Show a leave-confirmation dialog before navigating home (active workout, unsaved flow, ...). */
-  confirmBeforeLeave?: boolean;
+  /**
+   * What leaving this screen could interrupt, if anything — decides
+   * whether a confirm dialog shows before navigating home, and what it
+   * says. `null`/omitted navigates straight home, no prompt.
+   */
+  confirmKind?: HomeEscapeConfirmKind;
   /**
    * Caller controls `display` (e.g. "inline-flex" vs a "hidden
    * [@media(...)]:inline-flex" pair for viewport-conditional placements)
@@ -35,7 +40,23 @@ export interface HomeEscapeButtonProps {
   className?: string;
 }
 
-export function HomeEscapeButton({ confirmBeforeLeave = false, className }: HomeEscapeButtonProps) {
+const DIALOG_COPY: Record<
+  Exclude<HomeEscapeConfirmKind, null>,
+  { title: string; description: string; confirmLabel: string }
+> = {
+  active_workout: {
+    title: "לצאת לעמוד הבית?",
+    description: "האימון נשאר פעיל ברקע. אפשר לחזור אליו בכל רגע מהפס העליון.",
+    confirmLabel: "יציאה לעמוד הבית",
+  },
+  unsaved_summary: {
+    title: "לצאת בלי לשמור את האימון?",
+    description: "המשוב שהוזן כאן (קושי, אנרגיה, כאב, הערות) עדיין לא נשמר. יציאה עכשיו תמחק אותו.",
+    confirmLabel: "יציאה ללא שמירה",
+  },
+};
+
+export function HomeEscapeButton({ confirmKind = null, className }: HomeEscapeButtonProps) {
   const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -45,12 +66,14 @@ export function HomeEscapeButton({ confirmBeforeLeave = false, className }: Home
   };
 
   const handleClick = () => {
-    if (confirmBeforeLeave) {
+    if (confirmKind) {
       setConfirmOpen(true);
       return;
     }
     goHome();
   };
+
+  const copy = confirmKind ? DIALOG_COPY[confirmKind] : null;
 
   return (
     <>
@@ -66,19 +89,16 @@ export function HomeEscapeButton({ confirmBeforeLeave = false, className }: Home
         <Home className="mx-auto h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden />
       </button>
 
-      {confirmBeforeLeave && (
+      {copy && (
         <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
           <AlertDialogContent dir="rtl">
             <AlertDialogHeader>
-              <AlertDialogTitle>לצאת לעמוד הבית?</AlertDialogTitle>
-              <AlertDialogDescription>
-                האימון נשאר פעיל ברקע וכל מה שכבר נשמר לא הולך לאיבוד. תוכל/י לחזור אליו בכל רגע
-                מהפס העליון.
-              </AlertDialogDescription>
+              <AlertDialogTitle>{copy.title}</AlertDialogTitle>
+              <AlertDialogDescription>{copy.description}</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
               <AlertDialogCancel>ביטול</AlertDialogCancel>
-              <AlertDialogAction onClick={goHome}>יציאה לעמוד הבית</AlertDialogAction>
+              <AlertDialogAction onClick={goHome}>{copy.confirmLabel}</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
