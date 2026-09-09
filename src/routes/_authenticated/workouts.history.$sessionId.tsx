@@ -230,7 +230,9 @@ function SessionSummaryCard({
 
   const volume = session?.total_volume_kg ?? computeVolume(sets);
   const prCount = Object.values(prs).filter(Boolean).length;
-  const statusLabel = STATUS_LABEL[session?.status ?? ""] ?? session?.status ?? "—";
+  const status = session?.status ?? "";
+  const statusLabel = STATUS_LABEL[status] ?? session?.status ?? "—";
+  const statusTone = STATUS_TONE[status] ?? STATUS_TONE.discarded;
   const dateTime = formatSessionDateTime(session?.finished_at ?? session?.started_at);
 
   const tiles: { icon: React.ReactNode; label: string; value: React.ReactNode; visible: boolean }[] = [
