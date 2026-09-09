@@ -57,6 +57,7 @@ import {
   RenameConversationDialog,
 } from "./conversations";
 import { AdvisorVisual } from "./AdvisorVisual";
+import { HomeEscapeButton } from "@/components/HomeEscapeButton";
 
 interface CoachChatShellProps {
   advisor: CoachAdvisor;
@@ -458,6 +459,11 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
         >
           <History className="h-4 w-4" aria-hidden /> שיחות
         </Button>
+        {/* AppShell's own header + bottom nav (with the home tab) hide
+            below 560px viewport height to keep the chat usable in
+            landscape; this is the only path home left at that height, so
+            it's shown exactly there and nowhere else (no duplicate). */}
+        <HomeEscapeButton className="hidden [@media(max-height:560px)]:inline-flex" />
       </header>
 
       <div className="relative min-h-0 min-w-0 flex-1">

@@ -9,7 +9,13 @@ import { t } from "@/lib/i18n";
 import { VioraLogo } from "@/components/brand/VioraLogo";
 import { AskVioraSheet } from "@/components/AskVioraSheet";
 import { ActiveWorkoutBar } from "@/components/ActiveWorkoutBar";
+import { HomeEscapeButton } from "@/components/HomeEscapeButton";
 import { fetchIsAdmin } from "@/lib/admin";
+import {
+  isWorkoutSessionRoute,
+  shouldConfirmBeforeHomeEscape,
+  shouldShowHomeEscapeButton,
+} from "@/lib/home-escape";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -17,7 +23,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
   const adminQ = useQuery({ queryKey: ["is-admin"], queryFn: fetchIsAdmin });
   const [askOpen, setAskOpen] = useState(false);
-  const hideBottomNav = pathname.startsWith("/workouts/session/");
+  const hideBottomNav = isWorkoutSessionRoute(pathname);
+  const showHomeEscape = shouldShowHomeEscapeButton(pathname);
   const isAdvisorChat = /^\/coach\/[^/]+\/?$/.test(pathname);
 
   // The bottom nav is fixed, so its real height (which changes when the
@@ -99,6 +106,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               >
                 <Settings className="h-[18px] w-[18px] text-foreground/80" strokeWidth={1.8} />
               </Link>
+            )}
+            {showHomeEscape && (
+              <HomeEscapeButton
+                confirmBeforeLeave={shouldConfirmBeforeHomeEscape(pathname)}
+                className="inline-flex"
+              />
             )}
           </div>
 
