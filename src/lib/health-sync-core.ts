@@ -29,8 +29,8 @@ export interface HealthSyncSample {
   value: number;
   unit: string;
   recordedAt: string;
-  biologicalDay: string;
   externalId: string;
+  biologicalDay?: string;
 }
 
 export interface HealthSyncPayload {
@@ -65,7 +65,9 @@ function finiteNumber(value: unknown, field: string, metricType: string): number
     }
   } else if (metricType === "heart_rate_resting") {
     if (!Number.isInteger(n) || n < 20 || n > 300) {
-      throw new HealthSyncValidationError(`${field} must be an integer between 20-300 for resting heart rate`);
+      throw new HealthSyncValidationError(
+        `${field} must be an integer between 20-300 for resting heart rate`,
+      );
     }
   } else if (metricType === "calories_burned") {
     if (n > 50000) {
@@ -107,14 +109,14 @@ function isoTimestamp(value: unknown, field: string): string {
   }
 
   if (!s.endsWith("Z")) {
-     const match = s.match(/([+-])(\d{2}):(\d{2})$/);
-     if (match) {
-        const oh = parseInt(match[2], 10);
-        const om = parseInt(match[3], 10);
-        if (oh > 14 || om > 59) {
-           throw new HealthSyncValidationError(`${field} contains invalid offset`);
-        }
-     }
+    const match = s.match(/([+-])(\d{2}):(\d{2})$/);
+    if (match) {
+      const oh = parseInt(match[2], 10);
+      const om = parseInt(match[3], 10);
+      if (oh > 14 || om > 59) {
+        throw new HealthSyncValidationError(`${field} contains invalid offset`);
+      }
+    }
   }
 
   return s;
@@ -136,7 +138,9 @@ function parseSample(raw: unknown, index: number): HealthSyncSample {
   }
   const r = raw as Record<string, unknown>;
   if ("biologicalDay" in r) {
-    throw new HealthSyncValidationError(`samples[${index}].biologicalDay cannot be provided by the client`);
+    throw new HealthSyncValidationError(
+      `samples[${index}].biologicalDay cannot be provided by the client`,
+    );
   }
   const metricType = nonBlankString(r.metricType, `samples[${index}].metricType`);
   if (!(HEALTH_METRIC_TYPES as readonly string[]).includes(metricType)) {
@@ -207,7 +211,7 @@ export function buildHealthMetricRows(
     value: sample.value,
     unit: sample.unit,
     recorded_at: sample.recordedAt,
-    biological_day: sample.biologicalDay,
+    biological_day: sample.biologicalDay!,
     external_id: sample.externalId,
   }));
 }

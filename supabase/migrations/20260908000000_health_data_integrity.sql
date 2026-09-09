@@ -3,6 +3,9 @@
 -- 2. authenticated role can only insert/update provider = 'manual' for health_connections.
 -- 3. Check constraint for health_metrics: if source = 'manual', external_id AND raw_source MUST be NULL.
 
+-- Clean legacy non-compliant manual records first
+update public.health_metrics set external_id = null, raw_source = null where source = 'manual' and (external_id is not null or raw_source is not null);
+
 -- Re-create health_metrics policies for authenticated to restrict source='manual'
 drop policy if exists "Users create own health metrics" on public.health_metrics;
 create policy "Users create own health metrics"
@@ -33,7 +36,4 @@ create policy "Users update own health connections"
 -- F8: Authenticated users have no UPDATE privilege on health_metrics.
 -- Ensure we don't accidentally create one.
 drop policy if exists "Users update own health metrics" on public.health_metrics;
-<<<<<<< HEAD
-=======
-
->>>>>>> a673d16 (chore: tighten health metrics validation and RLS constraints)
+revoke update on table public.health_metrics from authenticated;

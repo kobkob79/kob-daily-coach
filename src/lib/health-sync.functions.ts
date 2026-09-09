@@ -33,6 +33,21 @@ export const syncHealthPayload = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(parseHealthSyncPayload)
   .handler(async ({ context, data }): Promise<HealthSyncResult> => {
+    const {
+      checkHealthSyncEligibility,
+      upsertHealthMetrics,
+      touchHealthConnectionSynced,
+      recordHealthConnectionSyncError,
+    } = await import("./health-sync.server");
+
+    const userId = String(context.userId);
+    const eligibility = await checkHealthSyncEligibility(userId, data.provider);
+    if (!eligibility.eligible) {
+      throw new HealthSyncNotEligibleError(eligibility.reason);
+    }
+
+    const rows = buildHealthMetricRows(userId, data.provider, data.samples);
+
     try {
       const { recordHealthConnectionSyncError } = await import("./health-sync.server");
       const userId = String(context.userId);
@@ -52,7 +67,7 @@ export const syncHealthPayload = createServerFn({ method: "POST" })
       throw new Error(`Health sync failed. Reference: ${correlationId}`);
     } catch (error) {
       if (error instanceof Error && error.message.includes("Health sync failed")) {
-         throw error;
+        throw error;
       }
       const correlationId = crypto.randomUUID();
       console.error(`HealthSyncError [${correlationId}]: SYNC_UNKNOWN_ERROR`);
