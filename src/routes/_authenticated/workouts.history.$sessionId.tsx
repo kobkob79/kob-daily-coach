@@ -174,6 +174,14 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "בוטל",
 };
 
+const STATUS_TONE: Record<string, { bg: string; text: string }> = {
+  completed: { bg: "bg-success/15", text: "text-success" },
+  in_progress: { bg: "bg-primary/15", text: "text-primary" },
+  discarded: { bg: "bg-muted/40", text: "text-muted-foreground" },
+  abandoned: { bg: "bg-destructive/15", text: "text-destructive" },
+  cancelled: { bg: "bg-muted/40", text: "text-muted-foreground" },
+};
+
 function formatDuration(totalSeconds: number | null): string {
   if (totalSeconds == null || totalSeconds <= 0) return "—";
   const h = Math.floor(totalSeconds / 3600);
