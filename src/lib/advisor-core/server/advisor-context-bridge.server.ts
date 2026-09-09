@@ -168,6 +168,7 @@ export function createSupabaseAdvisorContextDataSource(
         measurementsResult,
         labResultsResult,
         healthMetricsResult,
+        healthSyncPrefResult,
       ] = await Promise.all([
         supabase
           .from("profiles")
@@ -265,10 +266,16 @@ export function createSupabaseAdvisorContextDataSource(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase as unknown as { from: (table: string) => any })
           .from("health_metrics")
-          .select("metric_type,value,unit,recorded_at")
+          .select("metric_type,value,unit,recorded_at,source")
           .eq("user_id", userId)
           .gte("recorded_at", sinceIso)
           .order("recorded_at", { ascending: false }),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase as unknown as { from: (table: string) => any })
+          .from("health_sync_preferences")
+          .select("sync_enabled")
+          .eq("user_id", userId)
+          .maybeSingle(),
       ]);
       const results = [
         profileResult,
@@ -287,6 +294,7 @@ export function createSupabaseAdvisorContextDataSource(
         measurementsResult,
         labResultsResult,
         healthMetricsResult,
+        healthSyncPrefResult,
       ];
       if (results.some((result) => result.error)) throw new Error("ADVISOR_CONTEXT_UNAVAILABLE");
 
@@ -382,12 +390,25 @@ export function createSupabaseAdvisorContextDataSource(
               : ("stale" as const),
         };
       });
-      const healthMetricRows = (healthMetricsResult.data ?? []) as Array<{
-        metric_type: string;
-        value: number;
-        unit: string;
-        recorded_at: string;
-      }>;
+      // health_sync_preferences.sync_enabled gates *device-synced* rows only —
+      // manual entries (source: "manual") always came from the user typing a
+      // value in and were never subject to the sync opt-in in the first place
+      // (see checkHealthSyncEligibility in health-sync.server.ts, which only
+      // guards the ingest boundary). Revoking sync consent must stop the
+      // advisor from still using previously-synced device rows, though, not
+      // just block new ones.
+      const wearableSyncEnabled = Boolean(
+        (healthSyncPrefResult.data as { sync_enabled?: boolean } | null)?.sync_enabled,
+      );
+      const healthMetricRows = (
+        (healthMetricsResult.data ?? []) as Array<{
+          metric_type: string;
+          value: number;
+          unit: string;
+          recorded_at: string;
+          source: string;
+        }>
+      ).filter((row) => row.source === "manual" || wearableSyncEnabled);
       const latestMetric = (type: string) => {
         const row = healthMetricRows.find((r) => r.metric_type === type);
         return row
