@@ -25,9 +25,14 @@
 -- This migration closes that gap: authenticated may read an
 -- exercise-assets object only when it is either
 --   (a) a legacy canonical role file directly under
---       exercises/<id-or-slug>/<thumbnail|main|guide|demo>.<ext> - the only
---       shape assignExerciseMediaServer ever writes to, one folder segment
---       deep, so a v2/ subfolder (or anything else) can never match; or
+--       exercises/<id-or-slug>/<thumbnail|main|guide>.<image-ext> or
+--       exercises/<id-or-slug>/demo.<video-ext> - one folder segment deep
+--       (so a v2/ subfolder, or anything else, can never match), with the
+--       extension restricted to exactly the allowlists
+--       exercise-media-assignment-core.ts's validateAssignmentInput()
+--       already enforces on write (IMAGE_EXTENSIONS / VIDEO_EXTENSIONS) -
+--       this is the only shape assignExerciseMediaServer ever writes, so
+--       the read policy stays no more permissive than the write path; or
 --   (b) a V2 asset whose *exact* recorded storage_path
 --       (exercise_media_assets.storage_path) belongs to a version that has
 --       reached status = 'published' - matched by the metadata the
@@ -58,9 +63,12 @@ using (
   bucket_id = 'exercise-assets'
   and (
     -- (a) legacy canonical: exercises/<id-or-slug>/<role>.<ext>, exactly
-    -- one folder segment deep - a v2/... path always has more segments and
-    -- can never match this branch.
-    name ~ '^exercises/[^/]+/(thumbnail|main|guide|demo)\.[A-Za-z0-9]+$'
+    -- one folder segment deep (a v2/... path always has more segments and
+    -- can never match this branch) and restricted to the exact media
+    -- extensions each role is ever written with - never an arbitrary
+    -- alphanumeric extension.
+    name ~ '^exercises/[^/]+/(thumbnail|main|guide)\.(jpg|jpeg|png|webp|avif|heic)$'
+    or name ~ '^exercises/[^/]+/demo\.(mp4|webm|mov|m4v)$'
     or
     -- (b) V2, gated by the owning version's actual publish status.
     exists (

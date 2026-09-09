@@ -165,12 +165,41 @@ export type AssignmentResult =
   | { status: "list_failed" }
   | { status: "exists"; existingPath: string }
   | { status: "upload_failed" }
+  | { status: "unexpected_error" }
   | { status: "assigned"; destinationPath: string }
   | {
       status: "assigned_with_cleanup_warning";
       destinationPath: string;
       staleSiblingPaths: string[];
     };
+
+/**
+ * F9: which identifiers are safe to log for a given failure status.
+ *
+ * On `"invalid"`, `exerciseId`/`role` come straight from the raw,
+ * not-yet-validated request payload - they could be anything (arbitrary
+ * length, control characters, a log-injection payload) - so no context is
+ * ever logged for that status. `"unexpected_error"` is treated the same
+ * way: an exception can happen before validateAssignmentInput() even ran,
+ * so its identifiers are not known-safe either. Every other failure status
+ * is only reachable *after* validateAssignmentInput() has already
+ * succeeded, so by then `exerciseId`/`role` are known-good (a real UUID, a
+ * real role enum value) and safe to include.
+ *
+ * Lives here (not in exercise-media-assignment.functions.ts, which calls
+ * it) so it can be unit-tested directly - that file imports Supabase/
+ * TanStack-aliased modules that don't resolve under plain `node --test`,
+ * the same reason exercise-motion-draft.functions.ts is never unit-tested
+ * directly in this repo either.
+ */
+export function contextForFailure(
+  status: AssignmentResult["status"],
+  exerciseId: string | undefined,
+  role: string | undefined,
+): { exerciseId?: string; role?: string } | undefined {
+  if (status === "invalid" || status === "unexpected_error") return undefined;
+  return { exerciseId, role };
+}
 
 /** How many times cleanup is attempted (the first try plus this many retries) before reporting a warning instead of a full success. */
 const CLEANUP_MAX_ATTEMPTS = 3;
@@ -196,8 +225,29 @@ async function removeWithRetry(
  * The full validate → forbid-check → download → list → (exists?) → upload
  * → cleanup pipeline for one role assignment. See the module doc for why
  * this is dependency-injected and what F3/F4/F5/F6 each require of it.
+ *
+ * F8: this is the one safe boundary around the *entire* pipeline. A `deps`
+ * call talks to real Storage over the network and can throw (not just
+ * return `{ ok: false }`) - a timeout, a connection reset, an unexpected
+ * runtime error. Every such exception, from anywhere in the pipeline
+ * below, is caught here and collapsed into a single, information-free
+ * `"unexpected_error"` outcome - never the exception's own message, code,
+ * name, or stack. The caller (exercise-media-assignment.functions.ts) maps
+ * that to a fixed safe-error category; it never sees the real exception.
  */
 export async function performExerciseMediaAssignment(
+  deps: AssignmentDeps,
+  rawInput: unknown,
+  actorUserId: string,
+): Promise<AssignmentResult> {
+  try {
+    return await runAssignmentPipeline(deps, rawInput, actorUserId);
+  } catch {
+    return { status: "unexpected_error" };
+  }
+}
+
+async function runAssignmentPipeline(
   deps: AssignmentDeps,
   rawInput: unknown,
   actorUserId: string,

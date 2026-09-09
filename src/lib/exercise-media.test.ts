@@ -10,6 +10,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  combineExerciseMediaPrefixResults,
   pickHeroMedia,
   pickRoleMediaAcrossPrefixes,
   resolveExerciseMedia,
@@ -453,4 +454,102 @@ test("F2 scenario: resolveExerciseMediaAcrossPrefixes falls through role-by-role
     "active_workout",
   );
   assert.equal(resolved?.item.path, slugMain.path);
+});
+
+// ============================================================================
+// VIORA-EXERCISE-MEDIA-CROSS-SURFACE-SYNC-001, finding F11
+//
+// The id folder must stay authoritative even when its own Storage listing
+// fails transiently - a failed listing must never be indistinguishable
+// from "the id folder was listed successfully and is genuinely empty,"
+// since the latter is exactly what makes the resolver fall through to a
+// (possibly stale) slug-folder file.
+// ============================================================================
+
+function fulfilled(items: MediaItem[]): PromiseFulfilledResult<MediaItem[]> {
+  return { status: "fulfilled", value: items };
+}
+function rejected(reason: unknown): PromiseRejectedResult {
+  return { status: "rejected", reason };
+}
+
+test("F11 scenario (successful-empty): the id folder lists successfully and is genuinely empty - the slug folder is used as a normal fallback", () => {
+  const slugDemo = mediaItem({
+    name: "demo.mp4",
+    kind: "video",
+    path: "exercises/plank-classic/demo.mp4",
+  });
+
+  const groups = combineExerciseMediaPrefixResults([fulfilled([]), fulfilled([slugDemo])]);
+  assert.deepEqual(groups, [[], [slugDemo]]);
+
+  const resolved = resolveExerciseMediaAcrossPrefixes(groups, "active_workout");
+  assert.equal(
+    resolved?.item.path,
+    slugDemo.path,
+    "a genuinely empty (successfully listed) id folder must still fall back to the slug folder normally",
+  );
+});
+
+test("F11 scenario (failed listing): a failed id-folder listing throws rather than resolving to an empty group", () => {
+  const listingError = new Error("network timeout");
+
+  assert.throws(
+    () => combineExerciseMediaPrefixResults([rejected(listingError), fulfilled([])]),
+    (err: unknown) => err === listingError,
+    "a failed id-folder listing must propagate as a failure, never silently become an empty (and therefore skippable) group",
+  );
+});
+
+test("F11 scenario (failed listing): the failure is thrown even when the slug folder has a file that would otherwise look like a valid fallback", () => {
+  const listingError = new Error("network timeout");
+  const staleSlugDemo = mediaItem({
+    name: "demo.mp4",
+    kind: "video",
+    path: "exercises/plank-classic/demo.mp4",
+  });
+
+  assert.throws(
+    () => combineExerciseMediaPrefixResults([rejected(listingError), fulfilled([staleSlugDemo])]),
+    (err: unknown) => err === listingError,
+    "the id folder's listing failure must take priority over the slug folder having a file at all - " +
+      "a caller must never be able to resolve staleSlugDemo as if the id folder were confirmed empty",
+  );
+});
+
+test("F11: a failed slug-folder listing (not the id folder) is safe to treat as an empty group", () => {
+  const idDemo = mediaItem({ name: "demo.mp4", kind: "video" });
+  const listingError = new Error("network timeout");
+
+  const groups = combineExerciseMediaPrefixResults([fulfilled([idDemo]), rejected(listingError)]);
+  assert.deepEqual(groups, [[idDemo], []]);
+
+  const resolved = resolveExerciseMediaAcrossPrefixes(groups, "active_workout");
+  assert.equal(resolved?.item.path, idDemo.path);
+});
+
+test("F11: a failed slug-folder listing does not prevent resolving normally when the id folder is genuinely empty for a role", () => {
+  const idThumbnailOnly = mediaItem({ name: "thumbnail.jpg", kind: "image" });
+  const listingError = new Error("network timeout");
+
+  // id folder has no demo/main for this exercise, only a thumbnail; the
+  // slug folder's listing itself failed. Per policy, a failed slug listing
+  // becomes an empty group - the id folder's own thumbnail-only answer for
+  // library_card still resolves normally.
+  const groups = combineExerciseMediaPrefixResults([
+    fulfilled([idThumbnailOnly]),
+    rejected(listingError),
+  ]);
+  const resolved = resolveExerciseMediaAcrossPrefixes(groups, "thumbnail");
+  assert.equal(resolved?.item.path, idThumbnailOnly.path);
+});
+
+test("F11: within a successfully listed group, duplicate paths are deduped", () => {
+  const item = mediaItem({ name: "demo.mp4", kind: "video" });
+  const duplicatePath = { ...item }; // same .path, simulating a paginated re-listing
+  const groups = combineExerciseMediaPrefixResults([
+    fulfilled([item, duplicatePath]),
+    fulfilled([]),
+  ]);
+  assert.equal(groups[0].length, 1);
 });

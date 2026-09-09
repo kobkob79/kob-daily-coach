@@ -3,21 +3,23 @@
  *
  * Thin TanStack Start wiring of the real service-role Supabase client to
  * the pure, unit-tested orchestration in exercise-media-assignment-core.ts
- * (VIORA-EXERCISE-MEDIA-CROSS-SURFACE-SYNC-001, findings F3/F4/F5). All
- * validation and write-ordering/compensation decisions live there; this
- * file's only job is translating between HTTP input, Supabase Storage
- * responses, and that pure function's inputs/outputs - and turning a
- * failure outcome into a safe, allowlisted error (see safe-server-error.ts)
- * rather than ever passing a raw Supabase error through to the client or
- * this app's own logs.
+ * (VIORA-EXERCISE-MEDIA-CROSS-SURFACE-SYNC-001, findings F3/F4/F5/F8/F9).
+ * All validation and write-ordering/compensation decisions live there;
+ * this file's only job is translating between HTTP input, Supabase
+ * Storage responses, and that pure function's inputs/outputs - and
+ * turning a failure outcome into a safe, allowlisted error (see
+ * safe-server-error.ts) rather than ever passing a raw Supabase error, or
+ * unvalidated request input, through to the client or this app's own logs.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireAdminAuth } from "@/integrations/supabase/admin-middleware";
 import { ASSETS_BUCKET } from "@/lib/media-paths";
 import { MEDIA_INBOX_BUCKET } from "@/services/media-inbox.service";
 import {
+  contextForFailure,
   performExerciseMediaAssignment,
   type AssignmentDeps,
+  type AssignmentResult,
   type DownloadResult,
   type StorageFile,
   type StorageOpResult,
@@ -48,8 +50,10 @@ interface StorageClient {
  * error-message-free shapes performExerciseMediaAssignment()'s deps
  * interface expects - a Supabase error is checked for presence only and
  * never forwarded (its message/code/details/hint could carry sensitive
- * detail; see safe-server-error.ts). The handler below is the single place
- * that turns a resulting failure status into a safe, logged category.
+ * detail; see safe-server-error.ts). A genuine thrown exception (network
+ * failure, runtime error) is not caught here at all - it propagates up to
+ * the handler's own try/catch below (F8), which is the single place that
+ * turns "something in this operation threw" into a safe outcome.
  */
 function buildLiveDeps(client: StorageClient): AssignmentDeps {
   return {
@@ -89,10 +93,7 @@ function buildLiveDeps(client: StorageClient): AssignmentDeps {
 }
 
 const FAILURE_CATEGORY: Record<
-  Exclude<
-    Awaited<ReturnType<typeof performExerciseMediaAssignment>>["status"],
-    "exists" | "assigned" | "assigned_with_cleanup_warning"
-  >,
+  Exclude<AssignmentResult["status"], "exists" | "assigned" | "assigned_with_cleanup_warning">,
   SafeErrorCategory
 > = {
   invalid: "VALIDATION_FAILED",
@@ -100,21 +101,36 @@ const FAILURE_CATEGORY: Record<
   not_found: "SOURCE_NOT_FOUND",
   list_failed: "LIST_FAILED",
   upload_failed: "UPLOAD_FAILED",
+  unexpected_error: "UNEXPECTED_ERROR",
 };
 
 export const assignExerciseMediaServer = createServerFn({ method: "POST" })
   .middleware([requireAdminAuth])
   .inputValidator((input: unknown) => input)
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const userId = String(context.userId);
+    let result: AssignmentResult;
+    let exerciseId: string | undefined;
+    let role: string | undefined;
 
-    const i = (data ?? {}) as Record<string, unknown>;
-    const exerciseId = typeof i.exerciseId === "string" ? i.exerciseId : undefined;
-    const role = typeof i.role === "string" ? i.role : undefined;
+    // F8: one safe boundary around the entire operation. Anything thrown
+    // here - by the dynamic import below, by buildLiveDeps, or (most
+    // likely) by a Storage call deep inside performExerciseMediaAssignment
+    // itself - is caught and folded into the same "unexpected_error"
+    // outcome the rest of this handler already knows how to report safely,
+    // rather than a raw exception ever reaching the framework or client.
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const userId = String(context.userId);
 
-    const deps = buildLiveDeps(supabaseAdmin as unknown as StorageClient);
-    const result = await performExerciseMediaAssignment(deps, data, userId);
+      const i = (data ?? {}) as Record<string, unknown>;
+      exerciseId = typeof i.exerciseId === "string" ? i.exerciseId : undefined;
+      role = typeof i.role === "string" ? i.role : undefined;
+
+      const deps = buildLiveDeps(supabaseAdmin as unknown as StorageClient);
+      result = await performExerciseMediaAssignment(deps, data, userId);
+    } catch {
+      result = { status: "unexpected_error" };
+    }
 
     if (result.status === "exists") {
       return { status: "exists" as const, existingPath: result.existingPath };
@@ -132,6 +148,9 @@ export const assignExerciseMediaServer = createServerFn({ method: "POST" })
       };
     }
 
-    const safe = reportSafeServerError(FAILURE_CATEGORY[result.status], { exerciseId, role });
+    const safe = reportSafeServerError(
+      FAILURE_CATEGORY[result.status],
+      contextForFailure(result.status, exerciseId, role),
+    );
     throw new Error(safe.message);
   });

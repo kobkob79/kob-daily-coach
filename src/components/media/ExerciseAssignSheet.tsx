@@ -53,6 +53,14 @@ export function ExerciseAssignSheet({ item, onClose }: Props) {
   const [target, setTarget] = useState<{ id: string; name: string } | null>(null);
   const [replacePath, setReplacePath] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /**
+   * True when the server reported "assigned_with_cleanup_warning" (F10):
+   * the new media is live, but a stale sibling file is still sitting in
+   * Storage because cleanup failed even after retrying. Must never be
+   * conflated with a plain, fully-clean "assigned" - the post-assign
+   * screen shows a distinct warning instead of a plain success message.
+   */
+  const [cleanupWarning, setCleanupWarning] = useState(false);
 
   const isVideo = item?.kind === "video";
   const actions = isVideo
@@ -66,6 +74,7 @@ export function ExerciseAssignSheet({ item, onClose }: Props) {
     setTarget(null);
     setReplacePath(null);
     setBusy(false);
+    setCleanupWarning(false);
   }
 
   function closeAll() {
@@ -116,7 +125,19 @@ export function ExerciseAssignSheet({ item, onClose }: Props) {
 
       await refreshGallery();
 
-      toast.success(`המדיה שויכה ל-${target.name} כ${EXERCISE_ASSIGN_ROLE_LABEL[role]}`);
+      // F10: "assigned_with_cleanup_warning" must never be treated as a
+      // plain success - the new media is live (the resolver already
+      // deterministically prefers it - see pickRoleMedia()), but a stale
+      // sibling file is still sitting in Storage and needs manual cleanup.
+      if (result.status === "assigned_with_cleanup_warning") {
+        toast.warning(
+          `המדיה שויכה ל-${target.name} כ${EXERCISE_ASSIGN_ROLE_LABEL[role]}, אך נשאר קובץ ישן ב-Storage שדורש ניקוי ידני.`,
+        );
+        setCleanupWarning(true);
+      } else {
+        toast.success(`המדיה שויכה ל-${target.name} כ${EXERCISE_ASSIGN_ROLE_LABEL[role]}`);
+        setCleanupWarning(false);
+      }
 
       setBusy(false);
       setStep("post-assign");
@@ -240,7 +261,13 @@ export function ExerciseAssignSheet({ item, onClose }: Props) {
 
           {step === "post-assign" && role && (
             <div className="mt-4 space-y-4 pb-4">
-              <p className="text-sm">השיוך הושלם.</p>
+              {cleanupWarning ? (
+                <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-2.5 text-sm text-foreground">
+                  המדיה החדשה שויכה ופעילה, אך נשאר קובץ ישן ב-Storage שדורש ניקוי ידני.
+                </p>
+              ) : (
+                <p className="text-sm">השיוך הושלם.</p>
+              )}
               <div className="rounded-xl border border-border/60 bg-muted/20 p-2.5">
                 <p className="text-[11px] font-medium text-muted-foreground">תצוגות שעודכנו:</p>
                 <ul className="mt-1 space-y-0.5 text-xs">

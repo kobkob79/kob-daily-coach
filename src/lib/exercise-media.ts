@@ -42,6 +42,43 @@ export function exerciseMediaPrefixes(exerciseId: string, exerciseName?: string 
   return out;
 }
 
+function dedupeMediaItemsByPath(items: MediaItem[]): MediaItem[] {
+  const seen = new Set<string>();
+  const out: MediaItem[] = [];
+  for (const item of items) {
+    if (seen.has(item.path)) continue;
+    seen.add(item.path);
+    out.push(item);
+  }
+  return out;
+}
+
+/**
+ * Combines the per-prefix Storage listing outcomes (settled in the same
+ * order as `exerciseMediaPrefixes()`) into ordered prefix groups, deduping
+ * each group's own items by path.
+ *
+ * VIORA-EXERCISE-MEDIA-CROSS-SURFACE-SYNC-001 finding F11: the id folder
+ * (index 0) is authoritative - if listing it failed, the whole combined
+ * result must be treated as failed (this rethrows the id folder's
+ * rejection reason), never silently as "the id folder is empty." An empty
+ * id-folder group is exactly what makes the resolver fall through to the
+ * (possibly stale) slug-folder group - so a transient listing failure must
+ * never be allowed to masquerade as a genuine "no file for this role"
+ * answer. A slug-folder listing failure (any index > 0) is safe to treat
+ * as an empty group instead: the slug folder is never authoritative, so
+ * having nothing to offer as a fallback is the correct, safe outcome.
+ */
+export function combineExerciseMediaPrefixResults(
+  results: readonly PromiseSettledResult<MediaItem[]>[],
+): MediaItem[][] {
+  return results.map((result, index) => {
+    if (result.status === "fulfilled") return dedupeMediaItemsByPath(result.value);
+    if (index === 0) throw result.reason;
+    return [];
+  });
+}
+
 function extensionOf(name: string): string {
   const idx = name.lastIndexOf(".");
   return idx === -1 ? "" : name.slice(idx + 1).toLowerCase();

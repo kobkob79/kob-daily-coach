@@ -14,17 +14,27 @@
  * canonical `<role>.<ext>` files directly under `exercises/<id>/`, and the
  * V2 Motion Video pipeline stores its own drafts one level down, under
  * `exercises/<id>/v2/<mediaVersionId>/...` (see exercise-media-v2.ts). A
- * deeper scan would surface those objects here too - including a
- * draft/rejected/unpublished V2 video, which the Storage bucket's read
- * policy does not itself gate by publish status (only the
- * `exercise_media_versions`/`exercise_media_assets` *table* RLS does).
- * Never widen this without a Storage-level fix for that first - see
- * VIORA-EXERCISE-MEDIA-CROSS-SURFACE-SYNC-001.
+ * deeper scan would surface those objects here too. This was, before
+ * 20260909120000_harden_exercise_assets_storage_rls.sql, the *only*
+ * protection against an authenticated user reading a draft/rejected V2
+ * video, since the bucket's Storage policy didn't gate by publish status
+ * at all - that migration now closes the gap at the Storage-object layer
+ * itself. `maxDepth: 0` stays regardless, as defense in depth (and because
+ * it's simply the correct scope: canonical files are never written any
+ * deeper than this) - but is no longer the sole barrier against a V2 leak.
+ *
+ * Prefix-failure handling (finding F11): the id folder (index 0 of
+ * `exerciseMediaPrefixes()`) is authoritative, so if *its* listing fails,
+ * this query must fail too (`isError`), never silently resolve as "the id
+ * folder is empty" - which would let a stale slug-folder file win by
+ * default. Only a slug-folder listing failure is safe to treat as an empty
+ * group. See `combineExerciseMediaPrefixResults()` in exercise-media.ts.
  */
 import { useQuery } from "@tanstack/react-query";
-import { listMediaTree, SIGNED_URL_TTL, type MediaItem } from "@/services/media.service";
+import { listMediaTree, SIGNED_URL_TTL } from "@/services/media.service";
 import { ASSETS_BUCKET } from "@/lib/media-paths";
 import {
+  combineExerciseMediaPrefixResults,
   exerciseMediaPrefixes,
   pickRoleMediaAcrossPrefixes,
   resolveExerciseMediaAcrossPrefixes,
@@ -56,28 +66,18 @@ export function useExerciseMedia({
       // exerciseMediaPrefixes() already returns the id folder first, the
       // slug folder second - that order IS the priority order this hook
       // and the resolver rely on, so it is preserved verbatim rather than
-      // flattened/merged into one array.
+      // flattened/merged into one array. Promise.allSettled (not
+      // Promise.all + a blanket .catch) so a failed id-folder listing can
+      // be told apart from a failed slug-folder listing - only the latter
+      // is safe to swallow into an empty group (see
+      // combineExerciseMediaPrefixResults()'s doc for why).
       const prefixes = exerciseMediaPrefixes(exerciseId, exerciseName);
-      const pages = await Promise.all(
+      const settled = await Promise.allSettled(
         prefixes.map((prefix) =>
-          listMediaTree({ bucket: ASSETS_BUCKET, prefix, maxDepth: 0, maxFiles: 60 }).catch(
-            () => [] as MediaItem[],
-          ),
+          listMediaTree({ bucket: ASSETS_BUCKET, prefix, maxDepth: 0, maxFiles: 60 }),
         ),
       );
-      // Dedup only within each group (a paginated listing could in theory
-      // repeat a path) - never across groups, since which group an item
-      // came from is exactly the information the id-over-slug policy needs.
-      return pages.map((page) => {
-        const seen = new Set<string>();
-        const group: MediaItem[] = [];
-        for (const item of page) {
-          if (seen.has(item.path)) continue;
-          seen.add(item.path);
-          group.push(item);
-        }
-        return group;
-      });
+      return combineExerciseMediaPrefixResults(settled);
     },
     staleTime: (SIGNED_URL_TTL - 300) * 1000,
     gcTime: SIGNED_URL_TTL * 1000,

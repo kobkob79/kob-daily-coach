@@ -93,7 +93,17 @@ insert into storage.objects (bucket_id, name) values
   ('exercise-assets', 'exercises/10000000-0000-0000-0000-000000000004/v2/20000000-0000-0000-0000-000000000004/motion.dddd4444.mp4'),
   ('exercise-assets', 'exercises/10000000-0000-0000-0000-000000000001/demo.mp4'),
   ('exercise-assets', 'exercises/plank-classic/main.jpg'),
-  ('exercise-assets', 'exercises/10000000-0000-0000-0000-000000000001/random-notes.txt');
+  ('exercise-assets', 'exercises/10000000-0000-0000-0000-000000000001/random-notes.txt'),
+  -- Canonical-path hardening (finding: harden to allowed media extensions
+  -- only, prove nested/unexpected paths blocked) fixture rows - none of
+  -- these were ever written by assignExerciseMediaServer, and none should
+  -- ever be readable.
+  ('exercise-assets', 'exercises/10000000-0000-0000-0000-000000000001/thumbnail.exe'),
+  ('exercise-assets', 'exercises/10000000-0000-0000-0000-000000000001/thumbnail.svg'),
+  ('exercise-assets', 'exercises/10000000-0000-0000-0000-000000000001/demo.jpg'),
+  ('exercise-assets', 'exercises/10000000-0000-0000-0000-000000000001/main.mp4'),
+  ('exercise-assets', 'exercises/10000000-0000-0000-0000-000000000001/sub/thumbnail.jpg'),
+  ('exercise-assets', 'exercises/10000000-0000-0000-0000-000000000001/thumbnail.jpg.exe');
 
 -- ---------------------------------------------------------------------------
 -- 1. authenticated reads a legacy canonical file (id folder and slug
@@ -219,6 +229,68 @@ begin
   end if;
 
   raise notice 'PASS: 4b. an untracked/unassigned object matches neither branch and is not readable';
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 4c. Canonical-path hardening: the legacy branch is restricted to the
+--     exact allowed media extension per role (matching
+--     exercise-media-assignment-core.ts's validateAssignmentInput()) and
+--     stays exactly one folder segment deep - a disallowed extension, a
+--     role/extension mismatch, a double extension, or genuine path nesting
+--     must all be blocked, not just the v2/ case already covered above.
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  v_seen integer;
+begin
+  execute 'set role authenticated';
+
+  select count(*) into v_seen
+  from storage.objects
+  where bucket_id = 'exercise-assets'
+    and name in (
+      'exercises/10000000-0000-0000-0000-000000000001/thumbnail.exe',   -- disallowed extension
+      'exercises/10000000-0000-0000-0000-000000000001/thumbnail.svg',   -- deliberately excluded extension
+      'exercises/10000000-0000-0000-0000-000000000001/demo.jpg',        -- image extension on the video-only role
+      'exercises/10000000-0000-0000-0000-000000000001/main.mp4',        -- video extension on an image-only role
+      'exercises/10000000-0000-0000-0000-000000000001/sub/thumbnail.jpg', -- genuine nesting, more than one folder segment
+      'exercises/10000000-0000-0000-0000-000000000001/thumbnail.jpg.exe' -- double-extension confusion attempt
+    );
+
+  execute 'reset role';
+
+  if v_seen <> 0 then
+    raise exception 'TEST FAILED: authenticated could read % disallowed-extension/nested-path object(s), expected 0', v_seen;
+  end if;
+
+  raise notice 'PASS: 4c. disallowed extensions, role/extension mismatches, double extensions and nested paths are all blocked';
+end $$;
+
+-- Positive control for 4c: the legitimate legacy files with the SAME role
+-- names but correct extensions are still readable - proving 4c's zero
+-- result is the policy actually discriminating on extension/nesting, not
+-- some unrelated breakage.
+do $$
+declare
+  v_seen integer;
+begin
+  execute 'set role authenticated';
+
+  select count(*) into v_seen
+  from storage.objects
+  where bucket_id = 'exercise-assets'
+    and name in (
+      'exercises/10000000-0000-0000-0000-000000000001/demo.mp4',
+      'exercises/plank-classic/main.jpg'
+    );
+
+  execute 'reset role';
+
+  if v_seen <> 2 then
+    raise exception 'TEST FAILED: legitimate legacy files became unreadable after the extension hardening (positive control)';
+  end if;
+
+  raise notice 'PASS: 4d. legitimate legacy files with correct extensions remain readable (positive control for 4c)';
 end $$;
 
 -- ---------------------------------------------------------------------------

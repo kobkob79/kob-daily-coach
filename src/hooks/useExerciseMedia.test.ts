@@ -46,3 +46,18 @@ test("the exercise media Storage scan never descends into nested folders (maxDep
 test("no leftover maxDepth value greater than 0 for this scan", () => {
   assert.doesNotMatch(source, /maxDepth:\s*[1-9]/);
 });
+
+test("F11: prefix listings use Promise.allSettled and are combined through combineExerciseMediaPrefixResults, not a blanket .catch(() => [])", () => {
+  assert.match(
+    source,
+    /Promise\.allSettled\(/,
+    "must use allSettled so a failed id-folder listing can be told apart from a failed slug-folder listing",
+  );
+  assert.match(source, /combineExerciseMediaPrefixResults\(settled\)/);
+  assert.doesNotMatch(
+    source,
+    /\.catch\(\s*\(\)\s*=>\s*\[\]/,
+    "a per-prefix blanket .catch(() => []) would make a failed id-folder listing indistinguishable from a " +
+      "genuinely empty one, letting a stale slug-folder file win by default - see finding F11",
+  );
+});

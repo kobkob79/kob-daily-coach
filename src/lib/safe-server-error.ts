@@ -24,7 +24,8 @@ export type SafeErrorCategory =
   | "SOURCE_NOT_FOUND"
   | "LIST_FAILED"
   | "UPLOAD_FAILED"
-  | "CLEANUP_FAILED";
+  | "CLEANUP_FAILED"
+  | "UNEXPECTED_ERROR";
 
 const SAFE_ERROR_MESSAGES_HE: Record<SafeErrorCategory, string> = {
   VALIDATION_FAILED: "הבקשה אינה תקינה.",
@@ -33,6 +34,7 @@ const SAFE_ERROR_MESSAGES_HE: Record<SafeErrorCategory, string> = {
   LIST_FAILED: "לא ניתן היה לבדוק את המדיה הקיימת לתרגיל. נסו שוב.",
   UPLOAD_FAILED: "ההעלאה נכשלה. נסו שוב.",
   CLEANUP_FAILED: "השיוך הצליח, אך נדרש ניקוי חוזר של קובץ ישן.",
+  UNEXPECTED_ERROR: "אירעה שגיאה בלתי צפויה. נסו שוב.",
 };
 
 /** Fields that are safe to log/return: never a Storage path, token, signed URL, or anything the raw error produced. */
@@ -58,6 +60,26 @@ function randomCorrelationId(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/** Matches every ASCII control character, newlines/carriage-returns included, built from char codes so no literal control character sits in this source file. */
+const CONTROL_CHAR_RE = new RegExp(
+  "[" + String.fromCharCode(0) + "-" + String.fromCharCode(31) + String.fromCharCode(127) + "]",
+  "g",
+);
+
+/**
+ * F9 defense in depth: strips control characters (newlines included) from
+ * a context value before it ever reaches `console.error`. Callers are
+ * expected to only pass already-validated identifiers here (see
+ * exercise-media-assignment.functions.ts, which omits context entirely on
+ * the validation-failure path rather than logging unvalidated input) - this
+ * is a second line of defense against log-injection (a crafted value
+ * forging fake log lines), not the only one.
+ */
+function sanitizeForLog(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  return value.replace(CONTROL_CHAR_RE, "");
+}
+
 /**
  * Logs exactly the category, a correlation id, and (only) the known-safe
  * context fields - never a raw error object, its message/code/details/
@@ -71,8 +93,8 @@ export function reportSafeServerError(
   const correlationId = randomCorrelationId();
   console.error(`[exercise-media] ${category}`, {
     correlationId,
-    exerciseId: context?.exerciseId,
-    role: context?.role,
+    exerciseId: sanitizeForLog(context?.exerciseId),
+    role: sanitizeForLog(context?.role),
   });
   return { category, correlationId, message: SAFE_ERROR_MESSAGES_HE[category] };
 }

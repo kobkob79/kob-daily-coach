@@ -13,6 +13,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { reportSafeServerError, type SafeErrorContext } from "./safe-server-error.ts";
+import { contextForFailure } from "./exercise-media-assignment-core.ts";
 
 const SECRET = "sk_live_SUPER_SECRET_TOKEN_do_not_leak_9f3c8a";
 
@@ -128,4 +129,88 @@ test("source: every failure branch is reported through reportSafeServerError, ne
       `every throw must use the safe, fixed message: "${line}"`,
     );
   }
+});
+
+// ---------------------------------------------------------------------------
+// F8: the whole assignment operation is wrapped in one try/catch, and any
+// exception is folded into the same "unexpected_error" outcome the rest of
+// the handler already reports safely - never a raw exception escaping to
+// the framework/client. (Behavioral proof of the catch-and-fold itself
+// lives in exercise-media-assignment-core.test.ts, against the pure core;
+// this is the source-level proof that the .functions.ts wiring actually
+// uses that boundary.)
+// ---------------------------------------------------------------------------
+test("source: the handler wraps the whole operation in try/catch and folds any exception into unexpected_error", () => {
+  assert.match(
+    ASSIGNMENT_FUNCTIONS_SOURCE,
+    /try\s*\{[\s\S]*?\}\s*catch\s*\{\s*\n\s*result = \{ status: "unexpected_error" \};\s*\n\s*\}/,
+    "expected a single try/catch around the operation that sets result to unexpected_error on any exception",
+  );
+});
+
+// ---------------------------------------------------------------------------
+// F9: exerciseId/role must never be logged before they are known to have
+// passed validation - contextForFailure() (in exercise-media-assignment-
+// core.ts, so it's importable under plain node - see its own doc comment)
+// is the single place that decides this.
+// ---------------------------------------------------------------------------
+
+test("F9: contextForFailure omits context entirely on the validation-failure path, even with a log-injection payload", () => {
+  const maliciousExerciseId =
+    'not-a-uuid\n[exercise-media] FAKE_CATEGORY {"correlationId":"forged"}';
+  const result = contextForFailure("invalid", maliciousExerciseId, "not-a-role");
+  assert.equal(result, undefined);
+});
+
+test("F9: contextForFailure omits context entirely for unexpected_error too (validation may not have run yet)", () => {
+  const result = contextForFailure(
+    "unexpected_error",
+    "10000000-0000-0000-0000-000000000001",
+    "demo",
+  );
+  assert.equal(result, undefined);
+});
+
+test("F9: contextForFailure includes context for every other failure status, where identifiers are already known-valid", () => {
+  for (const status of ["forbidden", "not_found", "list_failed", "upload_failed"] as const) {
+    const result = contextForFailure(status, "10000000-0000-0000-0000-000000000001", "demo");
+    assert.deepEqual(result, {
+      exerciseId: "10000000-0000-0000-0000-000000000001",
+      role: "demo",
+    });
+  }
+});
+
+test("F9/log-injection: a newline- and sentinel-laden value passed to reportSafeServerError never produces extra log lines or leaks the sentinel", () => {
+  const sentinel = "INJECTED_LOG_LINE_4f9c2b";
+  const forged = `real-id\n[exercise-media] FORBIDDEN {"correlationId":"${sentinel}","exerciseId":"attacker-controlled"}`;
+
+  const originalConsoleError = console.error;
+  const logged: unknown[] = [];
+  console.error = (...args: unknown[]) => {
+    logged.push(args);
+  };
+
+  let result;
+  try {
+    result = reportSafeServerError("FORBIDDEN", { exerciseId: forged, role: "demo" });
+  } finally {
+    console.error = originalConsoleError;
+  }
+
+  assert.equal(logged.length, 1, "the newline payload must not produce a second, forged log call");
+  const [, loggedPayload] = logged[0] as [string, Record<string, unknown>];
+  assert.equal(
+    loggedPayload.exerciseId,
+    'real-id[exercise-media] FORBIDDEN {"correlationId":"' +
+      sentinel +
+      '","exerciseId":"attacker-controlled"}',
+    "the newline must be stripped, flattening the payload into one line - it must never split into a second, independent log entry",
+  );
+  const serializedLog = JSON.stringify(logged);
+  assert.ok(!serializedLog.includes("\n"), "no raw newline may reach the log output");
+
+  // The returned client-facing message is still the fixed, safe one -
+  // nothing from the forged payload (sentinel included) leaks into it.
+  assert.equal(result.message, "אין הרשאה לבצע פעולה זו.");
 });

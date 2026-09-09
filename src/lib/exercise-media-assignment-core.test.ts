@@ -391,3 +391,74 @@ test("list failure is reported distinctly and stops before any write", async () 
   assert.equal(calls.upload, 0);
   assert.equal(calls.remove, 0);
 });
+
+// ============================================================================
+// F8: a dependency can genuinely *throw* (network/runtime error), not just
+// return { ok: false } - performExerciseMediaAssignment() must catch that
+// anywhere in the pipeline and collapse it into the single
+// "unexpected_error" outcome, which structurally carries no other fields
+// (see AssignmentResult) - so there is nothing for a leaked exception's
+// message/code/stack to ride along in even if one were passed through.
+// ============================================================================
+
+const SECRET = "sk_live_SUPER_SECRET_DO_NOT_LEAK_4f9c2b";
+
+function throwingDeps(overrides: Partial<AssignmentDeps> = {}): AssignmentDeps {
+  const base = buildFakeDeps({
+    inbox: { [`${USER_ID}/upload-1.mp4`]: { bytes: VIDEO_BYTES, contentType: "video/mp4" } },
+    existingExerciseFiles: ["demo.mov"],
+  }).deps;
+  return { ...base, ...overrides };
+}
+
+test("F8: downloadSource throwing (with a secret in its message) is caught and reported as unexpected_error only", async () => {
+  const deps = throwingDeps({
+    downloadSource() {
+      throw new Error(`connection reset, token=${SECRET}`);
+    },
+  });
+  const result = await performExerciseMediaAssignment(deps, validInput(), USER_ID);
+  assert.deepEqual(result, { status: "unexpected_error" });
+  assert.ok(!JSON.stringify(result).includes(SECRET));
+});
+
+test("F8: listExerciseFolder throwing is caught and reported as unexpected_error only", async () => {
+  const deps = throwingDeps({
+    listExerciseFolder() {
+      throw new Error(`postgres error: relation "storage.objects" secret=${SECRET}`);
+    },
+  });
+  const result = await performExerciseMediaAssignment(deps, validInput(), USER_ID);
+  assert.deepEqual(result, { status: "unexpected_error" });
+  assert.ok(!JSON.stringify(result).includes(SECRET));
+});
+
+test("F8: upload throwing is caught and reported as unexpected_error only", async () => {
+  const deps = throwingDeps({
+    upload() {
+      throw new Error(SECRET);
+    },
+  });
+  const result = await performExerciseMediaAssignment(deps, validInput({ replace: true }), USER_ID);
+  assert.deepEqual(result, { status: "unexpected_error" });
+});
+
+test("F8: remove throwing (during cleanup) is caught and reported as unexpected_error, not a false success", async () => {
+  const deps = throwingDeps({
+    remove() {
+      throw new Error(SECRET);
+    },
+  });
+  const result = await performExerciseMediaAssignment(deps, validInput({ replace: true }), USER_ID);
+  assert.deepEqual(result, { status: "unexpected_error" });
+});
+
+test("F8: a non-Error thrown value (e.g. a raw object or string) is still caught safely", async () => {
+  const deps = throwingDeps({
+    downloadSource() {
+      throw { message: SECRET, code: "PGRST_FAKE", details: SECRET, hint: SECRET };
+    },
+  });
+  const result = await performExerciseMediaAssignment(deps, validInput(), USER_ID);
+  assert.deepEqual(result, { status: "unexpected_error" });
+});

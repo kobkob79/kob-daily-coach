@@ -60,6 +60,15 @@ at the point of failure.
 4b. An object matching neither policy branch at all (not a canonical
     `<role>.<ext>` filename, not a registered V2 asset row) is never
     readable either — proves there is no accidental third hole.
+4c. The legacy branch's canonical-path hardening: a disallowed extension
+    (`.exe`, `.svg`), a role/extension mismatch (`demo.jpg`, `main.mp4`),
+    a double-extension confusion attempt (`thumbnail.jpg.exe`), and genuine
+    path nesting (`.../sub/thumbnail.jpg`) are all blocked — the legacy
+    branch only ever matches the exact media extensions
+    `exercise-media-assignment-core.ts`'s `validateAssignmentInput()`
+    allows on write, one folder segment deep.
+4d. Positive control for 4c: the legitimate legacy files with correct
+    extensions are still readable after the hardening.
 5. A bucket-wide list-style scan never surfaces the *names* of private
    (draft/rejected/trash) V2 files to `authenticated`, while the published
    and legacy files are still present in the same scan.
