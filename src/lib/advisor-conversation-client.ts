@@ -116,6 +116,10 @@ const ERROR_MESSAGES: Record<AdvisorConversationErrorCode, string> = {
   PERSISTENCE_UNAVAILABLE: "השיחות אינן זמינות כרגע. שום הודעה חדשה לא נשלחה.",
 };
 
-export function advisorConversationErrorMessage(code: AdvisorConversationErrorCode): string {
-  return ERROR_MESSAGES[code];
+export function advisorConversationErrorMessage(
+  code: AdvisorConversationErrorCode,
+  correlationId?: string,
+): string {
+  const message = ERROR_MESSAGES[code];
+  return correlationId ? `${message} (קוד תקלה: ${correlationId})` : message;
 }
