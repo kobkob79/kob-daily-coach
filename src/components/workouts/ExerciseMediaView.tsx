@@ -5,14 +5,10 @@
  * → hero, …) through `useExerciseMedia`, so the picker card, the details sheet
  * and the session hero all behave identically.
  */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useExerciseMedia } from "@/hooks/useExerciseMedia";
-import {
-  resolveExerciseMedia,
-  resolveExerciseThumbnailStill,
-  type ExerciseMediaSlot,
-} from "@/lib/exercise-media";
+import type { ExerciseMediaSlot } from "@/lib/exercise-media";
 import { cn } from "@/lib/utils";
 
 import { MotionVideo } from "./MotionVideo";
@@ -34,7 +30,13 @@ export interface ExerciseMediaViewProps {
 }
 
 /** Instructional stills should never be cropped; motion media may fill. */
-const CONTAIN_SLOTS: ExerciseMediaSlot[] = ["thumbnail", "main", "guide"];
+const CONTAIN_SLOTS: ExerciseMediaSlot[] = [
+  "thumbnail",
+  "main",
+  "guide",
+  "active_workout",
+  "exercise_details",
+];
 
 export function ExerciseMediaView({
   exerciseId,
@@ -46,7 +48,7 @@ export function ExerciseMediaView({
   preferRole,
   fit,
 }: ExerciseMediaViewProps) {
-  const { items, isPending, refetch } = useExerciseMedia({
+  const { resolve, isPending, refetch } = useExerciseMedia({
     exerciseId,
     exerciseName: name,
   });
@@ -70,18 +72,33 @@ export function ExerciseMediaView({
 
   const slot: ExerciseMediaSlot = mediaRole ?? preferRole ?? "hero";
   /**
-   * The thumbnail slot (Exercise Library cards) must always be a static
-   * image: it goes through resolveExerciseThumbnailStill(), which rejects
-   * video/animation outright, rather than resolveExerciseMedia()'s generic
-   * (video-first) fallback used by every other slot.
+   * `resolve()` (from useExerciseMedia) is the one resolver every surface
+   * goes through - it already routes the `thumbnail` slot through the
+   * static-only, video-rejecting policy internally (see
+   * resolveExerciseMediaAcrossPrefixes() in exercise-media.ts), so there is
+   * no separate branch to take here.
    */
-  const resolved =
-    slot === "thumbnail" ? resolveExerciseThumbnailStill(items) : resolveExerciseMedia(items, slot);
+  const resolved = resolve(slot);
+
+  // A prior media item's load failure must not stick to a newly assigned
+  // one (e.g. after replacing the demo video in Media Inbox): key the
+  // failure/retry flags to the resolved item's identity (path + updatedAt,
+  // so an in-place replace at the same path also counts as "new") and
+  // clear them the moment that identity changes.
+  const resolvedIdentity = resolved
+    ? `${resolved.item.path}::${resolved.item.updatedAt ?? ""}`
+    : null;
+  useEffect(() => {
+    retriedRef.current = false;
+    setFailed(false);
+  }, [resolvedIdentity]);
+
   const usableHero = resolved && !failed ? resolved : null;
   const still = !usableHero && fallbackImage ? fallbackImage : null;
 
   // Belt-and-suspenders: the thumbnail slot can never render a <video>,
-  // even if resolveExerciseThumbnailStill()'s guarantee were ever weakened.
+  // even if resolveExerciseThumbnailStillAcrossPrefixes()'s guarantee were
+  // ever weakened.
   const isVideo = slot !== "thumbnail" && usableHero?.role === "video";
   const objectFit = fit ?? (CONTAIN_SLOTS.includes(slot) && !isVideo ? "contain" : "cover");
   const fitClass = objectFit === "contain" ? "object-contain" : "object-cover";
@@ -93,7 +110,7 @@ export function ExerciseMediaView({
       // Motion Video: single looping element + accessible Play/Pause, Reduced
       // Motion aware. `handleError` still drives the signed-URL retry/fallback.
       <MotionVideo
-        key={usableHero.item.path}
+        key={resolvedIdentity}
         src={usableHero.item.url}
         mediaKey={usableHero.item.path}
         name={name}
@@ -103,7 +120,7 @@ export function ExerciseMediaView({
       />
     ) : (
       <img
-        key={usableHero.item.path}
+        key={resolvedIdentity}
         src={usableHero.item.url}
         alt={name ?? "תרגיל"}
         className={cn(fitClass, className)}
