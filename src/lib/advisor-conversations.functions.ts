@@ -112,7 +112,7 @@ export const listAdvisorConversationsServer = createServerFn({ method: "GET" })
           limit: data.limit ?? 20,
         }),
       };
-    } catch {
+    } catch (error) {
       return unavailable("list", error);
     }
   });
@@ -133,7 +133,7 @@ export const createAdvisorConversationServer = createServerFn({ method: "POST" }
         status: "success",
         data: { conversation: await store.create(String(context.userId), data.advisorId, title) },
       };
-    } catch {
+    } catch (error) {
       return unavailable("create", error);
     }
   });
@@ -191,7 +191,7 @@ export const getAdvisorConversationMessagesServer = createServerFn({ method: "GE
           quota,
         },
       };
-    } catch {
+    } catch (error) {
       return unavailable("getMessages", error);
     }
   });
@@ -269,7 +269,7 @@ export const sendAdvisorMessageServer = createServerFn({ method: "POST" })
         supabase: context.supabase,
         quotaExempt: await admin.userHasAdminRole(userId),
       });
-    } catch {
+    } catch (error) {
       return unavailable("send", error);
     }
   });
