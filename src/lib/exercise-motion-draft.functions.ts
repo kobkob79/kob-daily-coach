@@ -352,12 +352,18 @@ export const uploadExerciseMotionDraftServer = createServerFn({ method: "POST" }
     // Draft preview URLs are handed back only through this Admin-only
     // response - never persisted, and never exposed through the normal
     // Published-only client queries against exercise_media_versions/
-    // exercise_media_assets. The existing bucket-wide "authenticated can
-    // read exercise-assets" Storage policy already applies to every object
-    // in this bucket (legacy included), so signing here is not a new
-    // exposure; it is short-lived (5 minutes, well under the 1-hour
-    // SIGNED_URL_TTL used for general media browsing) specifically because
-    // it exists only for this one immediate post-upload preview.
+    // exercise_media_assets. Signed with `supabaseAdmin` (service_role,
+    // which bypasses Storage RLS entirely) rather than the caller's own
+    // session, specifically because this is a Draft: since
+    // 20260909120000_harden_exercise_assets_storage_rls.sql, `authenticated`
+    // can no longer read a V2 object at all unless its owning
+    // exercise_media_versions row is `published` - a Draft never qualifies,
+    // so an authenticated-scoped sign here would simply fail. This is the
+    // "server-side Admin preview boundary" that policy's own comment
+    // requires; short-lived (5 minutes, well under the 1-hour
+    // SIGNED_URL_TTL used for general published-media browsing)
+    // specifically because it exists only for this one immediate
+    // post-upload preview.
     const PREVIEW_TTL_SECONDS = 300;
     const { data: signed, error: signError } = await supabaseAdmin.storage
       .from(ASSETS_BUCKET)

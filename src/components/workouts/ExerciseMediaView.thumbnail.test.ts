@@ -27,6 +27,14 @@ const MOTION_VIDEO_SOURCE = readFileSync(
   fileURLToPath(new URL("./MotionVideo.tsx", import.meta.url)),
   "utf8",
 );
+const HOOK_SOURCE = readFileSync(
+  fileURLToPath(new URL("../../hooks/useExerciseMedia.ts", import.meta.url)),
+  "utf8",
+);
+const RESOLVER_SOURCE = readFileSync(
+  fileURLToPath(new URL("../../lib/exercise-media.ts", import.meta.url)),
+  "utf8",
+);
 
 function mediaItem(overrides: Partial<MediaItem> & Pick<MediaItem, "name">): MediaItem {
   return {
@@ -73,12 +81,35 @@ test("the Motion Video element lives only in MotionVideo, reached from a single 
   );
   assert.match(source, /return isVideo \? \(/, "the MotionVideo branch must be gated by isVideo");
 
-  // The thumbnail slot must resolve through the static-only resolver, not
-  // the generic (video-first) resolveExerciseMedia() fallback.
+  // ExerciseMediaView no longer special-cases the thumbnail slot itself -
+  // it delegates every slot to the hook's single resolve() (VIORA-EXERCISE-
+  // MEDIA-CROSS-SURFACE-SYNC-001: one resolver, used identically by every
+  // surface, id-folder-aware). The video-rejection guarantee for
+  // `thumbnail` now lives one layer down, in resolveExerciseMediaAcrossPrefixes().
   assert.match(
     source,
-    /slot === "thumbnail" \? resolveExerciseThumbnailStill\(items\) : resolveExerciseMedia\(items, slot\)/,
-    "the thumbnail slot must resolve via resolveExerciseThumbnailStill()",
+    /const resolved = resolve\(slot\);/,
+    "ExerciseMediaView must resolve every slot - thumbnail included - through the hook's resolve(), not a local special case",
+  );
+  assert.doesNotMatch(
+    source,
+    /resolveExerciseThumbnailStill\(|resolveExerciseMedia\(/,
+    "ExerciseMediaView must not call the flat-array resolvers directly - that bypasses the id-over-slug prefix priority useExerciseMedia() computes",
+  );
+
+  // The static-only routing itself must still exist, one layer down: the
+  // hook's resolve() calls resolveExerciseMediaAcrossPrefixes(), which must
+  // still route `thumbnail` to the video-rejecting static resolver rather
+  // than falling through to the generic (video-first) chain.
+  assert.match(
+    HOOK_SOURCE,
+    /resolve: \(slot: ExerciseMediaSlot = "hero"\): ExerciseHeroMedia \| null =>\s*\n\s*resolveExerciseMediaAcrossPrefixes\(prefixGroups, slot\),/,
+    "useExerciseMedia's resolve() must delegate to resolveExerciseMediaAcrossPrefixes()",
+  );
+  assert.match(
+    RESOLVER_SOURCE,
+    /if \(slot === "thumbnail"\) return resolveExerciseThumbnailStillAcrossPrefixes\(prefixGroups\);/,
+    "resolveExerciseMediaAcrossPrefixes must still route the thumbnail slot through the static-only, video-rejecting resolver",
   );
 });
 

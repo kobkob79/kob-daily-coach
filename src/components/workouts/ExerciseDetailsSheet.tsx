@@ -463,7 +463,7 @@ function HeroMedia({ exercise, onShowMore }: { exercise: PickerExercise; onShowM
         exerciseId={exercise.id}
         name={exercise.name}
         fallbackImage={exercise.image_path}
-        mediaRole="main"
+        mediaRole="exercise_details"
         fit="contain"
         className="h-full w-full"
         placeholder={<HeroPlaceholder />}

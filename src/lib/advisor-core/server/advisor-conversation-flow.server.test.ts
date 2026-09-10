@@ -218,4 +218,40 @@ describe("sendPersistentAdvisorMessage — personal context consent gate", () =>
       assert.equal(harness.buildContextCalls, 1, `${advisorId} builds context once`);
     }
   });
+
+  test("degraded context loading sets contextSharing: limited flag and allows the conversation to continue", async () => {
+    const harness = newHarness();
+    const deps = makeDependencies(harness, { hasConsent: async () => true });
+
+    // Override buildContext to return contextFlags containing { key: "contextSharing", state: "limited" }
+    // simulating the new advisor-context-bridge behavior when lab_results or health_metrics fail.
+    deps.buildContext = async (userId) => {
+      harness.buildContextCalls += 1;
+      return {
+        context: {
+          userId,
+          generatedAt: "2026-01-01T00:00:00.000Z",
+          facts: {
+            profile: {
+              state: "known",
+              value: { displayName: "Degraded" },
+              observedAt: null,
+              sources: [],
+              confidence: "reported",
+            },
+          },
+        },
+        contextFlags: [{ key: "contextSharing", state: "limited" }],
+      };
+    };
+
+    const result = await send(deps);
+    const data = assertSuccess(result);
+    assert.equal(harness.buildContextCalls, 1);
+    assert.equal(harness.providerInvoked, true);
+    assert.ok(
+      data.contextFlags.some((f) => f.key === "contextSharing" && f.state === "limited"),
+      "the client receives the 'limited' sharing state",
+    );
+  });
 });

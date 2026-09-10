@@ -106,6 +106,11 @@ export type AdvisorConversationErrorCode = (typeof ADVISOR_CONVERSATION_ERROR_CO
 export interface AdvisorSafeError {
   code: AdvisorConversationErrorCode;
   retryable: boolean;
+  /**
+   * Safe, random per-failure identifier. Contains no user data and is shown in
+   * the UI so a live incident can be traced back to a server log line.
+   */
+  correlationId?: string;
 }
 
 export type AdvisorOperationResult<T> =
