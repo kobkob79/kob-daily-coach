@@ -140,7 +140,7 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
       if (result.status !== "success") {
         setOperationError(
           result.status === "error"
-            ? advisorConversationErrorMessage(result.error.code)
+            ? advisorConversationErrorMessage(result.error.code, result.error.correlationId)
             : "השיחה עדיין נטענת. אפשר לנסות שוב בעוד רגע.",
         );
         if (result.status === "error" && result.error.code === "PERSISTENCE_UNAVAILABLE") {
@@ -182,7 +182,7 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
           setQuotaState("error");
           setOperationError(
             result.status === "error"
-              ? advisorConversationErrorMessage(result.error.code)
+              ? advisorConversationErrorMessage(result.error.code, result.error.correlationId)
               : "השיחות עדיין נטענות. אפשר לנסות שוב בעוד רגע.",
           );
           return;
@@ -235,7 +235,7 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
       if (result.status !== "success") {
         setOperationError(
           result.status === "error"
-            ? advisorConversationErrorMessage(result.error.code)
+            ? advisorConversationErrorMessage(result.error.code, result.error.correlationId)
             : "השיחה עדיין נוצרת. אפשר לנסות שוב בעוד רגע.",
         );
         return null;
@@ -303,7 +303,7 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
         }
         if (result.status === "error") {
           if (result.error.code === "DAILY_QUOTA_EXCEEDED") setQuotaState("exhausted");
-          setOperationError(advisorConversationErrorMessage(result.error.code));
+          setOperationError(advisorConversationErrorMessage(result.error.code, result.error.correlationId));
           if (result.error.code !== "PERSISTENCE_UNAVAILABLE")
             await applyLoadedConversation(conversation);
           return result.error.code !== "PERSISTENCE_UNAVAILABLE";
@@ -388,7 +388,7 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
     if (result.status !== "success") {
       setOperationError(
         result.status === "error"
-          ? advisorConversationErrorMessage(result.error.code)
+          ? advisorConversationErrorMessage(result.error.code, result.error.correlationId)
           : "שינוי השם עדיין בטיפול.",
       );
       return;
@@ -405,7 +405,7 @@ export function CoachChatShell({ advisor, userAvatarUrl }: CoachChatShellProps) 
     if (result.status !== "success") {
       setOperationError(
         result.status === "error"
-          ? advisorConversationErrorMessage(result.error.code)
+          ? advisorConversationErrorMessage(result.error.code, result.error.correlationId)
           : "המחיקה עדיין בטיפול.",
       );
       return;
