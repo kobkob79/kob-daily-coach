@@ -270,7 +270,8 @@ export function createSupabaseAdvisorContextDataSource(
           .gte("recorded_at", sinceIso)
           .order("recorded_at", { ascending: false }),
       ]);
-      const results = [
+      // Required sources: a failure here means the advisor context cannot be trusted.
+      const requiredResults = [
         profileResult,
         goalsResult,
         bioDayResult,
@@ -285,10 +286,23 @@ export function createSupabaseAdvisorContextDataSource(
         medicalResult,
         weightsResult,
         measurementsResult,
-        labResultsResult,
-        healthMetricsResult,
       ];
-      if (results.some((result) => result.error)) throw new Error("ADVISOR_CONTEXT_UNAVAILABLE");
+      if (requiredResults.some((result) => result.error))
+        throw new Error("ADVISOR_CONTEXT_UNAVAILABLE");
+      // Optional sources (blood-test captures, wearable health metrics) are not
+      // provisioned in every environment. Degrade to "no data" instead of taking
+      // the whole conversation offline. No row content is logged.
+      for (const [source, result] of [
+        ["lab_results", labResultsResult],
+        ["health_metrics", healthMetricsResult],
+      ] as const) {
+        if (result.error) {
+          console.warn("[Viora Advisor Context]", {
+            event: "advisor_context_optional_source_skipped",
+            source,
+          });
+        }
+      }
 
       const bio = bioDayResult.data;
       const freshnessCutoff = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);

@@ -67,10 +67,26 @@ async function serverDependencies() {
   return { supabaseAdvisorConversationStore, supabaseAdvisorQuotaStore, admin };
 }
 
-function unavailable() {
+function failureCategory(error: unknown): string {
+  const name = error instanceof Error ? error.message : "unknown";
+  return /^[A-Z_]{3,60}$/.test(name) ? name : "unhandled_exception";
+}
+
+/**
+ * Safe failure envelope. Logs an operation + failure category + correlation id
+ * only — never messages, user ids, tokens, keys, payloads or raw DB text.
+ */
+function unavailable(operation: string, error?: unknown) {
+  const correlationId = globalThis.crypto.randomUUID().slice(0, 8);
+  console.error("[Viora Advisor Conversations]", {
+    event: "advisor_persistence_unavailable",
+    operation,
+    failure_category: failureCategory(error),
+    correlation_id: correlationId,
+  });
   return {
     status: "error" as const,
-    error: { code: "PERSISTENCE_UNAVAILABLE" as const, retryable: true },
+    error: { code: "PERSISTENCE_UNAVAILABLE" as const, retryable: true, correlationId },
   };
 }
 
@@ -96,8 +112,8 @@ export const listAdvisorConversationsServer = createServerFn({ method: "GET" })
           limit: data.limit ?? 20,
         }),
       };
-    } catch {
-      return unavailable();
+    } catch (error) {
+      return unavailable("list", error);
     }
   });
 
@@ -117,8 +133,8 @@ export const createAdvisorConversationServer = createServerFn({ method: "POST" }
         status: "success",
         data: { conversation: await store.create(String(context.userId), data.advisorId, title) },
       };
-    } catch {
-      return unavailable();
+    } catch (error) {
+      return unavailable("create", error);
     }
   });
 
@@ -175,8 +191,8 @@ export const getAdvisorConversationMessagesServer = createServerFn({ method: "GE
           quota,
         },
       };
-    } catch {
-      return unavailable();
+    } catch (error) {
+      return unavailable("getMessages", error);
     }
   });
 
@@ -201,7 +217,7 @@ export const renameAdvisorConversationServer = createServerFn({ method: "POST" }
       if ((error as { name?: string }).name === "AdvisorConversationNotFoundError") {
         return { status: "error", error: { code: "NOT_FOUND", retryable: false } };
       }
-      return unavailable();
+      return unavailable("rename", error);
     }
   });
 
@@ -218,7 +234,7 @@ export const deleteAdvisorConversationServer = createServerFn({ method: "POST" }
       if ((error as { name?: string }).name === "AdvisorConversationNotFoundError") {
         return { status: "error", error: { code: "NOT_FOUND", retryable: false } };
       }
-      return unavailable();
+      return unavailable("delete", error);
     }
   });
 
@@ -253,7 +269,7 @@ export const sendAdvisorMessageServer = createServerFn({ method: "POST" })
         supabase: context.supabase,
         quotaExempt: await admin.userHasAdminRole(userId),
       });
-    } catch {
-      return unavailable();
+    } catch (error) {
+      return unavailable("send", error);
     }
   });
