@@ -1,16 +1,25 @@
 BEGIN;
-select plan(19);
+select plan(21);
 
 -- Create test users
 select tests.create_supabase_user('user1');
 select tests.create_supabase_user('user2');
 
 -- 1. "anon" cannot read or write
+-- To truly test anon, we clear auth and run.
+select tests.clear_authentication();
+-- Switch to a different role context using set_config if we could, but test.sql runs under postgres/service_role if auth is cleared in this framework.
+-- Actually pgTAP 'anon' context requires explicit set_config('role', 'anon', true);
+set local role anon;
+
 select throws_ok(
   $$ select * from public.health_metrics $$,
   'permission denied for table health_metrics',
   'anon cannot read health_metrics'
 );
+
+-- Revert to original role (postgres/service_role)
+reset role;
 
 select tests.authenticate_as('user1');
 
@@ -93,7 +102,7 @@ select lives_ok(
   'User can delete own metric'
 );
 
--- 13. delete metric of other user affects 0 rows under RLS
+-- 13. delete metric of other user affects 0 rows under RLS (doesn't throw, just deletes 0 rows)
 select tests.authenticate_as('user2');
 -- Insert a metric for user1 so we can attempt to delete it
 select tests.authenticate_as('user1');
@@ -140,10 +149,10 @@ select throws_ok(
   'User 1 cannot change user 2 connection'
 );
 
--- Clear auth to become superuser context (which maps to service_role privileges in pgTAP tests)
-select tests.clear_authentication();
-
 -- 18. service_role can create automated metric
+select tests.clear_authentication();
+set local role service_role;
+
 select lives_ok(
   $$ insert into public.health_metrics (user_id, source, metric_type, value, unit, recorded_at, biological_day, external_id) values (tests.get_supabase_uid('user1'), 'health_connect', 'steps', 100, 'steps', now(), '2026-09-08', 'svc') $$,
   'service_role can create automated metric'
@@ -154,6 +163,8 @@ select lives_ok(
   $$ insert into public.health_connections (user_id, provider) values (tests.get_supabase_uid('user1'), 'health_connect') $$,
   'service_role can create automated connection'
 );
+
+reset role;
 
 select * from finish();
 ROLLBACK;

@@ -131,8 +131,7 @@ test("parseHealthSyncPayload correctly rejects client biologicalDay", () => {
         provider: "apple_health",
         samples: [{ ...validSample(), biologicalDay: "2026-09-06" }],
       }),
-    (err: Error) =>
-      err instanceof HealthSyncValidationError && err.message.includes("cannot be provided"),
+    (err: Error) => err instanceof HealthSyncValidationError && err.message.includes("cannot be provided")
   );
 });
 
@@ -141,44 +140,30 @@ test("parseHealthSyncPayload rejects semantic RFC3339 violations", () => {
     "2026-13-01T12:00:00Z", // month 13
     "2026-02-31T12:00:00Z", // 31st feb
     "2026-01-01T25:00:00Z", // hour 25
-    "2026-01-01T12:00:00+99:99", // offset bad
+    "2026-01-01T12:00:00+99:99", // offset bad format
+    "2026-01-01T12:00:00+14:01", // offset > 14:00
+    "2026-01-01T12:00:00+14:59", // offset > 14:00
     "2026-01-01T12:00:00", // missing offset
   ];
   for (const c of cases) {
     assert.throws(
-      () =>
-        parseHealthSyncPayload({
-          provider: "apple_health",
-          samples: [{ ...validSample(), recordedAt: c }],
-        }),
-      HealthSyncValidationError,
+      () => parseHealthSyncPayload({ provider: "apple_health", samples: [{ ...validSample(), recordedAt: c }] }),
+      HealthSyncValidationError
     );
   }
 });
 
 test("parseHealthSyncPayload strict value bounds", () => {
   assert.throws(
-    () =>
-      parseHealthSyncPayload({
-        provider: "apple_health",
-        samples: [{ ...validSample(), metricType: "steps", value: 300000 }],
-      }),
-    HealthSyncValidationError,
+    () => parseHealthSyncPayload({ provider: "apple_health", samples: [{ ...validSample(), metricType: "steps", value: 300000 }] }),
+    HealthSyncValidationError
   );
   assert.throws(
-    () =>
-      parseHealthSyncPayload({
-        provider: "apple_health",
-        samples: [{ ...validSample(), metricType: "heart_rate_resting", value: 0 }],
-      }),
-    HealthSyncValidationError,
+    () => parseHealthSyncPayload({ provider: "apple_health", samples: [{ ...validSample(), metricType: "heart_rate_resting", value: 0 }] }),
+    HealthSyncValidationError
   );
   assert.throws(
-    () =>
-      parseHealthSyncPayload({
-        provider: "apple_health",
-        samples: [{ ...validSample(), metricType: "steps", value: "100" }],
-      }),
-    HealthSyncValidationError,
+    () => parseHealthSyncPayload({ provider: "apple_health", samples: [{ ...validSample(), metricType: "steps", value: "100" }] }),
+    HealthSyncValidationError
   );
 });

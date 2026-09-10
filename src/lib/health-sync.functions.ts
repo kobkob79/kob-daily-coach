@@ -38,7 +38,7 @@ export const syncHealthPayload = createServerFn({ method: "POST" })
       const userId = String(context.userId);
       const correlationId = crypto.randomUUID();
 
-      // F2: Block all automated syncs through this PWA boundary until Edge Function is ready
+      // Block all automated syncs through this PWA boundary until Edge Function is ready
       const safeErrorCategory = "SYNC_DISABLED_PENDING_EDGE_FUNCTION";
       console.error(`HealthSyncError [${correlationId}]: ${safeErrorCategory}`);
 

@@ -30,7 +30,7 @@ export interface HealthSyncSample {
   unit: string;
   recordedAt: string;
   externalId: string;
-  biologicalDay?: string;
+  biologicalDay?: string; // added server-side
 }
 
 export interface HealthSyncPayload {
@@ -113,7 +113,8 @@ function isoTimestamp(value: unknown, field: string): string {
     if (match) {
       const oh = parseInt(match[2], 10);
       const om = parseInt(match[3], 10);
-      if (oh > 14 || om > 59) {
+      // Strict offset check, up to 14:00 max
+      if (oh > 14 || (oh === 14 && om > 0) || om > 59) {
         throw new HealthSyncValidationError(`${field} contains invalid offset`);
       }
     }
