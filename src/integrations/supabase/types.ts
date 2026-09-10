@@ -515,50 +515,32 @@ export type Database = {
       }
       community_posts: {
         Row: {
-          audience: string
           author_avatar_path: string | null
           author_display_name: string
           body: string
           created_at: string
           id: string
-          location_label: string | null
-          payload: Json | null
           photo_path: string | null
-          post_type: string
-          source_id: string | null
-          source_type: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
-          audience?: string
           author_avatar_path?: string | null
           author_display_name: string
           body?: string
           created_at?: string
           id?: string
-          location_label?: string | null
-          payload?: Json | null
           photo_path?: string | null
-          post_type?: string
-          source_id?: string | null
-          source_type?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
-          audience?: string
           author_avatar_path?: string | null
           author_display_name?: string
           body?: string
           created_at?: string
           id?: string
-          location_label?: string | null
-          payload?: Json | null
           photo_path?: string | null
-          post_type?: string
-          source_id?: string | null
-          source_type?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -1482,56 +1464,6 @@ export type Database = {
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "workout_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      workout_debriefs: {
-        Row: {
-          created_at: string
-          greeting: string
-          highlights: string[]
-          hydration: string | null
-          next_focus: string | null
-          nutrition: string | null
-          paragraphs: string[]
-          recovery: string | null
-          session_id: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          greeting: string
-          highlights?: string[]
-          hydration?: string | null
-          next_focus?: string | null
-          nutrition?: string | null
-          paragraphs?: string[]
-          recovery?: string | null
-          session_id: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          greeting?: string
-          highlights?: string[]
-          hydration?: string | null
-          next_focus?: string | null
-          nutrition?: string | null
-          paragraphs?: string[]
-          recovery?: string | null
-          session_id?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "workout_debriefs_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: true
-            referencedRelation: "workout_sessions"
             referencedColumns: ["id"]
           },
         ]
