@@ -26,7 +26,7 @@ export interface AdvisorContextSourceData {
   healthMetrics: SafeHealthMetricsSummary | null;
   timelineInput: UnifiedTimelineInput;
   conflicts: AdvisorContextKey[];
-  _skippedSources?: string[];
+  degradedOptionalSources?: string[];
 }
 
 export interface AdvisorContextDataSource {
@@ -76,15 +76,6 @@ export async function buildAdvisorContextForUser(
     };
   }
   const data = await source.load(userId, now);
-  // Optional sources failure check for degraded loading
-  let isDegraded = false;
-  if (
-    "_skippedSources" in data &&
-    Array.isArray(data._skippedSources) &&
-    data._skippedSources.length > 0
-  ) {
-    isDegraded = true;
-  }
   const timeline = buildUnifiedTimeline(data.timelineInput);
   const snapshot = buildAdvisorContextSnapshot({
     userId,
@@ -111,7 +102,11 @@ export async function buildAdvisorContextForUser(
   });
 
   const flags = safeFlags(context);
-  if (isDegraded && !flags.some((f) => f.key === "contextSharing")) {
+  if (
+    data.degradedOptionalSources &&
+    data.degradedOptionalSources.length > 0 &&
+    !flags.some((f) => f.key === "contextSharing")
+  ) {
     flags.push({ key: "contextSharing", state: "limited" });
   }
 
@@ -308,13 +303,13 @@ export function createSupabaseAdvisorContextDataSource(
       // Optional sources (blood-test captures, wearable health metrics) are not
       // provisioned in every environment. Degrade to "no data" instead of taking
       // the whole conversation offline. No row content is logged.
-      const skippedSources: string[] = [];
+      const degradedOptionalSources: string[] = [];
       for (const [source, result] of [
         ["lab_results", labResultsResult],
         ["health_metrics", healthMetricsResult],
       ] as const) {
         if (result.error) {
-          skippedSources.push(source);
+          degradedOptionalSources.push(source);
           console.warn("[Viora Advisor Context]", {
             event: "advisor_context_optional_source_skipped",
             source,
@@ -434,7 +429,7 @@ export function createSupabaseAdvisorContextDataSource(
         workoutMinutes: latestMetric("workout_minutes"),
       };
       return {
-        _skippedSources: skippedSources,
+        degradedOptionalSources,
         // birth_date is read here only to derive an integer age; it is never
         // placed on the returned profile, so it cannot reach the snapshot,
         // budgeting, the provider context, the system prompt, or any log.
