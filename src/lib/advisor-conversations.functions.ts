@@ -113,7 +113,7 @@ export const listAdvisorConversationsServer = createServerFn({ method: "GET" })
         }),
       };
     } catch {
-      return unavailable();
+      return unavailable("list", error);
     }
   });
 
@@ -134,7 +134,7 @@ export const createAdvisorConversationServer = createServerFn({ method: "POST" }
         data: { conversation: await store.create(String(context.userId), data.advisorId, title) },
       };
     } catch {
-      return unavailable();
+      return unavailable("create", error);
     }
   });
 
@@ -192,7 +192,7 @@ export const getAdvisorConversationMessagesServer = createServerFn({ method: "GE
         },
       };
     } catch {
-      return unavailable();
+      return unavailable("getMessages", error);
     }
   });
 
@@ -217,7 +217,7 @@ export const renameAdvisorConversationServer = createServerFn({ method: "POST" }
       if ((error as { name?: string }).name === "AdvisorConversationNotFoundError") {
         return { status: "error", error: { code: "NOT_FOUND", retryable: false } };
       }
-      return unavailable();
+      return unavailable("rename", error);
     }
   });
 
@@ -234,7 +234,7 @@ export const deleteAdvisorConversationServer = createServerFn({ method: "POST" }
       if ((error as { name?: string }).name === "AdvisorConversationNotFoundError") {
         return { status: "error", error: { code: "NOT_FOUND", retryable: false } };
       }
-      return unavailable();
+      return unavailable("delete", error);
     }
   });
 
@@ -270,6 +270,6 @@ export const sendAdvisorMessageServer = createServerFn({ method: "POST" })
         quotaExempt: await admin.userHasAdminRole(userId),
       });
     } catch {
-      return unavailable();
+      return unavailable("send", error);
     }
   });
