@@ -67,10 +67,26 @@ async function serverDependencies() {
   return { supabaseAdvisorConversationStore, supabaseAdvisorQuotaStore, admin };
 }
 
-function unavailable() {
+function failureCategory(error: unknown): string {
+  const name = error instanceof Error ? error.message : "unknown";
+  return /^[A-Z_]{3,60}$/.test(name) ? name : "unhandled_exception";
+}
+
+/**
+ * Safe failure envelope. Logs an operation + failure category + correlation id
+ * only — never messages, user ids, tokens, keys, payloads or raw DB text.
+ */
+function unavailable(operation: string, error?: unknown) {
+  const correlationId = globalThis.crypto.randomUUID().slice(0, 8);
+  console.error("[Viora Advisor Conversations]", {
+    event: "advisor_persistence_unavailable",
+    operation,
+    failure_category: failureCategory(error),
+    correlation_id: correlationId,
+  });
   return {
     status: "error" as const,
-    error: { code: "PERSISTENCE_UNAVAILABLE" as const, retryable: true },
+    error: { code: "PERSISTENCE_UNAVAILABLE" as const, retryable: true, correlationId },
   };
 }
 
